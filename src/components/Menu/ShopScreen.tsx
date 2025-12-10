@@ -130,65 +130,95 @@ export function ShopScreen({ onClose }: ShopScreenProps) {
                       </span>
                     </div>
 
-                    {/* 미리보기 - 스킨별 고유 스타일 */}
-                    <div className="flex gap-1 mb-3 justify-center">
-                      {(() => {
-                        const style = SKIN_STYLES[skin.id] || SKIN_STYLES.classic;
-                        return style.colors.map((color, i) => (
-                          <motion.div
-                            key={i}
-                            className="relative overflow-hidden"
-                            style={{
-                              width: 24,
-                              height: 24,
-                              borderRadius: style.borderRadius,
-                              background: style.innerEffect === 'glow'
-                                ? `radial-gradient(circle at 30% 30%, ${color}dd, ${color}88 70%, ${color}44)`
-                                : style.innerEffect === 'glass'
-                                  ? `linear-gradient(145deg, ${color}ee, ${color}aa 50%, ${color}cc)`
-                                  : style.innerEffect === 'gradient'
-                                    ? `linear-gradient(135deg, ${color}, ${color}88, ${color}cc)`
-                                    : style.innerEffect === 'metallic'
-                                      ? `linear-gradient(145deg, ${color}ff, ${color}66 30%, ${color}cc 70%, ${color}ff)`
-                                      : color,
-                              border: style.borderWidth > 0
-                                ? `${style.borderWidth}px ${style.borderStyle} ${color}88`
-                                : 'none',
-                              boxShadow: style.glowIntensity > 0
-                                ? `0 0 ${Math.round(style.glowIntensity * 12)}px ${color}`
-                                : 'none',
-                            }}
-                            animate={
-                              style.animation === 'pulse' ? { boxShadow: [`0 0 5px ${color}`, `0 0 15px ${color}`, `0 0 5px ${color}`] }
-                              : style.animation === 'fire' ? { y: [0, -2, 0] }
-                              : style.animation === 'ice' ? { opacity: [1, 0.8, 1] }
-                              : style.animation === 'electric' ? { x: [-1, 1, -1, 0] }
-                              : undefined
-                            }
-                            transition={
-                              style.animation === 'pulse' ? { duration: 1, repeat: Infinity }
-                              : style.animation === 'fire' ? { duration: 0.3, repeat: Infinity }
-                              : style.animation === 'ice' ? { duration: 2, repeat: Infinity }
-                              : style.animation === 'electric' ? { duration: 0.15, repeat: Infinity }
-                              : undefined
-                            }
-                          >
-                            {/* 내부 광택 */}
-                            {(style.innerEffect === 'glossy' || style.innerEffect === 'glass') && (
-                              <div className="absolute inset-0 bg-gradient-to-br from-white/40 via-transparent to-transparent" />
-                            )}
-                            {/* 쉬머 효과 */}
-                            {style.animation === 'shimmer' && (
-                              <motion.div
-                                className="absolute inset-0"
-                                style={{ background: 'linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.5) 50%, transparent 70%)' }}
-                                animate={{ x: ['-100%', '200%'] }}
-                                transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
-                              />
-                            )}
-                          </motion.div>
-                        ));
-                      })()}
+                    {/* 미리보기 - 스킨별 고유 스타일 (더 크고 명확하게) */}
+                    <div className="bg-black/40 rounded-lg p-3 mb-3">
+                      <div className="flex gap-1.5 justify-center">
+                        {(() => {
+                          const style = SKIN_STYLES[skin.id] || SKIN_STYLES.classic;
+                          return style.colors.slice(0, 4).map((color, i) => (
+                            <motion.div
+                              key={i}
+                              className="relative overflow-hidden"
+                              style={{
+                                width: 32,
+                                height: 32,
+                                borderRadius: style.borderRadius,
+                                background: style.innerEffect === 'glow'
+                                  ? `radial-gradient(circle at 30% 30%, ${color}dd, ${color}88 70%, ${color}44)`
+                                  : style.innerEffect === 'glass'
+                                    ? `linear-gradient(145deg, ${color}ee, ${color}aa 50%, ${color}cc)`
+                                    : style.innerEffect === 'gradient'
+                                      ? `linear-gradient(135deg, ${color}, ${color}88, ${color}cc)`
+                                      : style.innerEffect === 'metallic'
+                                        ? `linear-gradient(145deg, ${color}ff, ${color}66 30%, ${color}cc 70%, ${color}ff)`
+                                        : style.innerEffect === 'flat'
+                                          ? color
+                                          : `linear-gradient(145deg, ${color}, ${color}dd)`,
+                                border: style.borderWidth > 0
+                                  ? `${style.borderWidth}px ${style.borderStyle} ${color}aa`
+                                  : 'none',
+                                boxShadow: style.glowIntensity > 0
+                                  ? `0 0 ${Math.round(style.glowIntensity * 15)}px ${color}, 0 0 ${Math.round(style.glowIntensity * 5)}px ${color}`
+                                  : '0 2px 4px rgba(0,0,0,0.3)',
+                              }}
+                              animate={
+                                style.animation === 'pulse' ? { boxShadow: [`0 0 8px ${color}`, `0 0 20px ${color}`, `0 0 8px ${color}`] }
+                                : style.animation === 'fire' ? { y: [0, -3, 0, -1, 0] }
+                                : style.animation === 'ice' ? { opacity: [1, 0.7, 1] }
+                                : style.animation === 'electric' ? { x: [-2, 2, -1, 1, 0] }
+                                : undefined
+                              }
+                              transition={
+                                style.animation === 'pulse' ? { duration: 1.2, repeat: Infinity }
+                                : style.animation === 'fire' ? { duration: 0.4, repeat: Infinity }
+                                : style.animation === 'ice' ? { duration: 2.5, repeat: Infinity }
+                                : style.animation === 'electric' ? { duration: 0.15, repeat: Infinity }
+                                : undefined
+                              }
+                            >
+                              {/* 내부 광택 */}
+                              {(style.innerEffect === 'glossy' || style.innerEffect === 'glass') && (
+                                <div className="absolute inset-0 bg-gradient-to-br from-white/50 via-white/10 to-transparent rounded-inherit" />
+                              )}
+                              {style.innerEffect === 'metallic' && (
+                                <div className="absolute inset-0 bg-gradient-to-b from-white/60 via-transparent to-black/30" />
+                              )}
+                              {/* 텍스처 */}
+                              {style.texture === 'lines' && (
+                                <div className="absolute inset-0 opacity-30" style={{
+                                  background: 'repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(255,255,255,0.2) 2px, rgba(255,255,255,0.2) 4px)'
+                                }} />
+                              )}
+                              {style.texture === 'dots' && (
+                                <div className="absolute inset-0 opacity-40" style={{
+                                  backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.5) 1px, transparent 1px)',
+                                  backgroundSize: '6px 6px'
+                                }} />
+                              )}
+                              {style.texture === 'cracks' && (
+                                <div className="absolute inset-0 opacity-25" style={{
+                                  background: 'linear-gradient(30deg, transparent 40%, rgba(255,255,255,0.3) 41%, transparent 42%), linear-gradient(-30deg, transparent 60%, rgba(255,255,255,0.2) 61%, transparent 62%)'
+                                }} />
+                              )}
+                              {style.texture === 'circuit' && (
+                                <div className="absolute inset-0 opacity-30" style={{
+                                  background: 'linear-gradient(90deg, transparent 48%, rgba(255,255,255,0.4) 50%, transparent 52%), linear-gradient(0deg, transparent 48%, rgba(255,255,255,0.4) 50%, transparent 52%)',
+                                  backgroundSize: '8px 8px'
+                                }} />
+                              )}
+                              {/* 쉬머 효과 */}
+                              {style.animation === 'shimmer' && (
+                                <motion.div
+                                  className="absolute inset-0"
+                                  style={{ background: 'linear-gradient(110deg, transparent 25%, rgba(255,255,255,0.6) 50%, transparent 75%)' }}
+                                  animate={{ x: ['-150%', '250%'] }}
+                                  transition={{ duration: 2, repeat: Infinity, ease: 'linear', repeatDelay: 0.5 }}
+                                />
+                              )}
+                            </motion.div>
+                          ));
+                        })()}
+                      </div>
                     </div>
                     {/* 스킨 특징 설명 */}
                     <p className="text-[10px] text-gray-400 mb-2 text-center">
@@ -264,31 +294,70 @@ export function ShopScreen({ onClose }: ShopScreenProps) {
                 return (
                   <div
                     key={theme.id}
-                    className={`bg-game-panel/80 rounded-xl p-4 ${
+                    className={`bg-game-panel/80 rounded-xl p-3 ${
                       isEquipped ? 'ring-2 ring-game-accent' : ''
                     }`}
                   >
-                    <p className="font-bold text-white mb-2">{theme.name}</p>
+                    <p className="font-bold text-white mb-1 text-sm">{theme.name}</p>
+                    {theme.description && (
+                      <p className="text-[10px] text-gray-400 mb-2">{theme.description}</p>
+                    )}
 
-                    {/* 테마 미리보기 */}
+                    {/* 테마 미리보기 - 더 상세한 프리뷰 */}
                     <div
-                      className="h-20 rounded-lg mb-3 p-2"
-                      style={{ backgroundColor: theme.colors.background }}
+                      className="h-24 rounded-lg mb-2 p-2 overflow-hidden relative"
+                      style={{
+                        background: theme.colors.backgroundGradient || theme.colors.background,
+                        border: `1px solid ${theme.colors.panelBorder || 'rgba(255,255,255,0.1)'}`
+                      }}
                     >
+                      {/* 패널 */}
                       <div
-                        className="w-full h-full rounded"
-                        style={{ backgroundColor: theme.colors.panel }}
+                        className="w-full h-full rounded relative"
+                        style={{
+                          backgroundColor: theme.colors.panel,
+                          border: `1px solid ${theme.colors.panelBorder || 'rgba(255,255,255,0.1)'}`
+                        }}
                       >
+                        {/* 액센트 바 */}
                         <div
-                          className="w-1/3 h-2 rounded mt-2 ml-2"
+                          className="absolute top-2 left-2 w-12 h-1.5 rounded-full"
                           style={{ backgroundColor: theme.colors.accent }}
                         />
+                        {/* 텍스트 예시 */}
+                        <div className="absolute top-5 left-2 flex flex-col gap-1">
+                          <div
+                            className="w-8 h-1 rounded"
+                            style={{ backgroundColor: theme.colors.text || '#fff', opacity: 0.8 }}
+                          />
+                          <div
+                            className="w-6 h-1 rounded"
+                            style={{ backgroundColor: theme.colors.textSecondary || '#888', opacity: 0.6 }}
+                          />
+                        </div>
+                        {/* 블록 미리보기 */}
+                        <div className="absolute bottom-2 right-2 flex gap-0.5">
+                          <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#ff4757' }} />
+                          <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#3742fa' }} />
+                          <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#2ed573' }} />
+                        </div>
+                        {/* 성공/위험 컬러 인디케이터 */}
+                        <div className="absolute bottom-2 left-2 flex gap-1">
+                          <div
+                            className="w-2 h-2 rounded-full"
+                            style={{ backgroundColor: theme.colors.success || '#2ed573' }}
+                          />
+                          <div
+                            className="w-2 h-2 rounded-full"
+                            style={{ backgroundColor: theme.colors.danger || '#ff4757' }}
+                          />
+                        </div>
                       </div>
                     </div>
 
                     {isOwned ? (
                       <button
-                        className={`w-full py-2 rounded-lg font-bold ${
+                        className={`w-full py-2 rounded-lg font-bold text-sm ${
                           isEquipped
                             ? 'bg-game-accent text-white'
                             : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
@@ -300,7 +369,7 @@ export function ShopScreen({ onClose }: ShopScreenProps) {
                       </button>
                     ) : (
                       <button
-                        className={`w-full py-2 rounded-lg font-bold flex items-center justify-center gap-1 ${
+                        className={`w-full py-2 rounded-lg font-bold text-sm flex items-center justify-center gap-1 ${
                           canAfford || theme.currency === 'free'
                             ? 'bg-yellow-500 text-black hover:bg-yellow-400'
                             : 'bg-gray-700 text-gray-500'

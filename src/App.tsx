@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useGameStore } from './stores/gameStore';
 import { useUserStore } from './stores/userStore';
 import { useAudio } from './hooks';
-import { GameMode } from './types';
+import { GameMode, ThemeColors } from './types';
 import { BOARD_CONFIG, GAME_MODE_CONFIG } from './constants';
+import { THEMES } from './constants/shopItems';
 
 // Game Components
 import { GameBoard, NextBlockPreview, TouchControls, PowerUpBar } from './components/Game';
@@ -20,6 +21,19 @@ import './index.css';
 // Leaderboard Component (lazy import)
 import { LeaderboardScreen } from './components/Menu/LeaderboardScreen';
 
+// 기본 다크 테마
+const DEFAULT_THEME: ThemeColors = {
+  background: '#0a0a1a',
+  backgroundGradient: 'radial-gradient(circle at 50% 10%, #1a1a40 0%, #050510 60%)',
+  panel: '#1a1a2e',
+  panelBorder: 'rgba(255,255,255,0.1)',
+  accent: '#4a9eff',
+  text: '#ffffff',
+  textSecondary: '#888888',
+  danger: '#ff4757',
+  success: '#2ed573'
+};
+
 type AppScreen = 'menu' | 'game' | 'shop' | 'leaderboard' | 'battlepass';
 
 function App() {
@@ -34,7 +48,31 @@ function App() {
 
   const gameStore = useGameStore();
   const { gameStatus, startGame, pauseGame, resumeGame, resetGame, continueGame, incrementGameTime, endGame, nextPuzzleLevel, score, combo, chainCount, level, board, isFeverMode, feverGauge, gameTime, gameMode } = gameStore;
-  const { settings, updateStreak } = useUserStore();
+  const { settings, updateStreak, equippedThemeId } = useUserStore();
+
+  // 현재 테마 가져오기
+  const currentTheme = useMemo((): ThemeColors => {
+    const theme = THEMES.find(t => t.id === equippedThemeId);
+    return theme?.colors || DEFAULT_THEME;
+  }, [equippedThemeId]);
+
+  // 테마 CSS 변수 적용
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty('--theme-bg', currentTheme.background);
+    root.style.setProperty('--theme-bg-gradient', currentTheme.backgroundGradient || currentTheme.background);
+    root.style.setProperty('--theme-panel', currentTheme.panel);
+    root.style.setProperty('--theme-panel-border', currentTheme.panelBorder || 'rgba(255,255,255,0.1)');
+    root.style.setProperty('--theme-accent', currentTheme.accent);
+    root.style.setProperty('--theme-text', currentTheme.text || '#ffffff');
+    root.style.setProperty('--theme-text-secondary', currentTheme.textSecondary || '#888888');
+    root.style.setProperty('--theme-danger', currentTheme.danger || '#ff4757');
+    root.style.setProperty('--theme-success', currentTheme.success || '#2ed573');
+
+    // body 배경 직접 적용
+    document.body.style.background = currentTheme.backgroundGradient || currentTheme.background;
+    document.body.style.backgroundColor = currentTheme.background;
+  }, [currentTheme]);
   const { playSound, stopBGM } = useAudio();
   const prevLevelRef = useRef(level);
 

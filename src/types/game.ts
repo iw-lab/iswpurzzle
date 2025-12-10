@@ -253,19 +253,29 @@ export interface SkinItem {
   animated?: boolean;
 }
 
+// 테마 색상 정의
+export interface ThemeColors {
+  background: string;
+  backgroundGradient?: string;
+  panel: string;
+  panelBorder?: string;
+  accent: string;
+  text?: string;
+  textSecondary?: string;
+  danger?: string;
+  success?: string;
+}
+
 // 테마 아이템
 export interface ThemeItem {
   id: string;
   name: string;
+  description?: string;
   price: number;
   currency: 'coins' | 'gems' | 'free';
   owned: boolean;
   equipped: boolean;
-  colors: {
-    background: string;
-    panel: string;
-    accent: string;
-  };
+  colors: ThemeColors;
 }
 
 // 업적
