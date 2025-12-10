@@ -49,10 +49,10 @@ function getRandomBlockColor(level: number): BlockColor {
   return colors[Math.floor(Math.random() * colors.length)];
 }
 
-// 특수 블록 타입 결정
+// 특수 블록 타입 결정 (후반부 특수 블록 빈도 감소)
 function getSpecialType(level: number, blocksPlaced: number): SpecialBlockType {
-  // 일정 블록마다 특수 블록 보장
-  if (blocksPlaced > 0 && blocksPlaced % 12 === 0) {
+  // 일정 블록마다 특수 블록 보장 (12 -> 20으로 증가)
+  if (blocksPlaced > 0 && blocksPlaced % 20 === 0) {
     return determineSpecialBlockType(level);
   }
 

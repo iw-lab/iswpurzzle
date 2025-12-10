@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0a0a1a"/>
+      <stop offset="100%" style="stop-color:#1a1a2e"/>
+    </linearGradient>
+    <linearGradient id="red" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff6b6b"/>
+      <stop offset="100%" style="stop-color:#ff4757"/>
+    </linearGradient>
+    <linearGradient id="blue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#5f9fff"/>
+      <stop offset="100%" style="stop-color:#3742fa"/>
+    </linearGradient>
+    <linearGradient id="green" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#7bed9f"/>
+      <stop offset="100%" style="stop-color:#2ed573"/>
+    </linearGradient>
+    <linearGradient id="yellow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffd93d"/>
+      <stop offset="100%" style="stop-color:#ffa502"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="192" height="192" rx="32" fill="url(#bg)"/>
+
+  <!-- Grid pattern -->
+  <g opacity="0.1">
+    <line x1="48" y1="0" x2="48" y2="192" stroke="white" stroke-width="1"/>
+    <line x1="96" y1="0" x2="96" y2="192" stroke="white" stroke-width="1"/>
+    <line x1="144" y1="0" x2="144" y2="192" stroke="white" stroke-width="1"/>
+    <line x1="0" y1="48" x2="192" y2="48" stroke="white" stroke-width="1"/>
+    <line x1="0" y1="96" x2="192" y2="96" stroke="white" stroke-width="1"/>
+    <line x1="0" y1="144" x2="192" y2="144" stroke="white" stroke-width="1"/>
+  </g>
+
+  <!-- Blocks -->
+  <rect x="32" y="32" width="40" height="40" rx="8" fill="url(#red)"/>
+  <rect x="76" y="32" width="40" height="40" rx="8" fill="url(#blue)"/>
+  <rect x="120" y="32" width="40" height="40" rx="8" fill="url(#red)"/>
+
+  <rect x="32" y="76" width="40" height="40" rx="8" fill="url(#green)"/>
+  <rect x="76" y="76" width="40" height="40" rx="8" fill="url(#yellow)"/>
+  <rect x="120" y="76" width="40" height="40" rx="8" fill="url(#blue)"/>
+
+  <rect x="32" y="120" width="40" height="40" rx="8" fill="url(#blue)"/>
+  <rect x="76" y="120" width="40" height="40" rx="8" fill="url(#green)"/>
+  <rect x="120" y="120" width="40" height="40" rx="8" fill="url(#yellow)"/>
+
+  <!-- Shine effect -->
+  <rect x="32" y="32" width="40" height="20" rx="8" fill="white" opacity="0.2"/>
+  <rect x="76" y="32" width="40" height="20" rx="8" fill="white" opacity="0.2"/>
+  <rect x="120" y="32" width="40" height="20" rx="8" fill="white" opacity="0.2"/>
+  <rect x="32" y="76" width="40" height="20" rx="8" fill="white" opacity="0.2"/>
+  <rect x="76" y="76" width="40" height="20" rx="8" fill="white" opacity="0.2"/>
+  <rect x="120" y="76" width="40" height="20" rx="8" fill="white" opacity="0.2"/>
+</svg>

@@ -54,7 +54,7 @@ export const COLORBLIND_PATTERNS: Record<BlockColor, string> = {
   rainbow: 'rainbow',
 };
 
-// 특수 블록 설정
+// 특수 블록 설정 (baseChance 감소됨 - 후반부 밸런스 조정)
 export const SPECIAL_BLOCK_CONFIG: Record<SpecialBlockType, {
   name: string;
   icon: string;
@@ -74,7 +74,7 @@ export const SPECIAL_BLOCK_CONFIG: Record<SpecialBlockType, {
     name: '폭탄',
     icon: '💣',
     description: '주변 3x3 영역을 폭발시킵니다',
-    baseChance: 0.08,
+    baseChance: 0.05,  // 0.08 -> 0.05
     minLevel: 3,
     color: '#ff6b6b',
   },
@@ -82,7 +82,7 @@ export const SPECIAL_BLOCK_CONFIG: Record<SpecialBlockType, {
     name: '번개',
     icon: '⚡',
     description: '같은 색상의 모든 블록을 제거합니다',
-    baseChance: 0.04,
+    baseChance: 0.025, // 0.04 -> 0.025
     minLevel: 5,
     color: '#ffd93d',
   },
@@ -90,7 +90,7 @@ export const SPECIAL_BLOCK_CONFIG: Record<SpecialBlockType, {
     name: '십자가',
     icon: '✚',
     description: '가로와 세로 한 줄씩 제거합니다',
-    baseChance: 0.06,
+    baseChance: 0.04,  // 0.06 -> 0.04
     minLevel: 4,
     color: '#6bcb77',
   },
@@ -98,7 +98,7 @@ export const SPECIAL_BLOCK_CONFIG: Record<SpecialBlockType, {
     name: '얼음',
     icon: '❄️',
     description: '2번 매칭해야 제거됩니다',
-    baseChance: 0.1,
+    baseChance: 0.06,  // 0.1 -> 0.06
     minLevel: 2,
     color: '#74b9ff',
   },
@@ -106,7 +106,7 @@ export const SPECIAL_BLOCK_CONFIG: Record<SpecialBlockType, {
     name: '돌',
     icon: '🪨',
     description: '매칭 불가, 주변 블록 제거로만 파괴',
-    baseChance: 0.05,
+    baseChance: 0.03,  // 0.05 -> 0.03
     minLevel: 6,
     color: '#636e72',
   },
@@ -114,7 +114,7 @@ export const SPECIAL_BLOCK_CONFIG: Record<SpecialBlockType, {
     name: '배율',
     icon: '⭐',
     description: '이 블록 포함 매칭 시 점수 2배',
-    baseChance: 0.05,
+    baseChance: 0.035, // 0.05 -> 0.035
     minLevel: 4,
     color: '#fdcb6e',
   },
@@ -122,7 +122,7 @@ export const SPECIAL_BLOCK_CONFIG: Record<SpecialBlockType, {
     name: '셔플',
     icon: '🔀',
     description: '매칭 시 주변 3x3 블록 색상을 섞습니다',
-    baseChance: 0.03,
+    baseChance: 0.02,  // 0.03 -> 0.02
     minLevel: 8,
     color: '#a29bfe',
   },
@@ -130,7 +130,7 @@ export const SPECIAL_BLOCK_CONFIG: Record<SpecialBlockType, {
     name: '색변환',
     icon: '🎨',
     description: '주변 블록을 같은 색으로 변환',
-    baseChance: 0.04,
+    baseChance: 0.025, // 0.04 -> 0.025
     minLevel: 7,
     color: '#fd79a8',
   },
@@ -196,10 +196,10 @@ export const FEVER_CONFIG = {
 
 // 난이도 설정
 export const DIFFICULTY_CONFIG = {
-  // 레벨별 특수 블록 등장 확률 증가
-  SPECIAL_CHANCE_PER_LEVEL: 0.012,
-  // 레벨별 돌 블록 등장 확률
-  STONE_CHANCE_PER_LEVEL: 0.008,
+  // 레벨별 특수 블록 등장 확률 증가 (감소됨: 0.012 -> 0.006)
+  SPECIAL_CHANCE_PER_LEVEL: 0.006,
+  // 레벨별 돌 블록 등장 확률 (감소됨: 0.008 -> 0.004)
+  STONE_CHANCE_PER_LEVEL: 0.004,
   // 위험 레벨 임계값 (상단에서 몇 줄 차면)
   DANGER_THRESHOLD_1: 4,
   DANGER_THRESHOLD_2: 3,
@@ -679,9 +679,10 @@ export function getLevelThreshold(level: number): number {
   return SCORE_CONFIG.LEVEL_UP_THRESHOLD * level + (level - 1) * 200;
 }
 
-// 특수 블록 등장 확률 계산
+// 특수 블록 등장 확률 계산 (후반부에 너무 많아지지 않도록 상한 낮춤)
 export function getSpecialBlockChance(level: number): number {
-  return Math.min(0.3, 0.05 + level * DIFFICULTY_CONFIG.SPECIAL_CHANCE_PER_LEVEL);
+  // 기본 확률 5%, 레벨당 0.6% 증가, 최대 15%로 제한 (기존 30%에서 대폭 감소)
+  return Math.min(0.15, 0.05 + level * DIFFICULTY_CONFIG.SPECIAL_CHANCE_PER_LEVEL);
 }
 
 // 특수 블록 타입 결정

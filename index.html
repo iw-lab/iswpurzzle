@@ -10,7 +10,11 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="ChromaFall" />
-    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- PWA Splash Screens -->
+    <link rel="apple-touch-startup-image" href="/icons/icon-512.svg" />
 
     <!-- SEO -->
     <meta name="description" content="ChromaFall - 색상 융합 퍼즐 게임. 같은 색 4개를 연결하여 융합하세요!" />
@@ -88,6 +92,28 @@
         setTimeout(function() {
           document.getElementById('loading-screen').classList.add('hidden');
         }, 500);
+      });
+
+      // PWA 서비스 워커 등록
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/sw.js')
+            .then(function(registration) {
+              console.log('ServiceWorker 등록 성공:', registration.scope);
+            })
+            .catch(function(error) {
+              console.log('ServiceWorker 등록 실패:', error);
+            });
+        });
+      }
+
+      // PWA 설치 프롬프트 처리
+      let deferredPrompt;
+      window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        deferredPrompt = e;
+        // 설치 프롬프트는 앱 내에서 처리
+        window.deferredPWAPrompt = deferredPrompt;
       });
     </script>
   </body>
