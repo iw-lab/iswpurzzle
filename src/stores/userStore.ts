@@ -12,6 +12,24 @@ import {
 import { CurrencyState, MonetizationConfig, WheelState, PurchaseHistory } from '../types/monetization';
 import { initializeAchievements } from '../constants/achievements';
 import { BLOCK_SKINS, THEMES, DAILY_REWARDS } from '../constants/shopItems';
+import { getLevelFromTotalXP, getXPProgress, getRankTier, calculateGameXP, TITLES } from '../constants/ranks';
+
+// 플레이어 상세 통계
+export interface PlayerStats {
+  totalGamesPlayed: number;
+  totalScore: number;
+  highScore: number;
+  maxCombo: number;
+  maxChain: number;
+  maxLevel: number;
+  totalBlocksCleared: number;
+  totalFusions: number;
+  totalPlayTime: number;
+  perfectClears: number;
+  feverCount: number;
+  puzzleLevel: number;
+  speedScore: number;  // 타임어택 최고 점수
+}
 
 // 기본 설정
 const defaultSettings: GameSettings = {
@@ -62,13 +80,38 @@ const defaultMonetizationConfig: MonetizationConfig = {
   firstPurchaseBonus: true,
 };
 
+// 기본 플레이어 통계
+const defaultPlayerStats: PlayerStats = {
+  totalGamesPlayed: 0,
+  totalScore: 0,
+  highScore: 0,
+  maxCombo: 0,
+  maxChain: 0,
+  maxLevel: 1,
+  totalBlocksCleared: 0,
+  totalFusions: 0,
+  totalPlayTime: 0,
+  perfectClears: 0,
+  feverCount: 0,
+  puzzleLevel: 1,
+  speedScore: 0,
+};
+
 interface UserStore {
   // 플레이어 정보
   playerId: string;
   playerName: string;
   playerLevel: number;
-  playerXP: number;
+  playerXP: number;  // 총 누적 XP
+  totalXP: number;   // 총 획득 XP (절대 감소하지 않음)
   avatarId: string;
+
+  // 플레이어 통계 (칭호용)
+  playerStats: PlayerStats;
+
+  // 획득한 칭호들
+  unlockedTitles: string[];
+  equippedTitleId: string;
 
   // 설정
   settings: GameSettings;
@@ -112,6 +155,16 @@ interface UserStore {
   setPlayerName: (name: string) => void;
   addXP: (amount: number) => void;
   updateSettings: (settings: Partial<GameSettings>) => void;
+
+  // 게임 결과 처리 (XP 및 통계 업데이트)
+  processGameResult: (result: { score: number; combo: number; chain: number; level: number; mode: string }) => number;
+
+  // 칭호 관련
+  checkAndUnlockTitles: () => string[];
+  equipTitle: (titleId: string) => void;
+
+  // 통계 업데이트
+  updatePlayerStats: (updates: Partial<PlayerStats>) => void;
 
   // 통화 관련
   addCoins: (amount: number) => void;
@@ -158,7 +211,12 @@ export const useUserStore = create<UserStore>()(
       playerName: '플레이어',
       playerLevel: 1,
       playerXP: 0,
+      totalXP: 0,
       avatarId: 'default',
+
+      playerStats: defaultPlayerStats,
+      unlockedTitles: ['first_step'],  // 기본 칭호
+      equippedTitleId: '',
 
       settings: defaultSettings,
       currency: defaultCurrency,
@@ -183,18 +241,131 @@ export const useUserStore = create<UserStore>()(
       setPlayerName: (name) => set({ playerName: name }),
 
       addXP: (amount) => {
-        const { playerXP, playerLevel } = get();
-        const newXP = playerXP + amount;
-        const xpForNextLevel = playerLevel * 100;
+        const { totalXP } = get();
+        const newTotalXP = totalXP + amount;
+        const newLevel = getLevelFromTotalXP(newTotalXP);
+        const progress = getXPProgress(newTotalXP);
 
-        if (newXP >= xpForNextLevel) {
-          set({
-            playerXP: newXP - xpForNextLevel,
-            playerLevel: playerLevel + 1,
-          });
-        } else {
-          set({ playerXP: newXP });
+        set({
+          totalXP: newTotalXP,
+          playerLevel: newLevel,
+          playerXP: progress.currentLevelXP,
+        });
+      },
+
+      // 게임 결과 처리 - XP 계산 및 통계 업데이트
+      processGameResult: (result) => {
+        const { playerStats, totalXP } = get();
+        const earnedXP = calculateGameXP(result.score, result.combo, result.chain, result.level);
+
+        // 통계 업데이트
+        const newStats: PlayerStats = {
+          ...playerStats,
+          totalGamesPlayed: playerStats.totalGamesPlayed + 1,
+          totalScore: playerStats.totalScore + result.score,
+          highScore: Math.max(playerStats.highScore, result.score),
+          maxCombo: Math.max(playerStats.maxCombo, result.combo),
+          maxChain: Math.max(playerStats.maxChain, result.chain),
+          maxLevel: Math.max(playerStats.maxLevel, result.level),
+        };
+
+        // 모드별 특수 처리
+        if (result.mode === 'timeAttack') {
+          newStats.speedScore = Math.max(newStats.speedScore, result.score);
+        } else if (result.mode === 'puzzle') {
+          newStats.puzzleLevel = Math.max(newStats.puzzleLevel, result.level);
         }
+
+        const newTotalXP = totalXP + earnedXP;
+        const newLevel = getLevelFromTotalXP(newTotalXP);
+        const progress = getXPProgress(newTotalXP);
+
+        // 코인 보상 (점수 기반)
+        const coinReward = Math.floor(result.score / 50);
+        const { currency } = get();
+
+        set({
+          playerStats: newStats,
+          totalXP: newTotalXP,
+          playerLevel: newLevel,
+          playerXP: progress.currentLevelXP,
+          currency: { ...currency, coins: currency.coins + coinReward },
+        });
+
+        // 칭호 확인
+        get().checkAndUnlockTitles();
+
+        return earnedXP;
+      },
+
+      // 칭호 확인 및 해금
+      checkAndUnlockTitles: () => {
+        const { playerStats, unlockedTitles, streakInfo } = get();
+        const newTitles: string[] = [];
+
+        TITLES.forEach(title => {
+          if (unlockedTitles.includes(title.id)) return;
+
+          let unlocked = false;
+          const condition = title.condition;
+
+          // 조건 체크
+          if (condition.includes('games >=')) {
+            const target = parseInt(condition.split('>=')[1]);
+            unlocked = playerStats.totalGamesPlayed >= target;
+          } else if (condition.includes('highScore >=')) {
+            const target = parseInt(condition.split('>=')[1]);
+            unlocked = playerStats.highScore >= target;
+          } else if (condition.includes('maxCombo >=')) {
+            const target = parseInt(condition.split('>=')[1]);
+            unlocked = playerStats.maxCombo >= target;
+          } else if (condition.includes('maxChain >=')) {
+            const target = parseInt(condition.split('>=')[1]);
+            unlocked = playerStats.maxChain >= target;
+          } else if (condition.includes('maxLevel >=')) {
+            const target = parseInt(condition.split('>=')[1]);
+            unlocked = playerStats.maxLevel >= target;
+          } else if (condition.includes('feverCount >=')) {
+            const target = parseInt(condition.split('>=')[1]);
+            unlocked = playerStats.feverCount >= target;
+          } else if (condition.includes('speedScore >=')) {
+            const target = parseInt(condition.split('>=')[1]);
+            unlocked = playerStats.speedScore >= target;
+          } else if (condition.includes('puzzleLevel >=')) {
+            const target = parseInt(condition.split('>=')[1]);
+            unlocked = playerStats.puzzleLevel >= target;
+          } else if (condition.includes('perfectClears >=')) {
+            const target = parseInt(condition.split('>=')[1]);
+            unlocked = playerStats.perfectClears >= target;
+          } else if (condition.includes('streak >=')) {
+            const target = parseInt(condition.split('>=')[1]);
+            unlocked = streakInfo.currentStreak >= target;
+          }
+
+          if (unlocked) {
+            newTitles.push(title.id);
+          }
+        });
+
+        if (newTitles.length > 0) {
+          set({ unlockedTitles: [...unlockedTitles, ...newTitles] });
+        }
+
+        return newTitles;
+      },
+
+      // 칭호 장착
+      equipTitle: (titleId) => {
+        const { unlockedTitles } = get();
+        if (unlockedTitles.includes(titleId) || titleId === '') {
+          set({ equippedTitleId: titleId });
+        }
+      },
+
+      // 플레이어 통계 업데이트
+      updatePlayerStats: (updates) => {
+        const { playerStats } = get();
+        set({ playerStats: { ...playerStats, ...updates } });
       },
 
       updateSettings: (newSettings) => {
