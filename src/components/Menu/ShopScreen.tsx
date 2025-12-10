@@ -219,19 +219,19 @@ export function ShopScreen({ onClose }: ShopScreenProps) {
                     ) : (
                       <button
                         className={`w-full py-2 rounded-lg font-bold flex items-center justify-center gap-1 ${
-                          canAfford
+                          canAfford || skin.currency === 'free'
                             ? 'bg-yellow-500 text-black hover:bg-yellow-400'
                             : 'bg-gray-700 text-gray-500'
                         }`}
                         onClick={() => handlePurchaseSkin(skin.id)}
-                        disabled={!canAfford || skin.currency === 'free'}
+                        disabled={!canAfford && skin.currency !== 'free'}
                       >
                         {skin.currency === 'free' ? (
-                          '무료'
+                          '🎁 무료 획득'
                         ) : (
                           <>
                             {skin.currency === 'coins' ? '🪙' : '💎'}
-                            {skin.price}
+                            {skin.price} 구입
                           </>
                         )}
                       </button>
@@ -301,19 +301,19 @@ export function ShopScreen({ onClose }: ShopScreenProps) {
                     ) : (
                       <button
                         className={`w-full py-2 rounded-lg font-bold flex items-center justify-center gap-1 ${
-                          canAfford
+                          canAfford || theme.currency === 'free'
                             ? 'bg-yellow-500 text-black hover:bg-yellow-400'
                             : 'bg-gray-700 text-gray-500'
                         }`}
                         onClick={() => handlePurchaseTheme(theme.id)}
-                        disabled={!canAfford || theme.currency === 'free'}
+                        disabled={!canAfford && theme.currency !== 'free'}
                       >
                         {theme.currency === 'free' ? (
-                          '무료'
+                          '🎁 무료 획득'
                         ) : (
                           <>
                             {theme.currency === 'coins' ? '🪙' : '💎'}
-                            {theme.price}
+                            {theme.price} 구입
                           </>
                         )}
                       </button>

@@ -287,6 +287,15 @@ export const useUserStore = create<UserStore>()(
 
         const { currency, ownedSkins } = get();
 
+        // 이미 소유한 스킨인지 확인
+        if (ownedSkins.some((s) => s.id === skinId)) return false;
+
+        // 무료 스킨
+        if (skin.currency === 'free') {
+          set({ ownedSkins: [...ownedSkins, { ...skin, owned: true }] });
+          return true;
+        }
+
         if (skin.currency === 'coins' && currency.coins >= skin.price) {
           get().spendCoins(skin.price);
           set({ ownedSkins: [...ownedSkins, { ...skin, owned: true }] });
@@ -305,6 +314,15 @@ export const useUserStore = create<UserStore>()(
         if (!theme) return false;
 
         const { currency, ownedThemes } = get();
+
+        // 이미 소유한 테마인지 확인
+        if (ownedThemes.some((t) => t.id === themeId)) return false;
+
+        // 무료 테마
+        if (theme.currency === 'free') {
+          set({ ownedThemes: [...ownedThemes, { ...theme, owned: true }] });
+          return true;
+        }
 
         if (theme.currency === 'coins' && currency.coins >= theme.price) {
           get().spendCoins(theme.price);
