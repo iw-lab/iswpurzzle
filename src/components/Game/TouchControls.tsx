@@ -11,7 +11,7 @@ export function TouchControls({ visible = true }: TouchControlsProps) {
   const { playSound } = useAudio();
   const moveIntervalRef = useRef<number | null>(null);
 
-  // 컴포넌트 마운트 시 키보드 이벤트 등록 (한 번만)
+  // 키보드 이벤트 핸들링
   useEffect(() => {
     const pressedKeys = new Set<string>();
     let repeatTimerRef: number | null = null;
@@ -19,29 +19,19 @@ export function TouchControls({ visible = true }: TouchControlsProps) {
     let dasTimerRef: number | null = null;
 
     const clearAllTimers = () => {
-      if (repeatTimerRef) {
-        clearInterval(repeatTimerRef);
-        repeatTimerRef = null;
-      }
-      if (dasTimerRef) {
-        clearTimeout(dasTimerRef);
-        dasTimerRef = null;
-      }
+      if (repeatTimerRef) clearInterval(repeatTimerRef);
+      if (dasTimerRef) clearTimeout(dasTimerRef);
+      repeatTimerRef = null;
+      dasTimerRef = null;
       repeatDirectionRef = null;
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      const code = e.code;
-
-      if (pressedKeys.has(code)) {
-        e.preventDefault();
-        return;
-      }
-
-      pressedKeys.add(code);
+      if (pressedKeys.has(e.code)) { e.preventDefault(); return; }
+      pressedKeys.add(e.code);
       const state = useGameStore.getState();
 
-      if (code === 'Escape' || code === 'KeyP') {
+      if (e.code === 'Escape' || e.code === 'KeyP') {
         if (state.gameStatus === 'playing') state.pauseGame();
         else if (state.gameStatus === 'paused') state.resumeGame();
         return;
@@ -50,29 +40,27 @@ export function TouchControls({ visible = true }: TouchControlsProps) {
       if (state.gameStatus !== 'playing') return;
 
       if (state.isPowerUpSelecting) {
-        if (code === 'ArrowUp') state.setGravityDirection('up');
-        else if (code === 'ArrowDown') state.setGravityDirection('down');
-        else if (code === 'ArrowLeft') state.setGravityDirection('left');
-        else if (code === 'ArrowRight') state.setGravityDirection('right');
+        if (e.code === 'ArrowUp') state.setGravityDirection('up');
+        else if (e.code === 'ArrowDown') state.setGravityDirection('down');
+        else if (e.code === 'ArrowLeft') state.setGravityDirection('left');
+        else if (e.code === 'ArrowRight') state.setGravityDirection('right');
         return;
       }
 
-      if (code === 'ArrowLeft' || code === 'KeyA') {
+      if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
         e.preventDefault();
         clearAllTimers();
         state.moveBlock('left');
         repeatDirectionRef = 'left';
         dasTimerRef = window.setTimeout(() => {
           if (repeatDirectionRef === 'left') {
-            repeatTimerRef = window.setInterval(() => {
-              useGameStore.getState().moveBlock('left');
-            }, 50);
+            repeatTimerRef = window.setInterval(() => useGameStore.getState().moveBlock('left'), 50);
           }
         }, 250);
         return;
       }
 
-      if (code === 'ArrowRight' || code === 'KeyD') {
+      if (e.code === 'ArrowRight' || e.code === 'KeyD') {
         e.preventDefault();
         clearAllTimers();
         state.moveBlock('right');
@@ -87,44 +75,38 @@ export function TouchControls({ visible = true }: TouchControlsProps) {
         return;
       }
 
-      if (code === 'ArrowDown' || code === 'KeyS') {
+      if (e.code === 'ArrowDown' || e.code === 'KeyS') {
         e.preventDefault();
         state.softDrop();
         return;
       }
 
-      if (code === 'ArrowUp' || code === 'KeyW' || code === 'Space') {
+      // 블록 회전 (↑ 또는 W 키)
+      if (e.code === 'ArrowUp' || e.code === 'KeyW') {
         e.preventDefault();
-        state.hardDrop();
+        state.rotateBlock();
         return;
       }
 
-      if (code === 'ShiftLeft' || code === 'ShiftRight' || code === 'KeyC') {
+      // 하드 드롭 (Space 키)
+      if (e.code === 'Space') {
         e.preventDefault();
-        state.doHoldBlock();
+        state.hardDrop();
         return;
       }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
       pressedKeys.delete(e.code);
-      if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
-        if (repeatDirectionRef === 'left') clearAllTimers();
-      }
-      if (e.code === 'ArrowRight' || e.code === 'KeyD') {
-        if (repeatDirectionRef === 'right') clearAllTimers();
-      }
+      if ((e.code === 'ArrowLeft' || e.code === 'KeyA') && repeatDirectionRef === 'left') clearAllTimers();
+      if ((e.code === 'ArrowRight' || e.code === 'KeyD') && repeatDirectionRef === 'right') clearAllTimers();
     };
 
-    const handleBlur = () => {
-      pressedKeys.clear();
-      clearAllTimers();
-    };
+    const handleBlur = () => { pressedKeys.clear(); clearAllTimers(); };
 
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
     window.addEventListener('blur', handleBlur);
-
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
@@ -133,30 +115,22 @@ export function TouchControls({ visible = true }: TouchControlsProps) {
     };
   }, []);
 
-  const handlePress = useCallback(
-    (action: () => void) => {
-      playSound('buttonClick');
-      action();
-    },
-    [playSound]
-  );
-
-  const startMovingLeft = useCallback(() => {
-    playSound('buttonClick');
-    useGameStore.getState().moveBlock('left');
-    if (moveIntervalRef.current) clearInterval(moveIntervalRef.current);
-    moveIntervalRef.current = window.setInterval(() => {
-      useGameStore.getState().moveBlock('left');
-    }, 100);
+  const handlePress = useCallback((action: () => void, sound: 'buttonClick' | 'blockRotate' | 'hardDrop' | 'blockMove' = 'buttonClick') => {
+    playSound(sound);
+    action();
   }, [playSound]);
 
-  const startMovingRight = useCallback(() => {
-    playSound('buttonClick');
-    useGameStore.getState().moveBlock('right');
+  const startMoving = useCallback((dir: 'left' | 'right') => {
+    playSound('blockMove');
+    const action = () => {
+      useGameStore.getState().moveBlock(dir);
+    };
+    action();
     if (moveIntervalRef.current) clearInterval(moveIntervalRef.current);
     moveIntervalRef.current = window.setInterval(() => {
-      useGameStore.getState().moveBlock('right');
-    }, 100);
+      playSound('blockMove');
+      useGameStore.getState().moveBlock(dir);
+    }, 80);
   }, [playSound]);
 
   const stopMoving = useCallback(() => {
@@ -166,60 +140,92 @@ export function TouchControls({ visible = true }: TouchControlsProps) {
     }
   }, []);
 
+  const currentBlocks = useGameStore(state => state.currentBlocks);
+
   if (!visible) return null;
 
   return (
-    <div className="flex justify-center items-center gap-4 py-4">
-      {/* 왼쪽 이동 */}
-      <motion.button
-        className="w-16 h-16 bg-game-panel/80 rounded-xl flex items-center justify-center text-2xl
-                   active:bg-game-accent/50 touch-none select-none border border-white/10"
-        whileTap={{ scale: 0.9 }}
-        onTouchStart={startMovingLeft}
-        onTouchEnd={stopMoving}
-        onMouseDown={startMovingLeft}
-        onMouseUp={stopMoving}
-        onMouseLeave={stopMoving}
-      >
-        ◀️
-      </motion.button>
+    <div className="w-full px-3 pb-4 pt-2 select-none touch-none">
+      {/* 심플한 1줄 레이아웃 */}
+      <div className="flex justify-between items-center gap-3 max-w-md mx-auto">
 
-      {/* 소프트 드롭 */}
-      <motion.button
-        className="w-16 h-16 bg-game-panel/80 rounded-xl flex items-center justify-center text-2xl
-                   active:bg-game-accent/50 touch-none select-none border border-white/10"
-        whileTap={{ scale: 0.9 }}
-        onTouchStart={() => handlePress(() => useGameStore.getState().softDrop())}
-        onMouseDown={() => handlePress(() => useGameStore.getState().softDrop())}
-      >
-        🔽
-      </motion.button>
+        {/* 왼쪽: 방향 버튼 그룹 */}
+        <div className="flex gap-2">
+          <DirectionButton
+            icon="◀"
+            onStart={() => startMoving('left')}
+            onEnd={stopMoving}
+          />
+          <DirectionButton
+            icon="▼"
+            onStart={() => handlePress(() => useGameStore.getState().softDrop(), 'blockMove')}
+          />
+          <DirectionButton
+            icon="▶"
+            onStart={() => startMoving('right')}
+            onEnd={stopMoving}
+          />
+        </div>
 
-      {/* 오른쪽 이동 */}
-      <motion.button
-        className="w-16 h-16 bg-game-panel/80 rounded-xl flex items-center justify-center text-2xl
-                   active:bg-game-accent/50 touch-none select-none border border-white/10"
-        whileTap={{ scale: 0.9 }}
-        onTouchStart={startMovingRight}
-        onTouchEnd={stopMoving}
-        onMouseDown={startMovingRight}
-        onMouseUp={stopMoving}
-        onMouseLeave={stopMoving}
-      >
-        ▶️
-      </motion.button>
+        {/* 중앙: 회전 버튼 */}
+        <motion.button
+          className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center
+                     text-white font-bold shadow-lg border-b-4
+                     active:border-b-0 active:translate-y-1 transition-all
+                     ${currentBlocks.length > 1
+                       ? 'bg-gradient-to-br from-purple-500 to-indigo-600 border-purple-700'
+                       : 'bg-slate-700 border-slate-600 opacity-50'}`}
+          whileTap={{ scale: 0.9 }}
+          onTouchStart={(e) => { e.preventDefault(); handlePress(() => useGameStore.getState().rotateBlock(), 'blockRotate'); }}
+          onMouseDown={() => handlePress(() => useGameStore.getState().rotateBlock(), 'blockRotate')}
+        >
+          <span className="text-xl">↻</span>
+          <span className="text-[8px] opacity-80">회전</span>
+        </motion.button>
 
-      {/* 하드 드롭 */}
-      <motion.button
-        className="w-16 h-16 bg-yellow-600/80 rounded-xl flex items-center justify-center text-2xl
-                   active:bg-yellow-500 touch-none select-none border border-yellow-400/30"
-        whileTap={{ scale: 0.9 }}
-        onTouchStart={() => handlePress(() => useGameStore.getState().hardDrop())}
-        onMouseDown={() => handlePress(() => useGameStore.getState().hardDrop())}
-      >
-        ⬇️
-      </motion.button>
+        {/* 오른쪽: 하드 드롭 - 크고 눈에 띄게 */}
+        <motion.button
+          className="w-20 h-14 rounded-2xl bg-gradient-to-br from-yellow-400 via-orange-500 to-red-500
+                     flex items-center justify-center gap-1 text-white font-bold
+                     shadow-lg shadow-orange-500/30 border-b-4 border-orange-700
+                     active:border-b-0 active:translate-y-1 transition-all"
+          whileTap={{ scale: 0.95 }}
+          onTouchStart={(e) => { e.preventDefault(); handlePress(() => useGameStore.getState().hardDrop(), 'hardDrop'); }}
+          onMouseDown={() => handlePress(() => useGameStore.getState().hardDrop(), 'hardDrop')}
+        >
+          <span className="text-xl">⚡</span>
+          <span className="text-sm">DROP</span>
+        </motion.button>
+      </div>
     </div>
+  );
+}
+
+// 방향 버튼 (크고 누르기 쉽게)
+function DirectionButton({
+  icon,
+  onStart,
+  onEnd,
+}: {
+  icon: string;
+  onStart: () => void;
+  onEnd?: () => void;
+}) {
+  return (
+    <motion.button
+      className="w-14 h-14 rounded-2xl bg-slate-700/90 backdrop-blur
+                 flex items-center justify-center text-white text-2xl font-bold
+                 shadow-lg border-b-4 border-slate-600
+                 active:border-b-0 active:translate-y-1 transition-all"
+      whileTap={{ scale: 0.9 }}
+      onTouchStart={(e) => { e.preventDefault(); onStart(); }}
+      onTouchEnd={(e) => { e.preventDefault(); onEnd?.(); }}
+      onMouseDown={onStart}
+      onMouseUp={onEnd}
+      onMouseLeave={onEnd}
+    >
+      {icon}
+    </motion.button>
   );
 }
 

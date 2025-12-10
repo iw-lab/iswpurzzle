@@ -1,9 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { useGameStore } from '../../stores/gameStore';
 import { useUserStore } from '../../stores/userStore';
 import { useAudio } from '../../hooks/useAudio';
+import { submitScore, getPlayerId, getPlayerName, setPlayerName } from '../../services/firebase';
 
 interface GameOverScreenProps {
   onRestart: () => void;
@@ -12,9 +13,15 @@ interface GameOverScreenProps {
 }
 
 export function GameOverScreen({ onRestart, onMainMenu, onContinue }: GameOverScreenProps) {
-  const { score, level, maxCombo, chainCount, gameTime, continues, statistics } = useGameStore();
+  const { score, level, maxCombo, chainCount, gameTime, continues, statistics, gameMode } = useGameStore();
   const { currency, addPersonalBest } = useUserStore();
   const { playSound } = useAudio();
+
+  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [playerName, setLocalPlayerName] = useState(getPlayerName());
+  const [isEditingName, setIsEditingName] = useState(playerName === 'Player');
+  const [tempName, setTempName] = useState(playerName);
 
   const isHighScore = score > statistics.highScore - score; // 이번 게임에서 최고 기록 갱신
   const canContinue = continues < 3;
@@ -29,6 +36,41 @@ export function GameOverScreen({ onRestart, onMainMenu, onContinue }: GameOverSc
   // 점수 포맷
   const formatScore = (score: number) => {
     return score.toLocaleString();
+  };
+
+  // 점수 제출
+  const handleSubmitScore = async () => {
+    if (submitted || submitting || score === 0) return;
+
+    // 이름 저장
+    if (tempName.trim() && tempName !== playerName) {
+      setPlayerName(tempName.trim());
+      setLocalPlayerName(tempName.trim());
+    }
+
+    setSubmitting(true);
+    try {
+      const result = await submitScore({
+        playerId: getPlayerId(),
+        playerName: tempName.trim() || playerName,
+        score,
+        level,
+        maxCombo,
+        maxChain: chainCount,
+        gameMode,
+        playTime: gameTime,
+      });
+
+      if (result) {
+        setSubmitted(true);
+        playSound('rewardGet');
+      }
+    } catch (error) {
+      console.error('점수 제출 실패:', error);
+    } finally {
+      setSubmitting(false);
+      setIsEditingName(false);
+    }
   };
 
   useEffect(() => {
@@ -48,6 +90,12 @@ export function GameOverScreen({ onRestart, onMainMenu, onContinue }: GameOverSc
 
     // 개인 기록 저장
     addPersonalBest('classic', score);
+
+    // 점수가 0보다 크면 자동으로 제출 준비 (이름 입력 모드가 아니면)
+    if (score > 0 && playerName !== 'Player') {
+      // 이름이 설정되어 있으면 자동 제출
+      handleSubmitScore();
+    }
   }, []);
 
   // 등급 계산
@@ -185,6 +233,48 @@ export function GameOverScreen({ onRestart, onMainMenu, onContinue }: GameOverSc
             <span>광고 보고 점수 2배</span>
           </motion.button>
         </div>
+
+        {/* 랭킹 등록 */}
+        {score > 0 && !submitted && (
+          <div className="mt-4 p-3 bg-gradient-to-r from-purple-900/50 to-indigo-900/50 rounded-xl border border-purple-500/30">
+            <p className="text-center text-sm text-gray-300 mb-2">랭킹에 등록하기</p>
+            {isEditingName ? (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={tempName}
+                  onChange={(e) => setTempName(e.target.value)}
+                  placeholder="닉네임 입력"
+                  maxLength={12}
+                  className="flex-1 bg-black/50 border border-purple-500 rounded-lg px-3 py-2 text-white text-sm"
+                  autoFocus
+                  onKeyDown={(e) => e.key === 'Enter' && handleSubmitScore()}
+                />
+                <button
+                  onClick={handleSubmitScore}
+                  disabled={submitting || !tempName.trim()}
+                  className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-lg text-white font-bold text-sm disabled:opacity-50"
+                >
+                  {submitting ? '...' : '등록'}
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={handleSubmitScore}
+                disabled={submitting}
+                className="w-full py-2 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-lg text-white font-bold text-sm disabled:opacity-50"
+              >
+                {submitting ? '등록 중...' : `${playerName}으로 등록`}
+              </button>
+            )}
+          </div>
+        )}
+
+        {submitted && (
+          <div className="mt-4 p-3 bg-green-900/30 rounded-xl border border-green-500/30 text-center">
+            <span className="text-green-400 font-bold">랭킹에 등록되었습니다!</span>
+          </div>
+        )}
 
         {/* 공유 버튼 */}
         <div className="mt-4 text-center">

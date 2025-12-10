@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../stores/gameStore';
 import { useAudio } from '../../hooks/useAudio';
+import { HelpModal } from './HelpModal';
 
 interface PauseMenuProps {
   onResume: () => void;
@@ -13,6 +14,7 @@ interface PauseMenuProps {
 export function PauseMenu({ onResume, onRestart, onSettings, onMainMenu }: PauseMenuProps) {
   const { score, level, gameTime } = useGameStore();
   const { playSound } = useAudio();
+  const [showHelp, setShowHelp] = useState(false);
 
   const handleClick = (action: () => void) => {
     playSound('buttonClick');
@@ -90,6 +92,15 @@ export function PauseMenu({ onResume, onRestart, onSettings, onMainMenu }: Pause
           </motion.button>
 
           <motion.button
+            className="w-full py-3 bg-gradient-to-r from-purple-700 to-blue-700 rounded-xl font-bold text-white
+                       hover:from-purple-600 hover:to-blue-600 transition-all"
+            whileTap={{ scale: 0.98 }}
+            onClick={() => { playSound('buttonClick'); setShowHelp(true); }}
+          >
+            📖 도움말
+          </motion.button>
+
+          <motion.button
             className="w-full py-3 bg-red-900/50 rounded-xl font-bold text-red-300
                        hover:bg-red-800/50 transition-all"
             whileTap={{ scale: 0.98 }}
@@ -99,6 +110,11 @@ export function PauseMenu({ onResume, onRestart, onSettings, onMainMenu }: Pause
           </motion.button>
         </div>
       </motion.div>
+
+      {/* 도움말 모달 */}
+      <AnimatePresence>
+        {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
+      </AnimatePresence>
     </motion.div>
   );
 }

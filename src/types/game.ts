@@ -1,14 +1,46 @@
 // 블록 색상 타입
 export type BlockColor = 'red' | 'blue' | 'green' | 'yellow' | 'purple' | 'cyan' | 'pink' | 'orange' | 'rainbow';
 
+// 특수 블록 타입
+export type SpecialBlockType =
+  | 'normal'      // 일반 블록
+  | 'bomb'        // 주변 3x3 폭발
+  | 'lightning'   // 같은 색 전체 제거
+  | 'cross'       // 십자가 형태로 제거
+  | 'frozen'      // 얼어있음 (2번 매칭해야 제거)
+  | 'stone'       // 돌 블록 (매칭 불가, 주변 제거로만 파괴)
+  | 'multiplier'  // 점수 2배 블록
+  | 'shuffle'     // 보드 일부 셔플
+  | 'colorShift'; // 주변 블록 색상 변경
+
 // 중력 방향 타입
 export type GravityDirection = 'down' | 'up' | 'left' | 'right';
 
 // 게임 상태 타입
-export type GameStatus = 'ready' | 'playing' | 'paused' | 'gameover';
+export type GameStatus = 'ready' | 'playing' | 'paused' | 'gameover' | 'levelComplete';
 
 // 게임 모드 타입
-export type GameMode = 'classic' | 'timeAttack' | 'puzzle' | 'zen' | 'daily' | 'survival';
+export type GameMode = 'classic' | 'timeAttack' | 'puzzle' | 'zen' | 'daily' | 'survival' | 'challenge';
+
+// 레벨 목표 타입
+export type LevelObjectiveType =
+  | 'score'           // 점수 달성
+  | 'clearBlocks'     // 블록 N개 제거
+  | 'clearColor'      // 특정 색상 N개 제거
+  | 'chains'          // N연쇄 달성
+  | 'combo'           // N콤보 달성
+  | 'clearSpecial'    // 특수 블록 N개 제거
+  | 'surviveTime'     // N초 생존
+  | 'clearStone';     // 돌 블록 N개 제거
+
+// 레벨 목표
+export interface LevelObjective {
+  type: LevelObjectiveType;
+  target: number;
+  current: number;
+  color?: BlockColor; // clearColor용
+  completed: boolean;
+}
 
 // 개별 블록 인터페이스
 export interface Block {
@@ -16,9 +48,12 @@ export interface Block {
   color: BlockColor;
   x: number;
   y: number;
+  specialType: SpecialBlockType;
+  frozenCount?: number;  // frozen 블록의 남은 히트 수
   isFalling?: boolean;
   isMatched?: boolean;
   isFusing?: boolean;
+  createdAt?: number;    // 생성 시간 (콤보 계산용)
 }
 
 // 낙하 중인 블록
@@ -27,7 +62,12 @@ export interface FallingBlock {
   x: number;
   y: number;
   targetY: number;
+  specialType: SpecialBlockType;
+  id?: string;  // 다중 블록용 ID
 }
+
+// 다중 낙하 블록 배열
+export type FallingBlocks = FallingBlock[];
 
 // 게임 보드 타입 (8열 x 16행)
 export type GameBoard = (Block | null)[][];
@@ -62,8 +102,10 @@ export interface GameStatistics {
   maxChain: number;
   totalBlocksCleared: number;
   totalFusions: number;
-  totalPlayTime: number; // 초
+  totalPlayTime: number;
   perfectClears: number;
+  specialBlocksUsed: number;
+  levelsCompleted: number;
 }
 
 // 미션 진행
@@ -105,8 +147,11 @@ export interface Reward {
 export interface GameState {
   board: GameBoard;
   currentBlock: FallingBlock | null;
+  currentBlocks: FallingBlock[];  // 다중 낙하 블록
   nextBlocks: BlockColor[];
+  nextSpecialTypes: SpecialBlockType[];
   holdBlock: BlockColor | null;
+  holdSpecialType: SpecialBlockType | null;
   canHold: boolean;
   score: number;
   level: number;
@@ -125,6 +170,25 @@ export interface GameState {
   missionProgress: MissionProgress;
   isPowerUpSelecting: boolean;
   selectedGravityDirection: GravityDirection | null;
+  // 새로운 필드들
+  levelObjectives: LevelObjective[];
+  feverGauge: number;        // 피버 게이지 (0-100)
+  isFeverMode: boolean;      // 피버 모드 활성화
+  comboTimer: number;        // 콤보 타이머 (초)
+  dangerLevel: number;       // 위험 레벨 (0-3)
+  specialBlockChance: number; // 특수 블록 등장 확률
+  blocksUntilSpecial: number; // 특수 블록까지 남은 블록 수
+  // 난이도 관련
+  garbageTimer: number;      // 쓰레기 블록 타이머
+  garbagePending: number;    // 대기 중인 쓰레기 줄 수
+  fallingBlockCount: number; // 동시 낙하 블록 수 (1-3)
+  // 퍼즐 모드 관련
+  movesRemaining: number;    // 남은 이동 횟수
+  puzzleLevel: number;       // 퍼즐 레벨 (1~)
+  puzzleCompleted: boolean;  // 퍼즐 클리어 여부
+  // 블록 회전 관련
+  currentShapeOffsets: [number, number][];  // 현재 블록 모양 오프셋
+  basePosition: { x: number; y: number };   // 블록 그룹의 기준 위치
 }
 
 // 점수 계산 파라미터
@@ -135,6 +199,8 @@ export interface ScoreParams {
   level: number;
   powerUpMultiplier: number;
   perfectClear: boolean;
+  isFeverMode: boolean;
+  specialBlocksCleared: number;
 }
 
 // 융합 결과
@@ -143,6 +209,15 @@ export interface FusionResult {
   score: number;
   chainCount: number;
   isChainReaction: boolean;
+  specialEffects: SpecialEffect[];
+}
+
+// 특수 효과
+export interface SpecialEffect {
+  type: SpecialBlockType;
+  x: number;
+  y: number;
+  affectedBlocks: { x: number; y: number }[];
 }
 
 // 터치 제스처 타입

@@ -96,17 +96,17 @@ export function useControls() {
         return;
       }
 
-      // 하드 드롭
-      if (code === 'ArrowUp' || code === 'KeyW' || code === 'Space') {
+      // 블록 회전 (↑ 또는 W 키)
+      if (code === 'ArrowUp' || code === 'KeyW') {
         e.preventDefault();
-        state.hardDrop();
+        state.rotateBlock();
         return;
       }
 
-      // 홀드
-      if (code === 'ShiftLeft' || code === 'ShiftRight' || code === 'KeyC') {
+      // 하드 드롭 (Space 키)
+      if (code === 'Space') {
         e.preventDefault();
-        state.doHoldBlock();
+        state.hardDrop();
         return;
       }
     };
@@ -164,14 +164,14 @@ export function useControls() {
       const state = useGameStore.getState();
       if (state.gameStatus === 'playing') state.hardDrop();
     },
-    hold: () => {
-      const state = useGameStore.getState();
-      if (state.gameStatus === 'playing') state.doHoldBlock();
-    },
     pause: () => {
       const state = useGameStore.getState();
       if (state.gameStatus === 'playing') state.pauseGame();
       else if (state.gameStatus === 'paused') state.resumeGame();
+    },
+    rotate: () => {
+      const state = useGameStore.getState();
+      if (state.gameStatus === 'playing') state.rotateBlock();
     },
   };
 }

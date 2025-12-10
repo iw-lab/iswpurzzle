@@ -3,6 +3,9 @@ import { useUserStore } from '../stores/userStore';
 
 type SoundEffect =
   | 'blockLand'
+  | 'blockMove'
+  | 'blockRotate'
+  | 'hardDrop'
   | 'fusion'
   | 'chain'
   | 'combo'
@@ -90,6 +93,17 @@ class AudioEngine {
     switch (effect) {
       case 'blockLand':
         this.playTone(200, 0.1, 'triangle', 0.2);
+        break;
+      case 'blockMove':
+        this.playTone(400, 0.03, 'sine', 0.1);
+        break;
+      case 'blockRotate':
+        this.playTone(600, 0.05, 'sine', 0.15);
+        setTimeout(() => this.playTone(800, 0.05, 'sine', 0.12), 30);
+        break;
+      case 'hardDrop':
+        this.playTone(150, 0.08, 'triangle', 0.25);
+        setTimeout(() => this.playTone(100, 0.1, 'triangle', 0.2), 50);
         break;
       case 'fusion':
         this.playTone(440, 0.15, 'sine', 0.3);

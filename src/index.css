@@ -1,23 +1,26 @@
 @import "tailwindcss";
 
 /* Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@500;600;700&display=swap');
 
 :root {
-  font-family: 'Orbitron', system-ui, -apple-system, sans-serif;
+  /* 폰트 설정: 제목용과 본문/숫자용 구분 */
+  font-family: 'Rajdhani', system-ui, -apple-system, sans-serif;
+  --font-display: 'Orbitron', system-ui, sans-serif;
+
   line-height: 1.5;
-  font-weight: 400;
+  font-weight: 500;
 
   color-scheme: dark;
   color: rgba(255, 255, 255, 0.95);
-  background-color: #0a0a1a;
+  background-color: #050510; /* 더 깊은 배경색 */
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  /* Safe area for mobile */
+  /* Safe area variables */
   --sat: env(safe-area-inset-top);
   --sar: env(safe-area-inset-right);
   --sab: env(safe-area-inset-bottom);
@@ -33,17 +36,34 @@ html, body, #root {
   padding: 0;
   width: 100%;
   height: 100%;
-  overflow: hidden;
+  overflow: hidden; /* 스크롤 방지 */
 }
 
 body {
-  background: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 50%, #0a0a1a 100%);
+  /* 고급스러운 그라데이션 배경 */
+  background: radial-gradient(circle at 50% 10%, #1a1a40 0%, #050510 60%);
   min-height: 100vh;
+  /* 모바일 브라우저 주소창 대응 */
   min-height: -webkit-fill-available;
+
   padding-top: var(--sat);
   padding-right: var(--sar);
   padding-bottom: var(--sab);
   padding-left: var(--sal);
+}
+
+/* 유틸리티 클래스: 유리 질감 패널 */
+.glass-panel {
+  background: rgba(20, 20, 35, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.2);
+}
+
+/* 유틸리티 클래스: 네온 텍스트 */
+.neon-text {
+  text-shadow: 0 0 10px currentColor;
 }
 
 /* 버튼 기본 스타일 리셋 */
@@ -56,10 +76,12 @@ button {
   font-family: inherit;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  user-select: none;
 }
 
-button:focus {
-  outline: none;
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 /* 스크롤바 커스터마이징 */
@@ -69,12 +91,11 @@ button:focus {
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.2);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.15);
   border-radius: 3px;
 }
 
@@ -82,39 +103,62 @@ button:focus {
   background: rgba(255, 255, 255, 0.3);
 }
 
-/* 텍스트 선택 비활성화 (게임 요소) */
-.select-none {
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
-}
+/* 유틸리티 */
+.select-none { user-select: none; }
+.touch-none { touch-action: none; }
+.no-drag { -webkit-user-drag: none; user-drag: none; }
 
-/* 터치 조작 최적화 */
-.touch-none {
-  touch-action: none;
-}
-
-/* 게임 요소 드래그 방지 */
-.no-drag {
-  -webkit-user-drag: none;
-  user-drag: none;
-}
-
-/* 게임 보드 그림자 효과 */
-.game-board-shadow {
+/* 블록 스타일 강화 */
+.block-3d {
   box-shadow:
-    0 0 20px rgba(74, 158, 255, 0.1),
-    inset 0 0 30px rgba(0, 0, 0, 0.5);
+    inset 2px 2px 4px rgba(255, 255, 255, 0.4),
+    inset -2px -2px 4px rgba(0, 0, 0, 0.4),
+    0 0 4px rgba(0, 0, 0, 0.2);
 }
 
-/* 블록 글로우 효과 */
-.block-glow {
-  box-shadow:
-    0 0 5px currentColor,
-    0 0 10px currentColor,
-    inset 2px 2px 4px rgba(255, 255, 255, 0.3),
-    inset -2px -2px 4px rgba(0, 0, 0, 0.3);
+.ghost-block {
+  background: transparent !important;
+  box-shadow: inset 0 0 0 2px currentColor;
+  opacity: 0.4;
+}
+
+/* 파티클 효과 */
+@keyframes float-up {
+  0% { transform: translateY(0) scale(1); opacity: 0.8; }
+  100% { transform: translateY(-100px) scale(0); opacity: 0; }
+}
+
+/* 레벨업 효과 */
+@keyframes level-up-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7); }
+  70% { box-shadow: 0 0 0 20px rgba(255, 215, 0, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); }
+}
+
+.level-up-active {
+  animation: level-up-pulse 1.5s infinite;
+}
+
+/* Shine 애니메이션 */
+@keyframes shine {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* 그라데이션 텍스트 */
+.gradient-text {
+  background: linear-gradient(90deg, #ff4757, #3742fa, #2ed573, #ffa502, #8854d0);
+  background-size: 300% 300%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradient-shift 3s ease infinite;
+}
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
 /* 파티클 애니메이션 */
@@ -133,7 +177,7 @@ button:focus {
   animation: particle-float 1s ease-out forwards;
 }
 
-/* 펄스 애니메이션 */
+/* 펄스 글로우 */
 @keyframes pulse-glow {
   0%, 100% {
     box-shadow: 0 0 5px currentColor;
@@ -187,22 +231,6 @@ button:focus {
 
 .levelup-flash {
   animation: levelup-flash 0.5s ease-out;
-}
-
-/* 그라데이션 텍스트 */
-.gradient-text {
-  background: linear-gradient(90deg, #ff4757, #3742fa, #2ed573, #ffa502, #8854d0);
-  background-size: 300% 300%;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  animation: gradient-shift 3s ease infinite;
-}
-
-@keyframes gradient-shift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
 }
 
 /* 버튼 누름 효과 */
@@ -284,7 +312,12 @@ button:focus {
   to { opacity: 1; }
 }
 
-/* 모바일 최적화 */
+/* Safe area padding */
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom), 16px);
+}
+
+/* 반응형 폰트 조정 */
 @media (max-width: 640px) {
   :root {
     font-size: 14px;

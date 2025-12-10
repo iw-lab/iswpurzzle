@@ -1,6 +1,140 @@
 import { SkinItem, ThemeItem, Rarity } from '../types';
 import { GemPackage, StarterPack, LootBox, WheelSegment } from '../types/monetization';
 
+// 스킨 스타일 정의 - 각 스킨별로 완전히 다른 비주얼
+export interface SkinStyle {
+  colors: string[];
+  borderRadius: string;      // 블록 모양
+  borderWidth: number;
+  borderStyle: string;
+  innerEffect: 'glossy' | 'matte' | 'gradient' | 'flat' | 'glow' | 'glass' | 'metallic';
+  animation?: 'none' | 'pulse' | 'shimmer' | 'float' | 'fire' | 'ice' | 'electric';
+  particleEffect?: boolean;
+  glowIntensity: number;     // 0-1
+  texture?: 'none' | 'noise' | 'lines' | 'dots' | 'circuit' | 'cracks';
+}
+
+export const SKIN_STYLES: Record<string, SkinStyle> = {
+  // 클래식: 기본 광택 블록
+  classic: {
+    colors: ['#ff4757', '#3742fa', '#2ed573', '#ffa502', '#8854d0'],
+    borderRadius: '4px',
+    borderWidth: 0,
+    borderStyle: 'none',
+    innerEffect: 'glossy',
+    animation: 'none',
+    glowIntensity: 0,
+    texture: 'none',
+  },
+  // 네온: 강한 네온 글로우 + 어두운 내부
+  neon: {
+    colors: ['#ff0080', '#00ffff', '#39ff14', '#ffff00', '#bf00ff'],
+    borderRadius: '2px',
+    borderWidth: 2,
+    borderStyle: 'solid',
+    innerEffect: 'glow',
+    animation: 'pulse',
+    glowIntensity: 0.8,
+    texture: 'none',
+  },
+  // 캔디: 둥글고 광택 있는 사탕 느낌
+  candy: {
+    colors: ['#ff6b9d', '#a855f7', '#4ade80', '#fbbf24', '#fb923c'],
+    borderRadius: '50%',  // 완전 동그란 블록!
+    borderWidth: 3,
+    borderStyle: 'solid',
+    innerEffect: 'glass',
+    animation: 'none',
+    glowIntensity: 0.2,
+    texture: 'none',
+  },
+  // 픽셀: 레트로 8비트 스타일, 각진 테두리
+  pixel: {
+    colors: ['#dc2626', '#2563eb', '#16a34a', '#ca8a04', '#7c3aed'],
+    borderRadius: '0px',   // 완전 각진 블록
+    borderWidth: 3,
+    borderStyle: 'solid',
+    innerEffect: 'flat',
+    animation: 'none',
+    glowIntensity: 0,
+    texture: 'lines',
+  },
+  // 갤럭시: 우주 느낌의 그라데이션 + 반짝임
+  galaxy: {
+    colors: ['#8b5cf6', '#ec4899', '#06b6d4', '#f43f5e', '#3b82f6'],
+    borderRadius: '6px',
+    borderWidth: 1,
+    borderStyle: 'solid',
+    innerEffect: 'gradient',
+    animation: 'shimmer',
+    glowIntensity: 0.5,
+    texture: 'dots',  // 별처럼 보이는 점들
+  },
+  // 크리스탈: 투명하고 빛나는 보석
+  crystal: {
+    colors: ['#f0abfc', '#a5f3fc', '#bbf7d0', '#fef08a', '#fecaca'],
+    borderRadius: '8px',
+    borderWidth: 2,
+    borderStyle: 'solid',
+    innerEffect: 'glass',
+    animation: 'shimmer',
+    glowIntensity: 0.6,
+    texture: 'cracks',  // 크리스탈 균열 패턴
+  },
+  // 홀로그램: 무지개빛 반사 효과
+  holographic: {
+    colors: ['#f472b6', '#c084fc', '#60a5fa', '#34d399', '#fbbf24'],
+    borderRadius: '4px',
+    borderWidth: 1,
+    borderStyle: 'solid',
+    innerEffect: 'metallic',
+    animation: 'shimmer',
+    glowIntensity: 0.7,
+    texture: 'lines',
+  },
+  // 불꽃: 타오르는 화염 애니메이션
+  animated_fire: {
+    colors: ['#ef4444', '#f97316', '#eab308', '#dc2626', '#fb923c'],
+    borderRadius: '4px',
+    borderWidth: 0,
+    borderStyle: 'none',
+    innerEffect: 'glow',
+    animation: 'fire',
+    particleEffect: true,
+    glowIntensity: 0.9,
+    texture: 'noise',
+  },
+  // 얼음: 차가운 얼음 결정 + 프로스트 효과
+  animated_ice: {
+    colors: ['#38bdf8', '#67e8f9', '#a5f3fc', '#22d3ee', '#0ea5e9'],
+    borderRadius: '2px',
+    borderWidth: 2,
+    borderStyle: 'solid',
+    innerEffect: 'glass',
+    animation: 'ice',
+    particleEffect: true,
+    glowIntensity: 0.6,
+    texture: 'cracks',
+  },
+  // 전기: 번개 효과 + 스파크
+  animated_electric: {
+    colors: ['#facc15', '#a3e635', '#22d3ee', '#e879f9', '#fbbf24'],
+    borderRadius: '4px',
+    borderWidth: 2,
+    borderStyle: 'solid',
+    innerEffect: 'glow',
+    animation: 'electric',
+    particleEffect: true,
+    glowIntensity: 1.0,
+    texture: 'circuit',
+  },
+};
+
+// 레거시 호환용 색상 배열
+export const SKIN_COLORS: Record<string, string[]> = Object.fromEntries(
+  Object.entries(SKIN_STYLES).map(([id, style]) => [id, style.colors])
+);
+
 // 블록 스킨
 export const BLOCK_SKINS: SkinItem[] = [
   { id: 'classic', name: '클래식', price: 0, currency: 'free', rarity: 'common', owned: true, equipped: true },

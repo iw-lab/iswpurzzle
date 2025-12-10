@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUserStore } from '../../stores/userStore';
 import { useAudio } from '../../hooks/useAudio';
-import { BLOCK_SKINS, THEMES, GEM_PACKAGES, RARITY_COLORS, RARITY_NAMES } from '../../constants/shopItems';
+import { BLOCK_SKINS, THEMES, GEM_PACKAGES, RARITY_COLORS, RARITY_NAMES, SKIN_STYLES } from '../../constants/shopItems';
 
 interface ShopScreenProps {
   onClose: () => void;
@@ -130,16 +130,79 @@ export function ShopScreen({ onClose }: ShopScreenProps) {
                       </span>
                     </div>
 
-                    {/* 미리보기 (간단한 색상 표시) */}
-                    <div className="flex gap-1 mb-3">
-                      {['#ff4757', '#3742fa', '#2ed573', '#ffa502', '#8854d0'].map((color, i) => (
-                        <div
-                          key={i}
-                          className="w-6 h-6 rounded"
-                          style={{ backgroundColor: color }}
-                        />
-                      ))}
+                    {/* 미리보기 - 스킨별 고유 스타일 */}
+                    <div className="flex gap-1 mb-3 justify-center">
+                      {(() => {
+                        const style = SKIN_STYLES[skin.id] || SKIN_STYLES.classic;
+                        return style.colors.map((color, i) => (
+                          <motion.div
+                            key={i}
+                            className="relative overflow-hidden"
+                            style={{
+                              width: 24,
+                              height: 24,
+                              borderRadius: style.borderRadius,
+                              background: style.innerEffect === 'glow'
+                                ? `radial-gradient(circle at 30% 30%, ${color}dd, ${color}88 70%, ${color}44)`
+                                : style.innerEffect === 'glass'
+                                  ? `linear-gradient(145deg, ${color}ee, ${color}aa 50%, ${color}cc)`
+                                  : style.innerEffect === 'gradient'
+                                    ? `linear-gradient(135deg, ${color}, ${color}88, ${color}cc)`
+                                    : style.innerEffect === 'metallic'
+                                      ? `linear-gradient(145deg, ${color}ff, ${color}66 30%, ${color}cc 70%, ${color}ff)`
+                                      : color,
+                              border: style.borderWidth > 0
+                                ? `${style.borderWidth}px ${style.borderStyle} ${color}88`
+                                : 'none',
+                              boxShadow: style.glowIntensity > 0
+                                ? `0 0 ${Math.round(style.glowIntensity * 12)}px ${color}`
+                                : 'none',
+                            }}
+                            animate={
+                              style.animation === 'pulse' ? { boxShadow: [`0 0 5px ${color}`, `0 0 15px ${color}`, `0 0 5px ${color}`] }
+                              : style.animation === 'fire' ? { y: [0, -2, 0] }
+                              : style.animation === 'ice' ? { opacity: [1, 0.8, 1] }
+                              : style.animation === 'electric' ? { x: [-1, 1, -1, 0] }
+                              : undefined
+                            }
+                            transition={
+                              style.animation === 'pulse' ? { duration: 1, repeat: Infinity }
+                              : style.animation === 'fire' ? { duration: 0.3, repeat: Infinity }
+                              : style.animation === 'ice' ? { duration: 2, repeat: Infinity }
+                              : style.animation === 'electric' ? { duration: 0.15, repeat: Infinity }
+                              : undefined
+                            }
+                          >
+                            {/* 내부 광택 */}
+                            {(style.innerEffect === 'glossy' || style.innerEffect === 'glass') && (
+                              <div className="absolute inset-0 bg-gradient-to-br from-white/40 via-transparent to-transparent" />
+                            )}
+                            {/* 쉬머 효과 */}
+                            {style.animation === 'shimmer' && (
+                              <motion.div
+                                className="absolute inset-0"
+                                style={{ background: 'linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.5) 50%, transparent 70%)' }}
+                                animate={{ x: ['-100%', '200%'] }}
+                                transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+                              />
+                            )}
+                          </motion.div>
+                        ));
+                      })()}
                     </div>
+                    {/* 스킨 특징 설명 */}
+                    <p className="text-[10px] text-gray-400 mb-2 text-center">
+                      {skin.id === 'classic' && '기본 광택 블록'}
+                      {skin.id === 'neon' && '네온 글로우 + 펄스'}
+                      {skin.id === 'candy' && '동그란 사탕 모양'}
+                      {skin.id === 'pixel' && '8비트 레트로 스타일'}
+                      {skin.id === 'galaxy' && '우주 그라데이션 + 별빛'}
+                      {skin.id === 'crystal' && '투명 보석 + 균열 패턴'}
+                      {skin.id === 'holographic' && '무지개빛 메탈릭'}
+                      {skin.id === 'animated_fire' && '타오르는 불꽃 효과'}
+                      {skin.id === 'animated_ice' && '차가운 얼음 결정'}
+                      {skin.id === 'animated_electric' && '번쩍이는 전기 스파크'}
+                    </p>
 
                     {isOwned ? (
                       <button
