@@ -94,16 +94,42 @@
         }, 500);
       });
 
-      // PWA 서비스 워커 등록
+      // PWA 서비스 워커 등록 및 자동 업데이트
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', function() {
           navigator.serviceWorker.register('/sw.js')
             .then(function(registration) {
               console.log('ServiceWorker 등록 성공:', registration.scope);
+
+              // 새 SW가 발견되면 즉시 활성화
+              registration.addEventListener('updatefound', function() {
+                const newWorker = registration.installing;
+                newWorker.addEventListener('statechange', function() {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    // 새 버전 발견 - 즉시 새로고침
+                    console.log('새 버전 감지, 새로고침...');
+                    window.location.reload();
+                  }
+                });
+              });
             })
             .catch(function(error) {
               console.log('ServiceWorker 등록 실패:', error);
             });
+        });
+
+        // SW에서 업데이트 메시지 수신시 새로고침
+        navigator.serviceWorker.addEventListener('message', function(event) {
+          if (event.data && event.data.type === 'SW_UPDATED') {
+            console.log('SW 업데이트 완료, 새로고침...');
+            window.location.reload();
+          }
+        });
+
+        // 컨트롤러 변경시 새로고침
+        navigator.serviceWorker.addEventListener('controllerchange', function() {
+          console.log('SW 컨트롤러 변경, 새로고침...');
+          window.location.reload();
         });
       }
 

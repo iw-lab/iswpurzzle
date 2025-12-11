@@ -202,9 +202,9 @@ export const DIFFICULTY_CONFIG = {
   DANGER_THRESHOLD_3: 2,
   // 레벨별 필요 클리어 블록 수
   BLOCKS_PER_LEVEL: 50,
-  // 다중 블록 낙하 설정
-  MULTI_BLOCK_START_LEVEL: 3,      // 2개 블록 시작 레벨
-  TRIPLE_BLOCK_START_LEVEL: 7,     // 3개 블록 시작 레벨
+  // 다중 블록 낙하 설정 (현재 사용 안 함 - getFallingBlockCount 함수로 대체)
+  MULTI_BLOCK_START_LEVEL: 1,      // 2개 블록 시작 레벨 (레벨 1부터)
+  TRIPLE_BLOCK_START_LEVEL: 5,     // 3개 블록 시작 레벨
   // 쓰레기 블록 설정
   GARBAGE_START_LEVEL: 5,          // 쓰레기 블록 시작 레벨 (레벨 5부터)
   GARBAGE_ROWS_PER_INTERVAL: 1,    // 기본 추가 줄 수
@@ -214,16 +214,15 @@ export const DIFFICULTY_CONFIG = {
   GARBAGE_MIN_INTERVAL: 10,        // 최소 쓰레기 간격 (초)
 };
 
-// 레벨별 동시 낙하 블록 수 계산
+// 레벨별 동시 낙하 블록 수 계산 (처음부터 2개 이상)
 export function getFallingBlockCount(level: number): number {
   if (level >= 30) return 8;  // 레벨 30부터 8개
   if (level >= 25) return 7;  // 레벨 25부터 7개
   if (level >= 20) return 6;  // 레벨 20부터 6개
   if (level >= 15) return 5;  // 레벨 15부터 5개
   if (level >= 10) return 4;  // 레벨 10부터 4개
-  if (level >= DIFFICULTY_CONFIG.TRIPLE_BLOCK_START_LEVEL) return 3;
-  if (level >= DIFFICULTY_CONFIG.MULTI_BLOCK_START_LEVEL) return 2;
-  return 1;
+  if (level >= 5) return 3;   // 레벨 5부터 3개
+  return 2;                   // 레벨 1부터 2개 (1개는 너무 심심함)
 }
 
 // 블록 모양 정의 (상대 좌표)

@@ -1,54 +1,46 @@
-// ChromaFall Service Worker
-const CACHE_NAME = 'chromafall-v1';
+// ChromaFall Service Worker - Network First Strategy
+const CACHE_NAME = 'chromafall-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
-  '/manifest.json',
-  '/favicon.svg',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png'
+  '/manifest.json'
 ];
 
-// Install event - cache static assets
+// Install event - skip waiting to activate immediately
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('[SW] Caching static assets');
-        return cache.addAll(STATIC_ASSETS);
-      })
-      .then(() => {
-        console.log('[SW] Install complete');
-        return self.skipWaiting();
-      })
-      .catch((err) => {
-        console.error('[SW] Install failed:', err);
-      })
-  );
+  console.log('[SW] Installing new version...');
+  // Skip waiting to activate immediately
+  self.skipWaiting();
 });
 
-// Activate event - clean up old caches
+// Activate event - clean up ALL old caches and claim clients
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
       .then((cacheNames) => {
         return Promise.all(
-          cacheNames
-            .filter((name) => name !== CACHE_NAME)
-            .map((name) => {
-              console.log('[SW] Deleting old cache:', name);
-              return caches.delete(name);
-            })
+          cacheNames.map((name) => {
+            console.log('[SW] Deleting cache:', name);
+            return caches.delete(name);
+          })
         );
       })
       .then(() => {
-        console.log('[SW] Activate complete');
+        console.log('[SW] Activated, claiming clients');
         return self.clients.claim();
+      })
+      .then(() => {
+        // Notify all clients to reload
+        return self.clients.matchAll().then(clients => {
+          clients.forEach(client => {
+            client.postMessage({ type: 'SW_UPDATED' });
+          });
+        });
       })
   );
 });
 
-// Fetch event - serve from cache, fallback to network
+// Fetch event - NETWORK FIRST strategy (always get fresh content)
 self.addEventListener('fetch', (event) => {
   // Skip non-GET requests
   if (event.request.method !== 'GET') {
@@ -61,100 +53,39 @@ self.addEventListener('fetch', (event) => {
   }
 
   event.respondWith(
-    caches.match(event.request)
-      .then((cachedResponse) => {
-        if (cachedResponse) {
-          // Return cached response and update cache in background
-          event.waitUntil(
-            fetch(event.request)
-              .then((response) => {
-                if (response.ok) {
-                  caches.open(CACHE_NAME)
-                    .then((cache) => cache.put(event.request, response));
-                }
-              })
-              .catch(() => {})
-          );
-          return cachedResponse;
+    // Try network first
+    fetch(event.request)
+      .then((response) => {
+        // Got network response, cache it for offline use
+        if (response.ok) {
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME)
+            .then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
         }
-
-        // Not in cache, fetch from network
-        return fetch(event.request)
-          .then((response) => {
-            // Don't cache non-successful responses
-            if (!response.ok) {
-              return response;
+        return response;
+      })
+      .catch(() => {
+        // Network failed, try cache
+        return caches.match(event.request)
+          .then((cachedResponse) => {
+            if (cachedResponse) {
+              return cachedResponse;
             }
-
-            // Clone the response
-            const responseToCache = response.clone();
-
-            // Cache the fetched response
-            caches.open(CACHE_NAME)
-              .then((cache) => {
-                cache.put(event.request, responseToCache);
-              });
-
-            return response;
-          })
-          .catch((error) => {
-            console.error('[SW] Fetch failed:', error);
-
-            // Return offline page for navigation requests
+            // Return offline fallback for navigation
             if (event.request.mode === 'navigate') {
               return caches.match('/');
             }
-
-            throw error;
+            return new Response('Offline', { status: 503 });
           });
       })
   );
 });
 
-// Background sync for game data
-self.addEventListener('sync', (event) => {
-  if (event.tag === 'sync-game-data') {
-    event.waitUntil(syncGameData());
-  }
-});
-
-async function syncGameData() {
-  // Sync game data when online
-  console.log('[SW] Syncing game data');
-}
-
-// Push notifications
-self.addEventListener('push', (event) => {
-  if (!event.data) return;
-
-  const data = event.data.json();
-
-  const options = {
-    body: data.body || '새로운 도전이 기다립니다!',
-    icon: '/icons/icon-192.png',
-    badge: '/icons/icon-72.png',
-    vibrate: [100, 50, 100],
-    data: {
-      url: data.url || '/'
-    },
-    actions: [
-      { action: 'play', title: '지금 플레이' },
-      { action: 'close', title: '닫기' }
-    ]
-  };
-
-  event.waitUntil(
-    self.registration.showNotification(data.title || 'ChromaFall', options)
-  );
-});
-
-// Notification click handler
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-
-  if (event.action === 'play' || !event.action) {
-    event.waitUntil(
-      clients.openWindow(event.notification.data.url || '/')
-    );
+// Listen for skip waiting message from client
+self.addEventListener('message', (event) => {
+  if (event.data === 'skipWaiting') {
+    self.skipWaiting();
   }
 });
