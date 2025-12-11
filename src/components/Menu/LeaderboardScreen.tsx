@@ -79,8 +79,18 @@ export function LeaderboardScreen({ onClose }: LeaderboardScreenProps) {
   };
 
   // 날짜 포맷
-  const formatDate = (date: Date | { toDate: () => Date }) => {
-    const d = date instanceof Date ? date : date.toDate();
+  const formatDate = (date: Date | string | { toDate: () => Date }) => {
+    let d: Date;
+    if (date instanceof Date) {
+      d = date;
+    } else if (typeof date === 'string') {
+      d = new Date(date);
+    } else if (date && typeof date.toDate === 'function') {
+      d = date.toDate();
+    } else {
+      return '';
+    }
+
     const now = new Date();
     const diff = now.getTime() - d.getTime();
     const hours = Math.floor(diff / (1000 * 60 * 60));

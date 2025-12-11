@@ -1,12 +1,13 @@
 @import "tailwindcss";
 
-/* Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@500;600;700&display=swap');
+/* Google Fonts - Premium Typography */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@500;600;700&family=Exo+2:wght@400;600;700;800&display=swap');
 
 :root {
   /* 폰트 설정: 제목용과 본문/숫자용 구분 */
   font-family: 'Rajdhani', system-ui, -apple-system, sans-serif;
   --font-display: 'Orbitron', system-ui, sans-serif;
+  --font-ui: 'Exo 2', system-ui, sans-serif;
 
   line-height: 1.5;
   font-weight: 500;
@@ -20,16 +21,26 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  /* 테마 변수 (기본값) */
+  /* 테마 변수 (기본값) - Enhanced */
   --theme-bg: #0a0a1a;
   --theme-bg-gradient: radial-gradient(circle at 50% 10%, #1a1a40 0%, #050510 60%);
   --theme-panel: #1a1a2e;
-  --theme-panel-border: rgba(255,255,255,0.1);
+  --theme-panel-border: rgba(255, 255, 255, 0.1);
   --theme-accent: #4a9eff;
+  --theme-accent-glow: #4a9eff66;
   --theme-text: #ffffff;
   --theme-text-secondary: #888888;
   --theme-danger: #ff4757;
   --theme-success: #2ed573;
+  --theme-gold: #ffd700;
+  --theme-purple: #a855f7;
+
+  /* Premium Color Palette */
+  --color-neon-pink: #ff2d92;
+  --color-neon-cyan: #00f5ff;
+  --color-neon-green: #4dff4d;
+  --color-neon-yellow: #fff44f;
+  --color-neon-purple: #e040fb;
 
   /* Safe area variables */
   --sat: env(safe-area-inset-top);
@@ -42,21 +53,21 @@
   box-sizing: border-box;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   margin: 0;
   padding: 0;
   width: 100%;
   height: 100%;
-  overflow: hidden; /* 스크롤 방지 */
+  overflow: hidden;
 }
 
 body {
-  /* 테마 그라데이션 배경 */
   background: var(--theme-bg-gradient);
   background-color: var(--theme-bg);
   color: var(--theme-text);
   min-height: 100vh;
-  /* 모바일 브라우저 주소창 대응 */
   min-height: -webkit-fill-available;
 
   padding-top: var(--sat);
@@ -65,21 +76,238 @@ body {
   padding-left: var(--sal);
 }
 
-/* 유틸리티 클래스: 유리 질감 패널 */
+/* ========================================
+   PREMIUM GLASS MORPHISM PANELS
+   ======================================== */
+
 .glass-panel {
-  background: rgba(20, 20, 35, 0.6);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.2);
+  background: linear-gradient(135deg, rgba(20, 20, 35, 0.7) 0%, rgba(30, 30, 50, 0.5) 100%);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1);
 }
 
-/* 유틸리티 클래스: 네온 텍스트 */
+.glass-ultra {
+  background: linear-gradient(135deg,
+      rgba(255, 255, 255, 0.12) 0%,
+      rgba(255, 255, 255, 0.05) 50%,
+      rgba(255, 255, 255, 0.02) 100%);
+  backdrop-filter: blur(24px) saturate(200%) brightness(1.1);
+  -webkit-backdrop-filter: blur(24px) saturate(200%) brightness(1.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow:
+    0 12px 48px rgba(0, 0, 0, 0.4),
+    0 4px 16px rgba(0, 0, 0, 0.2),
+    inset 0 2px 0 rgba(255, 255, 255, 0.15),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+}
+
+.glass-premium {
+  background: linear-gradient(145deg,
+      rgba(255, 255, 255, 0.15) 0%,
+      rgba(255, 255, 255, 0.05) 100%);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+/* ========================================
+   NEON GLOW EFFECTS
+   ======================================== */
+
 .neon-text {
-  text-shadow: 0 0 10px currentColor;
+  text-shadow:
+    0 0 10px currentColor,
+    0 0 20px currentColor,
+    0 0 40px currentColor;
 }
 
-/* 버튼 기본 스타일 리셋 */
+.neon-glow-pink {
+  box-shadow:
+    0 0 10px var(--color-neon-pink),
+    0 0 20px var(--color-neon-pink),
+    0 0 40px rgba(255, 45, 146, 0.3);
+}
+
+.neon-glow-cyan {
+  box-shadow:
+    0 0 10px var(--color-neon-cyan),
+    0 0 20px var(--color-neon-cyan),
+    0 0 40px rgba(0, 245, 255, 0.3);
+}
+
+.neon-glow-purple {
+  box-shadow:
+    0 0 10px var(--color-neon-purple),
+    0 0 20px var(--color-neon-purple),
+    0 0 40px rgba(224, 64, 251, 0.3);
+}
+
+.neon-glow-gold {
+  box-shadow:
+    0 0 10px var(--theme-gold),
+    0 0 20px var(--theme-gold),
+    0 0 40px rgba(255, 215, 0, 0.3);
+}
+
+/* ========================================
+   3D TEXT EFFECTS
+   ======================================== */
+
+.text-3d {
+  text-shadow:
+    0 1px 0 #ccc,
+    0 2px 0 #bbb,
+    0 3px 0 #aaa,
+    0 4px 0 #999,
+    0 5px 0 #888,
+    0 6px 4px rgba(0, 0, 0, 0.4);
+}
+
+.text-glow-pulse {
+  animation: text-glow-pulse 2s ease-in-out infinite;
+}
+
+@keyframes text-glow-pulse {
+
+  0%,
+  100% {
+    text-shadow:
+      0 0 10px currentColor,
+      0 0 20px currentColor;
+  }
+
+  50% {
+    text-shadow:
+      0 0 20px currentColor,
+      0 0 40px currentColor,
+      0 0 60px currentColor;
+  }
+}
+
+/* ========================================
+   GRADIENT BORDERS
+   ======================================== */
+
+.gradient-border {
+  position: relative;
+  background: var(--theme-panel);
+  border-radius: 12px;
+}
+
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  background: linear-gradient(135deg, #667eea, #764ba2, #f093fb, #f5576c);
+  border-radius: 14px;
+  z-index: -1;
+  opacity: 0.8;
+}
+
+.gradient-border-animated::before {
+  background: linear-gradient(135deg, #667eea, #764ba2, #f093fb, #f5576c, #667eea);
+  background-size: 400% 400%;
+  animation: gradient-shift 4s ease infinite;
+}
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.rainbow-border {
+  position: relative;
+  border: 3px solid transparent;
+  background: linear-gradient(#0a0a1a, #0a0a1a) padding-box,
+    linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #8b00ff, #ff0000) border-box;
+  background-size: 100% 100%, 300% 100%;
+  animation: rainbow-shift 3s linear infinite;
+}
+
+@keyframes rainbow-shift {
+  0% {
+    background-position: 0% 50%, 0% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%, 100% 50%;
+  }
+}
+
+/* ========================================
+   SHIMMER & SHINE EFFECTS
+   ======================================== */
+
+.shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg,
+      transparent 0%,
+      transparent 40%,
+      rgba(255, 255, 255, 0.4) 50%,
+      transparent 60%,
+      transparent 100%);
+  transform: translateX(-100%);
+  animation: shimmer-move 2.5s ease-in-out infinite;
+}
+
+@keyframes shimmer-move {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.shimmer-gold::before {
+  background: linear-gradient(110deg,
+      transparent 0%,
+      transparent 40%,
+      rgba(255, 215, 0, 0.5) 50%,
+      transparent 60%,
+      transparent 100%);
+}
+
+.shimmer-rainbow::before {
+  background: linear-gradient(110deg,
+      transparent 0%,
+      rgba(255, 0, 0, 0.3) 30%,
+      rgba(255, 255, 0, 0.3) 40%,
+      rgba(0, 255, 0, 0.3) 50%,
+      rgba(0, 255, 255, 0.3) 60%,
+      rgba(255, 0, 255, 0.3) 70%,
+      transparent 100%);
+}
+
+/* ========================================
+   BUTTON STYLES - Premium
+   ======================================== */
+
 button {
   border: none;
   outline: none;
@@ -97,68 +325,645 @@ button:disabled {
   opacity: 0.5;
 }
 
-/* 스크롤바 커스터마이징 */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+.btn-press:active {
+  transform: scale(0.95);
 }
 
-::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.2);
+.btn-glow {
+  position: relative;
+  transition: all 0.3s ease;
 }
 
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 3px;
+.btn-glow::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border-radius: inherit;
+  filter: blur(12px);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+.btn-glow:hover::before {
+  opacity: 0.6;
 }
 
-/* 유틸리티 */
-.select-none { user-select: none; }
-.touch-none { touch-action: none; }
-.no-drag { -webkit-user-drag: none; user-drag: none; }
+.btn-ripple {
+  position: relative;
+  overflow: hidden;
+}
 
-/* 블록 스타일 강화 */
+.btn-ripple::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.4) 0%, transparent 70%);
+  transform: scale(0);
+  opacity: 0;
+  transition: none;
+}
+
+.btn-ripple:active::after {
+  animation: ripple-expand 0.6s ease-out;
+}
+
+@keyframes ripple-expand {
+  0% {
+    transform: scale(0);
+    opacity: 0.6;
+  }
+
+  100% {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+.super-glow-btn {
+  position: relative;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 16px;
+  box-shadow:
+    0 4px 20px rgba(102, 126, 234, 0.4),
+    0 0 40px rgba(118, 75, 162, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.super-glow-btn::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  background: linear-gradient(135deg, #667eea, #764ba2, #f093fb, #f5576c, #667eea);
+  background-size: 400% 400%;
+  border-radius: 18px;
+  z-index: -1;
+  animation: gradient-border 4s ease infinite;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.super-glow-btn:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow:
+    0 8px 30px rgba(102, 126, 234, 0.5),
+    0 0 60px rgba(118, 75, 162, 0.3);
+}
+
+.super-glow-btn:hover::before {
+  opacity: 1;
+}
+
+.super-glow-btn:active {
+  transform: translateY(-1px) scale(0.98);
+}
+
+@keyframes gradient-border {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* ========================================
+   PREMIUM BLOCK STYLES
+   ======================================== */
+
 .block-3d {
   box-shadow:
-    inset 2px 2px 4px rgba(255, 255, 255, 0.4),
-    inset -2px -2px 4px rgba(0, 0, 0, 0.4),
-    0 0 4px rgba(0, 0, 0, 0.2);
+    inset 3px 3px 6px rgba(255, 255, 255, 0.4),
+    inset -3px -3px 6px rgba(0, 0, 0, 0.4),
+    0 2px 8px rgba(0, 0, 0, 0.3),
+    0 0 12px rgba(255, 255, 255, 0.05);
+  transform-style: preserve-3d;
+  transition: all 0.12s ease;
+}
+
+.block-3d-enhanced {
+  box-shadow:
+    inset 4px 4px 8px rgba(255, 255, 255, 0.5),
+    inset -4px -4px 8px rgba(0, 0, 0, 0.5),
+    0 4px 12px rgba(0, 0, 0, 0.4),
+    0 0 20px rgba(255, 255, 255, 0.1);
+  transform-style: preserve-3d;
+  transition: all 0.15s ease;
+}
+
+.block-3d-enhanced:hover {
+  transform: translateZ(8px) scale(1.08);
 }
 
 .ghost-block {
   background: transparent !important;
   box-shadow: inset 0 0 0 2px currentColor;
-  opacity: 0.4;
+  opacity: 0.5;
 }
 
-/* 파티클 효과 */
+/* ========================================
+   PARTICLE & FLOATING EFFECTS
+   ======================================== */
+
 @keyframes float-up {
-  0% { transform: translateY(0) scale(1); opacity: 0.8; }
-  100% { transform: translateY(-100px) scale(0); opacity: 0; }
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 0.8;
+  }
+
+  100% {
+    transform: translateY(-120px) scale(0);
+    opacity: 0;
+  }
 }
 
-/* 레벨업 효과 */
+@keyframes float-particle {
+  0% {
+    transform: translateY(100vh) rotate(0deg);
+    opacity: 0;
+  }
+
+  10% {
+    opacity: 1;
+  }
+
+  90% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateY(-100vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+.float-particle {
+  animation: float-particle 12s linear infinite;
+}
+
+.particle {
+  animation: float-up 1s ease-out forwards;
+}
+
+@keyframes float-gentle {
+
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+
+  50% {
+    transform: translateY(-15px) rotate(5deg);
+  }
+}
+
+.float-gentle {
+  animation: float-gentle 4s ease-in-out infinite;
+}
+
+/* ========================================
+   AURORA & AMBIENT EFFECTS
+   ======================================== */
+
+@keyframes aurora {
+  0% {
+    background-position: 0% 50%;
+    filter: hue-rotate(0deg);
+  }
+
+  50% {
+    background-position: 100% 50%;
+    filter: hue-rotate(30deg);
+  }
+
+  100% {
+    background-position: 0% 50%;
+    filter: hue-rotate(0deg);
+  }
+}
+
+.aurora-bg {
+  background: linear-gradient(135deg,
+      rgba(102, 126, 234, 0.2),
+      rgba(118, 75, 162, 0.2),
+      rgba(0, 245, 255, 0.2),
+      rgba(102, 126, 234, 0.2));
+  background-size: 400% 400%;
+  animation: aurora 15s ease-in-out infinite;
+}
+
+@keyframes cyber-grid {
+  0% {
+    background-position: 0 0;
+  }
+
+  100% {
+    background-position: 50px 50px;
+  }
+}
+
+.cyber-grid-bg {
+  background-image:
+    linear-gradient(rgba(74, 158, 255, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(74, 158, 255, 0.1) 1px, transparent 1px);
+  background-size: 50px 50px;
+  animation: cyber-grid 20s linear infinite;
+}
+
+/* ========================================
+   SCORE & COMBO ANIMATIONS
+   ======================================== */
+
+@keyframes score-popup {
+  0% {
+    transform: scale(0.5) translateY(0);
+    opacity: 0;
+  }
+
+  20% {
+    transform: scale(1.3) translateY(-15px);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(1) translateY(-60px);
+    opacity: 0;
+  }
+}
+
+.score-popup {
+  animation: score-popup 1s ease-out forwards;
+}
+
+@keyframes score-count {
+  0% {
+    transform: scale(1);
+  }
+
+  25% {
+    transform: scale(1.4);
+  }
+
+  50% {
+    transform: scale(1);
+  }
+
+  75% {
+    transform: scale(1.2);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+.score-counting {
+  animation: score-count 0.4s ease-out;
+}
+
+@keyframes combo-shake {
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  25% {
+    transform: translateX(-4px) rotate(-3deg);
+  }
+
+  75% {
+    transform: translateX(4px) rotate(3deg);
+  }
+}
+
+.combo-shake {
+  animation: combo-shake 0.3s ease-in-out;
+}
+
+@keyframes combo-explosion {
+  0% {
+    transform: scale(0.5);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(1.8);
+    opacity: 0.7;
+  }
+
+  100% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
+}
+
+.combo-explosion {
+  animation: combo-explosion 0.5s ease-out forwards;
+}
+
+/* ========================================
+   LEVEL UP & VICTORY EFFECTS
+   ======================================== */
+
 @keyframes level-up-pulse {
-  0% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7); }
-  70% { box-shadow: 0 0 0 20px rgba(255, 215, 0, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); }
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.8);
+  }
+
+  50% {
+    box-shadow: 0 0 0 25px rgba(255, 215, 0, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 215, 0, 0);
+  }
 }
 
 .level-up-active {
   animation: level-up-pulse 1.5s infinite;
 }
 
-/* Shine 애니메이션 */
-@keyframes shine {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+@keyframes levelup-flash {
+  0% {
+    background-color: transparent;
+  }
+
+  30% {
+    background-color: rgba(255, 215, 0, 0.4);
+  }
+
+  100% {
+    background-color: transparent;
+  }
 }
 
-/* 그라데이션 텍스트 */
+.levelup-flash {
+  animation: levelup-flash 0.6s ease-out;
+}
+
+@keyframes victory-celebration {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateY(-600px) rotate(1080deg);
+    opacity: 0;
+  }
+}
+
+.victory-confetti {
+  animation: victory-celebration 3s ease-out forwards;
+}
+
+@keyframes firework-burst {
+  0% {
+    transform: scale(0);
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.8;
+  }
+
+  100% {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+.firework-burst {
+  animation: firework-burst 0.8s ease-out forwards;
+}
+
+/* ========================================
+   PULSE & GLOW EFFECTS
+   ======================================== */
+
+@keyframes pulse-glow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 8px currentColor;
+  }
+
+  50% {
+    box-shadow: 0 0 25px currentColor, 0 0 50px currentColor;
+  }
+}
+
+.pulse-glow {
+  animation: pulse-glow 1.2s ease-in-out infinite;
+}
+
+@keyframes neon-pulse {
+
+  0%,
+  100% {
+    text-shadow:
+      0 0 5px currentColor,
+      0 0 15px currentColor,
+      0 0 25px currentColor;
+  }
+
+  50% {
+    text-shadow:
+      0 0 15px currentColor,
+      0 0 30px currentColor,
+      0 0 50px currentColor,
+      0 0 80px currentColor;
+  }
+}
+
+.neon-pulse {
+  animation: neon-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes rainbow-glow {
+  0% {
+    filter: drop-shadow(0 0 12px #ff0000);
+  }
+
+  14% {
+    filter: drop-shadow(0 0 12px #ff7f00);
+  }
+
+  28% {
+    filter: drop-shadow(0 0 12px #ffff00);
+  }
+
+  42% {
+    filter: drop-shadow(0 0 12px #00ff00);
+  }
+
+  57% {
+    filter: drop-shadow(0 0 12px #0000ff);
+  }
+
+  71% {
+    filter: drop-shadow(0 0 12px #4b0082);
+  }
+
+  85% {
+    filter: drop-shadow(0 0 12px #9400d3);
+  }
+
+  100% {
+    filter: drop-shadow(0 0 12px #ff0000);
+  }
+}
+
+.rainbow-glow {
+  animation: rainbow-glow 3s linear infinite;
+}
+
+/* ========================================
+   STAR & SPARKLE EFFECTS
+   ======================================== */
+
+@keyframes star-sparkle {
+
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.8) rotate(0deg);
+    filter: blur(0px);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.3) rotate(180deg);
+    filter: blur(0px) drop-shadow(0 0 12px currentColor);
+  }
+}
+
+.star-sparkle {
+  animation: star-sparkle 2s ease-in-out infinite;
+}
+
+@keyframes twinkle {
+
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+.twinkle {
+  animation: twinkle 1.5s ease-in-out infinite;
+}
+
+/* ========================================
+   HOLOGRAM EFFECT
+   ======================================== */
+
+@keyframes hologram {
+  0% {
+    background-position: 0% 50%;
+    filter: hue-rotate(0deg);
+  }
+
+  50% {
+    background-position: 100% 50%;
+    filter: hue-rotate(180deg);
+  }
+
+  100% {
+    background-position: 0% 50%;
+    filter: hue-rotate(360deg);
+  }
+}
+
+.hologram-effect {
+  background: linear-gradient(90deg,
+      rgba(255, 0, 128, 0.5),
+      rgba(0, 255, 255, 0.5),
+      rgba(255, 255, 0, 0.5),
+      rgba(255, 0, 128, 0.5));
+  background-size: 300% 100%;
+  animation: hologram 5s ease infinite;
+  mix-blend-mode: overlay;
+}
+
+/* ========================================
+   FEVER MODE EFFECTS
+   ======================================== */
+
+.fever-bg {
+  background:
+    radial-gradient(ellipse at 20% 80%, rgba(255, 100, 0, 0.35) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(255, 50, 0, 0.35) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(255, 150, 0, 0.25) 0%, transparent 70%);
+  animation: fever-pulse 0.4s ease-in-out infinite alternate;
+}
+
+@keyframes fever-pulse {
+  0% {
+    opacity: 0.6;
+    filter: saturate(1);
+  }
+
+  100% {
+    opacity: 1;
+    filter: saturate(1.3);
+  }
+}
+
+/* ========================================
+   BOARD & GAME ELEMENTS
+   ======================================== */
+
+.board-glow {
+  box-shadow:
+    0 0 25px rgba(74, 158, 255, 0.35),
+    0 0 50px rgba(74, 158, 255, 0.2),
+    0 0 75px rgba(74, 158, 255, 0.1),
+    inset 0 0 40px rgba(74, 158, 255, 0.08);
+}
+
+/* ========================================
+   MENU & CARD EFFECTS
+   ======================================== */
+
+.menu-card-hover {
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.menu-card-hover:hover {
+  transform: translateY(-10px) scale(1.03);
+  box-shadow:
+    0 25px 50px rgba(0, 0, 0, 0.4),
+    0 0 40px rgba(74, 158, 255, 0.25);
+}
+
+.card-hover {
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.35);
+}
+
+/* ========================================
+   GRADIENT TEXT
+   ======================================== */
+
 .gradient-text {
   background: linear-gradient(90deg, #ff4757, #3742fa, #2ed573, #ffa502, #8854d0);
   background-size: 300% 300%;
@@ -168,140 +973,30 @@ button:disabled {
   animation: gradient-shift 3s ease infinite;
 }
 
-@keyframes gradient-shift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+.gradient-text-gold {
+  background: linear-gradient(135deg, #ffd700, #ffed4a, #ff8c00, #ffd700);
+  background-size: 300% 300%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradient-shift 3s ease infinite;
 }
 
-/* 파티클 애니메이션 */
-@keyframes particle-float {
-  0% {
-    transform: translateY(0) scale(1);
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(-100px) scale(0);
-    opacity: 0;
-  }
+.gradient-text-cyber {
+  background: linear-gradient(135deg, #00f5ff, #ff2d92, #a855f7, #00f5ff);
+  background-size: 300% 300%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradient-shift 4s ease infinite;
 }
 
-.particle {
-  animation: particle-float 1s ease-out forwards;
-}
+/* ========================================
+   SLIDE & FADE ANIMATIONS
+   ======================================== */
 
-/* 펄스 글로우 */
-@keyframes pulse-glow {
-  0%, 100% {
-    box-shadow: 0 0 5px currentColor;
-  }
-  50% {
-    box-shadow: 0 0 20px currentColor, 0 0 40px currentColor;
-  }
-}
-
-.pulse-glow {
-  animation: pulse-glow 1s ease-in-out infinite;
-}
-
-/* 점수 팝업 애니메이션 */
-@keyframes score-popup {
-  0% {
-    transform: scale(0.5) translateY(0);
-    opacity: 0;
-  }
-  20% {
-    transform: scale(1.2) translateY(-10px);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1) translateY(-50px);
-    opacity: 0;
-  }
-}
-
-.score-popup {
-  animation: score-popup 1s ease-out forwards;
-}
-
-/* 콤보 텍스트 흔들림 */
-@keyframes combo-shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-3px) rotate(-2deg); }
-  75% { transform: translateX(3px) rotate(2deg); }
-}
-
-.combo-shake {
-  animation: combo-shake 0.3s ease-in-out;
-}
-
-/* 레벨업 플래시 */
-@keyframes levelup-flash {
-  0% { background-color: transparent; }
-  50% { background-color: rgba(255, 215, 0, 0.3); }
-  100% { background-color: transparent; }
-}
-
-.levelup-flash {
-  animation: levelup-flash 0.5s ease-out;
-}
-
-/* 버튼 누름 효과 */
-.btn-press:active {
-  transform: scale(0.95);
-}
-
-/* 카드 호버 효과 */
-.card-hover {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.card-hover:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
-}
-
-/* 진동 효과 (CSS) */
-@keyframes vibrate {
-  0% { transform: translate(0); }
-  25% { transform: translate(-2px, 2px); }
-  50% { transform: translate(2px, -2px); }
-  75% { transform: translate(-2px, -2px); }
-  100% { transform: translate(0); }
-}
-
-.vibrate {
-  animation: vibrate 0.2s linear;
-}
-
-/* 무지개 테두리 */
-.rainbow-border {
-  border: 3px solid transparent;
-  background: linear-gradient(#0a0a1a, #0a0a1a) padding-box,
-              linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #8b00ff) border-box;
-  animation: rainbow-rotate 3s linear infinite;
-}
-
-@keyframes rainbow-rotate {
-  0% { background-position: 0% 50%; }
-  100% { background-position: 100% 50%; }
-}
-
-/* 로딩 스피너 */
-.spinner {
-  border: 3px solid rgba(255, 255, 255, 0.1);
-  border-top-color: #4a9eff;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* 슬라이드 인 애니메이션 */
 .slide-in-bottom {
-  animation: slideInBottom 0.3s ease-out;
+  animation: slideInBottom 0.35s ease-out;
 }
 
 @keyframes slideInBottom {
@@ -309,62 +1004,251 @@ button:disabled {
     transform: translateY(100%);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;
   }
 }
 
-/* 페이드 인 애니메이션 */
+.slide-in-top {
+  animation: slideInTop 0.35s ease-out;
+}
+
+@keyframes slideInTop {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
 .fade-in {
-  animation: fadeIn 0.3s ease-out;
+  animation: fadeIn 0.35s ease-out;
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
-/* Safe area padding */
+.scale-in {
+  animation: scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* ========================================
+   VIBRATION EFFECT
+   ======================================== */
+
+@keyframes vibrate {
+  0% {
+    transform: translate(0);
+  }
+
+  25% {
+    transform: translate(-3px, 3px);
+  }
+
+  50% {
+    transform: translate(3px, -3px);
+  }
+
+  75% {
+    transform: translate(-3px, -3px);
+  }
+
+  100% {
+    transform: translate(0);
+  }
+}
+
+.vibrate {
+  animation: vibrate 0.2s linear;
+}
+
+/* ========================================
+   LOADING SPINNER
+   ======================================== */
+
+.spinner {
+  border: 4px solid rgba(255, 255, 255, 0.1);
+  border-top-color: #4a9eff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner-rainbow {
+  border: 4px solid transparent;
+  border-top-color: #ff4757;
+  border-right-color: #ffa502;
+  border-bottom-color: #2ed573;
+  border-left-color: #3742fa;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* ========================================
+   SCROLLBAR
+   ======================================== */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.2));
+}
+
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+
+.select-none {
+  user-select: none;
+}
+
+.touch-none {
+  touch-action: none;
+}
+
+.no-drag {
+  -webkit-user-drag: none;
+  user-drag: none;
+}
+
 .pb-safe {
   padding-bottom: max(env(safe-area-inset-bottom), 16px);
 }
 
-/* 반응형 폰트 조정 */
+/* ========================================
+   RESPONSIVE & ACCESSIBILITY
+   ======================================== */
+
 @media (max-width: 640px) {
   :root {
     font-size: 14px;
   }
 }
 
-/* 가로 모드 최적화 */
 @media (orientation: landscape) and (max-height: 500px) {
   .landscape-hidden {
     display: none;
   }
 }
 
-/* 고해상도 디스플레이 */
-@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+@media (-webkit-min-device-pixel-ratio: 2),
+(min-resolution: 192dpi) {
   .hd-shadow {
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 0 12px rgba(0, 0, 0, 0.5);
   }
 }
 
-/* 다크 모드 기본값 (항상 다크) */
 @media (prefers-color-scheme: light) {
   :root {
     color-scheme: dark;
   }
 }
 
-/* 모션 감소 모드 */
 @media (prefers-reduced-motion: reduce) {
+
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* ========================================
+   RARITY COLORS
+   ======================================== */
+
+.rarity-common {
+  color: #9ca3af;
+}
+
+.rarity-uncommon {
+  color: #4ade80;
+}
+
+.rarity-rare {
+  color: #60a5fa;
+}
+
+.rarity-epic {
+  color: #a855f7;
+}
+
+.rarity-legendary {
+  color: #fbbf24;
+  text-shadow: 0 0 10px #fbbf24;
+}
+
+.rarity-mythic {
+  background: linear-gradient(90deg, #ff2d92, #a855f7, #00f5ff, #ff2d92);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradient-shift 2s linear infinite;
+}
+
+.rarity-glow-legendary {
+  box-shadow: 0 0 15px rgba(251, 191, 36, 0.5), 0 0 30px rgba(251, 191, 36, 0.3);
+}
+
+.rarity-glow-mythic {
+  box-shadow: 0 0 15px rgba(255, 45, 146, 0.5), 0 0 30px rgba(168, 85, 247, 0.3);
+  animation: mythic-glow 2s ease-in-out infinite;
+}
+
+@keyframes mythic-glow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 15px rgba(255, 45, 146, 0.5), 0 0 30px rgba(168, 85, 247, 0.3);
+  }
+
+  50% {
+    box-shadow: 0 0 25px rgba(0, 245, 255, 0.5), 0 0 40px rgba(168, 85, 247, 0.4);
   }
 }

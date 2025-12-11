@@ -92,81 +92,154 @@ export function MainMenu({
       {/* 메인 콘텐츠 */}
       <div className="z-10 w-full max-w-md px-6 flex flex-col items-center gap-8">
 
-        {/* 타이틀 로고 */}
+        {/* 타이틀 로고 - Premium 3D Effect */}
         <div className="text-center relative">
           <motion.div
-            initial={{ scale: 0.5, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: "spring", stiffness: 200, damping: 15 }}
+            initial={{ scale: 0.5, opacity: 0, y: -30 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 180, damping: 12 }}
           >
-            <h1 className="text-6xl md:text-7xl font-black italic tracking-tighter" style={{ fontFamily: 'var(--font-display)' }}>
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300 neon-text">CHROMA</span>
+            <h1 className="text-6xl md:text-8xl font-black italic tracking-tighter" style={{ fontFamily: 'var(--font-display)' }}>
+              <motion.span
+                className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-500 neon-pulse inline-block"
+                animate={{
+                  filter: ['hue-rotate(0deg)', 'hue-rotate(20deg)', 'hue-rotate(0deg)'],
+                }}
+                transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+                style={{
+                  textShadow: '0 0 40px rgba(0,200,255,0.5), 0 0 80px rgba(100,100,255,0.3)',
+                }}
+              >
+                CHROMA
+              </motion.span>
               <br />
-              <span className="text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.5)]">FALL</span>
+              <motion.span
+                className="text-white inline-block"
+                style={{
+                  textShadow: '0 4px 8px rgba(0,0,0,0.5), 0 0 30px rgba(255,255,255,0.4)',
+                }}
+                animate={{
+                  textShadow: [
+                    '0 4px 8px rgba(0,0,0,0.5), 0 0 30px rgba(255,255,255,0.4)',
+                    '0 4px 12px rgba(0,0,0,0.6), 0 0 50px rgba(255,255,255,0.6)',
+                    '0 4px 8px rgba(0,0,0,0.5), 0 0 30px rgba(255,255,255,0.4)',
+                  ]
+                }}
+                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+              >
+                FALL
+              </motion.span>
             </h1>
           </motion.div>
           <motion.p
-            className="text-gray-400 mt-2 tracking-widest text-sm uppercase"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
+            className="text-gray-400 mt-3 tracking-[0.3em] text-sm uppercase font-medium"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6, duration: 0.5 }}
           >
-            Color Fusion Puzzle
+            ✦ Color Fusion Puzzle ✦
           </motion.p>
         </div>
 
-        {/* 유저 프로필 카드 */}
+        {/* 유저 프로필 카드 - Glass Ultra */}
         <motion.div
-          className="glass-panel w-full p-4 rounded-2xl flex items-center justify-between"
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.2 }}
+          className="glass-ultra w-full p-5 rounded-3xl flex items-center justify-between shimmer"
+          initial={{ y: 30, opacity: 0, scale: 0.95 }}
+          animate={{ y: 0, opacity: 1, scale: 1 }}
+          transition={{ delay: 0.25, type: 'spring', stiffness: 150 }}
         >
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xl font-bold shadow-lg">
+            <motion.div
+              className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center text-2xl font-bold shadow-lg"
+              style={{ boxShadow: '0 8px 25px rgba(139, 92, 246, 0.4)' }}
+              whileHover={{ scale: 1.08, rotate: 5 }}
+              transition={{ type: 'spring', stiffness: 400 }}
+            >
               {playerName.charAt(0)}
-            </div>
+            </motion.div>
             <div>
-              <p className="font-bold text-lg">{playerName}</p>
-              <div className="flex items-center gap-2 text-xs text-gray-300">
-                <span className="bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded">Lv.{playerLevel}</span>
+              <p className="font-bold text-lg tracking-wide">{playerName}</p>
+              <div className="flex items-center gap-2 text-xs">
+                <span className="bg-gradient-to-r from-blue-500/30 to-cyan-500/30 text-cyan-300 px-2 py-1 rounded-lg font-semibold border border-cyan-500/20">
+                  Lv.{playerLevel}
+                </span>
                 {streakInfo.currentStreak > 0 && (
-                  <span className="text-orange-400">🔥 {streakInfo.currentStreak}일 연속</span>
+                  <motion.span
+                    className="text-orange-400 flex items-center gap-1"
+                    animate={{ scale: [1, 1.1, 1] }}
+                    transition={{ duration: 1.5, repeat: Infinity }}
+                  >
+                    🔥 {streakInfo.currentStreak}일
+                  </motion.span>
                 )}
               </div>
             </div>
           </div>
           {dailyRewardAvailable && (
-            <button
+            <motion.button
               onClick={() => handleClick(onOpenDailyReward)}
-              className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-xs font-bold px-3 py-1.5 rounded-full animate-bounce shadow-lg shadow-orange-500/30"
+              className="bg-gradient-to-r from-amber-400 via-orange-500 to-red-500 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-lg relative overflow-hidden"
+              style={{ boxShadow: '0 6px 20px rgba(251, 146, 60, 0.5)' }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              animate={{ y: [0, -3, 0] }}
+              transition={{ y: { duration: 1, repeat: Infinity, ease: 'easeInOut' } }}
             >
-              🎁 보상 받기
-            </button>
+              <span className="relative z-10">🎁 보상 받기</span>
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+                animate={{ x: ['-100%', '200%'] }}
+                transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 1 }}
+              />
+            </motion.button>
           )}
         </motion.div>
 
-        {/* 메인 액션 버튼 */}
+        {/* 메인 액션 버튼 - Super Glow */}
         <motion.div
-          className="w-full space-y-4"
-          initial={{ y: 20, opacity: 0 }}
+          className="w-full space-y-5"
+          initial={{ y: 30, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.3 }}
+          transition={{ delay: 0.35, type: 'spring', stiffness: 120 }}
         >
-          <button
+          <motion.button
             onClick={() => handleClick(() => setShowModeSelect(true))}
-            className="w-full py-5 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl font-bold text-xl text-white shadow-[0_0_20px_rgba(59,130,246,0.4)] hover:shadow-[0_0_30px_rgba(59,130,246,0.6)] hover:scale-[1.02] active:scale-[0.98] transition-all border border-white/10 group relative overflow-hidden"
+            className="w-full py-6 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-3xl font-black text-2xl text-white relative overflow-hidden group"
+            style={{
+              boxShadow: '0 10px 40px rgba(79, 70, 229, 0.5), inset 0 1px 0 rgba(255,255,255,0.2)',
+              fontFamily: 'var(--font-display)'
+            }}
+            whileHover={{ scale: 1.03, boxShadow: '0 15px 50px rgba(79, 70, 229, 0.6)' }}
+            whileTap={{ scale: 0.98 }}
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:animate-[shine_1s_infinite]" />
-            <span className="relative flex items-center justify-center gap-3">
-              <span className="text-2xl">🎮</span> GAME START
+            {/* Animated border glow */}
+            <motion.div
+              className="absolute inset-[-2px] bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-500 rounded-3xl opacity-0 group-hover:opacity-100 -z-10"
+              style={{ filter: 'blur(8px)' }}
+              transition={{ duration: 0.3 }}
+            />
+            {/* Shine effect */}
+            <motion.div
+              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent"
+              animate={{ x: ['-100%', '200%'] }}
+              transition={{ duration: 2.5, repeat: Infinity, ease: 'linear' }}
+            />
+            <span className="relative flex items-center justify-center gap-4">
+              <motion.span
+                className="text-3xl"
+                animate={{ rotate: [0, -10, 10, 0] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                🎮
+              </motion.span>
+              GAME START
             </span>
-          </button>
+          </motion.button>
 
-          <div className="grid grid-cols-3 gap-3">
-            <MenuButton icon="🛒" label="상점" onClick={() => handleClick(onOpenShop)} color="bg-pink-600/20" />
-            <MenuButton icon="🏆" label="랭킹" onClick={() => handleClick(onOpenLeaderboard)} color="bg-yellow-600/20" />
-            <MenuButton icon="🎫" label="패스" onClick={() => handleClick(onOpenBattlePass)} color="bg-green-600/20" />
+          <div className="grid grid-cols-3 gap-4">
+            <MenuButton icon="🛒" label="상점" onClick={() => handleClick(onOpenShop)} color="from-pink-500/20 to-rose-500/20" />
+            <MenuButton icon="🏆" label="랭킹" onClick={() => handleClick(onOpenLeaderboard)} color="from-amber-500/20 to-yellow-500/20" />
+            <MenuButton icon="🎫" label="패스" onClick={() => handleClick(onOpenBattlePass)} color="from-emerald-500/20 to-green-500/20" />
           </div>
         </motion.div>
       </div>
@@ -233,13 +306,23 @@ export function MainMenu({
 
 function MenuButton({ icon, label, onClick, color }: { icon: string, label: string, onClick: () => void, color: string }) {
   return (
-    <button
+    <motion.button
       onClick={onClick}
-      className={`flex flex-col items-center justify-center gap-2 py-4 rounded-xl border border-white/5 hover:border-white/20 transition-all active:scale-95 ${color} hover:brightness-125`}
+      className={`flex flex-col items-center justify-center gap-2 py-5 rounded-2xl border border-white/10 transition-all bg-gradient-to-br ${color} backdrop-blur-sm relative overflow-hidden group`}
+      whileHover={{ scale: 1.05, borderColor: 'rgba(255,255,255,0.3)' }}
+      whileTap={{ scale: 0.95 }}
     >
-      <span className="text-2xl drop-shadow-md">{icon}</span>
-      <span className="text-sm font-bold text-gray-200">{label}</span>
-    </button>
+      <motion.span
+        className="text-3xl drop-shadow-lg"
+        animate={{ y: [0, -2, 0] }}
+        transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+      >
+        {icon}
+      </motion.span>
+      <span className="text-sm font-bold text-gray-200 tracking-wide">{label}</span>
+      {/* Hover glow */}
+      <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl" />
+    </motion.button>
   );
 }
 
