@@ -13,12 +13,23 @@
 
   color-scheme: dark;
   color: rgba(255, 255, 255, 0.95);
-  background-color: #050510; /* 더 깊은 배경색 */
+  background-color: #050510;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* 테마 변수 (기본값) */
+  --theme-bg: #0a0a1a;
+  --theme-bg-gradient: radial-gradient(circle at 50% 10%, #1a1a40 0%, #050510 60%);
+  --theme-panel: #1a1a2e;
+  --theme-panel-border: rgba(255,255,255,0.1);
+  --theme-accent: #4a9eff;
+  --theme-text: #ffffff;
+  --theme-text-secondary: #888888;
+  --theme-danger: #ff4757;
+  --theme-success: #2ed573;
 
   /* Safe area variables */
   --sat: env(safe-area-inset-top);
@@ -40,8 +51,10 @@ html, body, #root {
 }
 
 body {
-  /* 고급스러운 그라데이션 배경 */
-  background: radial-gradient(circle at 50% 10%, #1a1a40 0%, #050510 60%);
+  /* 테마 그라데이션 배경 */
+  background: var(--theme-bg-gradient);
+  background-color: var(--theme-bg);
+  color: var(--theme-text);
   min-height: 100vh;
   /* 모바일 브라우저 주소창 대응 */
   min-height: -webkit-fill-available;

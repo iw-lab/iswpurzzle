@@ -214,7 +214,7 @@ export const DIFFICULTY_CONFIG = {
   GARBAGE_MIN_INTERVAL: 10,        // 최소 쓰레기 간격 (초)
 };
 
-// 레벨별 동시 낙하 블록 수 계산 (처음부터 2개 이상)
+// 레벨별 동시 낙하 블록 수 계산
 export function getFallingBlockCount(level: number): number {
   if (level >= 30) return 8;  // 레벨 30부터 8개
   if (level >= 25) return 7;  // 레벨 25부터 7개
@@ -222,7 +222,8 @@ export function getFallingBlockCount(level: number): number {
   if (level >= 15) return 5;  // 레벨 15부터 5개
   if (level >= 10) return 4;  // 레벨 10부터 4개
   if (level >= 5) return 3;   // 레벨 5부터 3개
-  return 2;                   // 레벨 1부터 2개 (1개는 너무 심심함)
+  if (level >= 3) return 2;   // 레벨 3부터 2개
+  return 1;                   // 레벨 1-2는 1개
 }
 
 // 블록 모양 정의 (상대 좌표)
