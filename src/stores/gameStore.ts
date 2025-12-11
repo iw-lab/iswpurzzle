@@ -97,8 +97,10 @@ const initialMissionProgress: MissionProgress = {
   weeklyMissions: generateWeeklyMissions(),
 };
 
-// 스폰 중복 방지 플래그
+// 스폰 중복 방지 플래그 및 타임스탬프
 let isSpawning = false;
+let lastSpawnTime = 0;
+const SPAWN_COOLDOWN = 100; // 최소 100ms 간격
 
 // 초기 게임 상태
 const initialGameState: GameState = {
@@ -325,9 +327,13 @@ export const useGameStore = create<GameStore>()(
         if (currentBlocks.length > 0) return;
         if (gameStatus !== 'playing') return;
 
-        // 스폰 중복 방지
+        // 스폰 중복 방지 (플래그 + 쿨다운)
+        const now = Date.now();
         if (isSpawning) return;
+        if (now - lastSpawnTime < SPAWN_COOLDOWN) return;
+
         isSpawning = true;
+        lastSpawnTime = now;
 
         const blockCount = getFallingBlockCount(level);
 

@@ -122,18 +122,30 @@ export function TouchControls({ visible = true }: TouchControlsProps) {
 
   const startMoving = useCallback((dir: 'left' | 'right') => {
     playSound('blockMove');
-    const action = () => {
-      useGameStore.getState().moveBlock(dir);
-    };
-    action();
+    useGameStore.getState().moveBlock(dir);
+
+    // 기존 인터벌 정리
     if (moveIntervalRef.current) clearInterval(moveIntervalRef.current);
-    moveIntervalRef.current = window.setInterval(() => {
-      playSound('blockMove');
-      useGameStore.getState().moveBlock(dir);
-    }, 80);
+
+    // 길게 누르면 반복 이동 (첫 반복까지 200ms 대기)
+    const startRepeat = setTimeout(() => {
+      moveIntervalRef.current = window.setInterval(() => {
+        playSound('blockMove');
+        useGameStore.getState().moveBlock(dir);
+      }, 100);
+    }, 200);
+
+    // stopMoving에서 정리할 수 있도록 저장
+    (moveIntervalRef as any).timeout = startRepeat;
   }, [playSound]);
 
   const stopMoving = useCallback(() => {
+    // 타임아웃 정리
+    if ((moveIntervalRef as any).timeout) {
+      clearTimeout((moveIntervalRef as any).timeout);
+      (moveIntervalRef as any).timeout = null;
+    }
+    // 인터벌 정리
     if (moveIntervalRef.current) {
       clearInterval(moveIntervalRef.current);
       moveIntervalRef.current = null;

@@ -129,8 +129,28 @@ function App() {
     }
   }, [gameStatus, gameMode, gameTime, endGame]);
 
+  // 모바일 전체화면 요청
+  const requestFullscreen = useCallback(() => {
+    const elem = document.documentElement;
+    if (elem.requestFullscreen) {
+      elem.requestFullscreen().catch(() => {});
+    } else if ((elem as any).webkitRequestFullscreen) {
+      (elem as any).webkitRequestFullscreen();
+    } else if ((elem as any).msRequestFullscreen) {
+      (elem as any).msRequestFullscreen();
+    }
+  }, []);
+
   // 핸들러
-  const handleStartGame = useCallback((mode: GameMode) => { playSound('buttonClick'); startGame(mode); setScreen('game'); }, [startGame, playSound]);
+  const handleStartGame = useCallback((mode: GameMode) => {
+    playSound('buttonClick');
+    // 모바일에서 전체화면 모드 시도
+    if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+      requestFullscreen();
+    }
+    startGame(mode);
+    setScreen('game');
+  }, [startGame, playSound, requestFullscreen]);
   const handleMainMenu = useCallback(() => { playSound('buttonClick'); resetGame(); stopBGM(); setScreen('menu'); }, [resetGame, stopBGM, playSound]);
   const handleRestart = useCallback(() => { playSound('buttonClick'); resetGame(); startGame('classic'); }, [resetGame, startGame, playSound]);
   const handleContinue = useCallback(() => { playSound('buttonClick'); continueGame(); }, [continueGame, playSound]);
