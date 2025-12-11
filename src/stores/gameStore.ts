@@ -97,6 +97,9 @@ const initialMissionProgress: MissionProgress = {
   weeklyMissions: generateWeeklyMissions(),
 };
 
+// 스폰 중복 방지 플래그
+let isSpawning = false;
+
 // 초기 게임 상태
 const initialGameState: GameState = {
   board: createEmptyBoard(),
@@ -218,6 +221,7 @@ export const useGameStore = create<GameStore>()(
       blocksPlaced: 0,
 
       startGame: (mode = 'classic') => {
+        isSpawning = false; // 스폰 플래그 초기화
         const level = 1;
         const puzzleLevel = mode === 'puzzle' ? 1 : 1;
 
@@ -305,6 +309,7 @@ export const useGameStore = create<GameStore>()(
       },
 
       resetGame: () => {
+        isSpawning = false; // 스폰 플래그 초기화
         set({
           ...initialGameState,
           statistics: get().statistics,
@@ -314,7 +319,16 @@ export const useGameStore = create<GameStore>()(
       },
 
       spawnBlock: () => {
-        const { nextBlocks, nextSpecialTypes, level, gravityDirection, board, blocksPlaced } = get();
+        const { nextBlocks, nextSpecialTypes, level, gravityDirection, board, blocksPlaced, currentBlocks, gameStatus } = get();
+
+        // 이미 블록이 있거나 게임 중이 아니면 생성하지 않음
+        if (currentBlocks.length > 0) return;
+        if (gameStatus !== 'playing') return;
+
+        // 스폰 중복 방지
+        if (isSpawning) return;
+        isSpawning = true;
+
         const blockCount = getFallingBlockCount(level);
 
         // nextBlocks가 부족하면 추가 생성
@@ -392,6 +406,7 @@ export const useGameStore = create<GameStore>()(
 
         // 게임오버 체크 - 모든 시작 위치가 막힘
         if (newBlocks.length === 0) {
+          isSpawning = false;
           get().endGame();
           return;
         }
@@ -404,6 +419,7 @@ export const useGameStore = create<GameStore>()(
             if (board[1][x] !== null) topRowBlocks++;
           }
           if (topRowBlocks >= BOARD_CONFIG.COLUMNS) {
+            isSpawning = false;
             get().endGame();
             return;
           }
@@ -424,6 +440,9 @@ export const useGameStore = create<GameStore>()(
           currentShapeOffsets: offsets as [number, number][],
           basePosition: { x: baseX, y: baseY },
         });
+
+        // 스폰 완료 플래그 해제
+        isSpawning = false;
       },
 
       moveBlock: (direction) => {
