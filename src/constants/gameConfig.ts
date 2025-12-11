@@ -170,18 +170,14 @@ export const SCORE_CONFIG = {
 
 // 융합 설정
 export const FUSION_CONFIG = {
-  MIN_BLOCKS_TO_FUSE: 4,         // 기본 융합 최소 블록 수
-  MIN_BLOCKS_LEVEL_10: 5,        // 레벨 10부터 5개 필요
-  MIN_BLOCKS_LEVEL_20: 6,        // 레벨 20부터 6개 필요
+  MIN_BLOCKS_TO_FUSE: 4,         // 항상 4개면 터짐 (레벨 무관)
   BOMB_RADIUS: 1,                // 폭탄 폭발 반경 (3x3)
   LIGHTNING_SAME_COLOR: true,
   CROSS_FULL_LINE: true,
 };
 
-// 레벨에 따른 융합 최소 블록 수 계산
-export function getMinBlocksToFuse(level: number): number {
-  if (level >= 20) return FUSION_CONFIG.MIN_BLOCKS_LEVEL_20;
-  if (level >= 10) return FUSION_CONFIG.MIN_BLOCKS_LEVEL_10;
+// 레벨에 따른 융합 최소 블록 수 계산 (항상 4개로 고정)
+export function getMinBlocksToFuse(_level: number): number {
   return FUSION_CONFIG.MIN_BLOCKS_TO_FUSE;
 }
 
