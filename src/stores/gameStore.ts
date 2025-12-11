@@ -362,15 +362,13 @@ export const useGameStore = create<GameStore>()(
         }
 
         // 모양에 따라 블록 생성
-        // 같은 모양의 블록은 모두 같은 색으로! (연결되어 있으므로 바로 터질 수 있음)
+        // 각 블록마다 다른 색상! (같은 색이면 바로 터져서 너무 쉬움)
         const newBlocks: FallingBlock[] = [];
-        const shapeColor = currentNextBlocks[0]; // 모양 전체가 같은 색
-        const shapeSpecialType = currentNextSpecialTypes[0] || 'normal';
 
         for (let i = 0; i < offsets.length; i++) {
           const [dx, dy] = offsets[i];
-          const color = shapeColor; // 모든 블록이 같은 색!
-          const specialType = i === 0 ? shapeSpecialType : 'normal'; // 첫 블록만 특수 타입
+          const color = currentNextBlocks[i] || currentNextBlocks[0]; // 각 블록마다 다른 색
+          const specialType = i === 0 ? (currentNextSpecialTypes[0] || 'normal') : 'normal';
 
           const startX = baseX + dx;
           const startY = baseY + dy;
@@ -411,9 +409,9 @@ export const useGameStore = create<GameStore>()(
           }
         }
 
-        // 새 블록 색상들 생성 (한 모양당 색상 1개만 소비)
-        const newNextBlocks = [...currentNextBlocks.slice(1)];
-        const newNextSpecialTypes = [...currentNextSpecialTypes.slice(1)];
+        // 새 블록 색상들 생성 (블록 개수만큼 소비)
+        const newNextBlocks = [...currentNextBlocks.slice(blockCount)];
+        const newNextSpecialTypes = [...currentNextSpecialTypes.slice(blockCount)];
 
         set({
           currentBlock: newBlocks[0] || null,
