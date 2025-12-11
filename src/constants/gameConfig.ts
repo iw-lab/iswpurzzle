@@ -150,7 +150,7 @@ export const TIMING_CONFIG = {
   COMBO_TIMEOUT: 2000,          // 콤보 유지 시간 감소
   FEVER_DURATION: 8000,         // 피버 모드 지속 시간
   SPECIAL_EFFECT_DURATION: 300, // 특수 효과 지속 시간
-  GARBAGE_INTERVAL: 40,         // 쓰레기 블록 추가 간격 (초)
+  GARBAGE_INTERVAL: 25,         // 쓰레기 블록 추가 간격 (초) - 더 빠르게
   GARBAGE_WARNING_TIME: 3,      // 쓰레기 블록 경고 시간 (초)
 };
 
@@ -206,12 +206,12 @@ export const DIFFICULTY_CONFIG = {
   MULTI_BLOCK_START_LEVEL: 3,      // 2개 블록 시작 레벨
   TRIPLE_BLOCK_START_LEVEL: 7,     // 3개 블록 시작 레벨
   // 쓰레기 블록 설정
-  GARBAGE_START_LEVEL: 6,          // 쓰레기 블록 시작 레벨 (레벨 6부터)
-  GARBAGE_ROWS_PER_INTERVAL: 1,    // 추가되는 쓰레기 줄 수
-  GARBAGE_MAX_ROWS: 1,             // 최대 쓰레기 줄 수 (한번에 최대 1줄)
+  GARBAGE_START_LEVEL: 5,          // 쓰레기 블록 시작 레벨 (레벨 5부터)
+  GARBAGE_ROWS_PER_INTERVAL: 1,    // 기본 추가 줄 수
+  GARBAGE_MAX_ROWS: 3,             // 최대 쓰레기 줄 수 (한번에 최대 3줄)
   // 레벨별 쓰레기 간격 감소
-  GARBAGE_INTERVAL_DECREASE: 0.3,  // 레벨당 감소 초 (더 천천히 감소)
-  GARBAGE_MIN_INTERVAL: 20,        // 최소 쓰레기 간격 (더 길게)
+  GARBAGE_INTERVAL_DECREASE: 0.5,  // 레벨당 감소 초
+  GARBAGE_MIN_INTERVAL: 10,        // 최소 쓰레기 간격 (초)
 };
 
 // 레벨별 동시 낙하 블록 수 계산

@@ -317,7 +317,15 @@ export const useGameStore = create<GameStore>()(
         const { nextBlocks, nextSpecialTypes, level, gravityDirection, board, blocksPlaced } = get();
         const blockCount = getFallingBlockCount(level);
 
-        if (nextBlocks.length < blockCount) return;
+        // nextBlocks가 부족하면 추가 생성
+        let currentNextBlocks = [...nextBlocks];
+        let currentNextSpecialTypes = [...nextSpecialTypes];
+        while (currentNextBlocks.length < 10) {
+          currentNextBlocks.push(getRandomBlockColor(level));
+          currentNextSpecialTypes.push(getSpecialType(level, blocksPlaced + currentNextBlocks.length));
+        }
+
+        if (currentNextBlocks.length < 1) return;
 
         // 블록 모양 선택
         const shape = getRandomShape(blockCount);
@@ -356,8 +364,8 @@ export const useGameStore = create<GameStore>()(
         // 모양에 따라 블록 생성
         // 같은 모양의 블록은 모두 같은 색으로! (연결되어 있으므로 바로 터질 수 있음)
         const newBlocks: FallingBlock[] = [];
-        const shapeColor = nextBlocks[0]; // 모양 전체가 같은 색
-        const shapeSpecialType = nextSpecialTypes[0] || 'normal';
+        const shapeColor = currentNextBlocks[0]; // 모양 전체가 같은 색
+        const shapeSpecialType = currentNextSpecialTypes[0] || 'normal';
 
         for (let i = 0; i < offsets.length; i++) {
           const [dx, dy] = offsets[i];
@@ -404,11 +412,8 @@ export const useGameStore = create<GameStore>()(
         }
 
         // 새 블록 색상들 생성 (한 모양당 색상 1개만 소비)
-        const newNextBlocks = [...nextBlocks.slice(1)];
-        const newNextSpecialTypes = [...nextSpecialTypes.slice(1)];
-        // 새 색상 1개 추가
-        newNextBlocks.push(getRandomBlockColor(level));
-        newNextSpecialTypes.push(getSpecialType(level, blocksPlaced + 1));
+        const newNextBlocks = [...currentNextBlocks.slice(1)];
+        const newNextSpecialTypes = [...currentNextSpecialTypes.slice(1)];
 
         set({
           currentBlock: newBlocks[0] || null,
@@ -915,14 +920,21 @@ export const useGameStore = create<GameStore>()(
 
           const { board, level } = get();
           const colors = getColorsForLevel(level);
-          const newBoard = board.map((row) => [...row]);
+          const newBoard: GameBoard = Array(BOARD_CONFIG.ROWS)
+            .fill(null)
+            .map(() => Array(BOARD_CONFIG.COLUMNS).fill(null));
 
-          // 기존 블록들을 한 줄 위로 이동
-          for (let y = 0; y < BOARD_CONFIG.ROWS - 1; y++) {
-            newBoard[y] = [...newBoard[y + 1]];
+          // 기존 블록들을 한 줄 위로 이동 (y좌표도 업데이트)
+          for (let y = 1; y < BOARD_CONFIG.ROWS; y++) {
+            for (let x = 0; x < BOARD_CONFIG.COLUMNS; x++) {
+              const block = board[y][x];
+              if (block) {
+                newBoard[y - 1][x] = { ...block, y: y - 1 };
+              }
+            }
           }
 
-          // 맨 아래에 쓰레기 블록 한 줄 추가
+          // 맨 아래에 쓰레기 블록 한 줄 추가 (빈칸 1개)
           const gapX = Math.floor(Math.random() * BOARD_CONFIG.COLUMNS);
           const bottomY = BOARD_CONFIG.ROWS - 1;
 
@@ -935,7 +947,7 @@ export const useGameStore = create<GameStore>()(
                 color: colors[Math.floor(Math.random() * colors.length)],
                 x,
                 y: bottomY,
-                specialType: Math.random() < 0.15 ? 'stone' : 'normal',
+                specialType: Math.random() < 0.1 ? 'stone' : 'normal',
                 createdAt: Date.now(),
               };
             }
@@ -943,12 +955,17 @@ export const useGameStore = create<GameStore>()(
 
           set({ board: newBoard });
 
-          // 게임 오버 체크
+          // 게임 오버 체크 - 맨 위에 블록이 있으면
+          let hasTopBlock = false;
           for (let x = 0; x < BOARD_CONFIG.COLUMNS; x++) {
             if (newBoard[0][x] !== null) {
-              get().endGame();
-              return;
+              hasTopBlock = true;
+              break;
             }
+          }
+          if (hasTopBlock) {
+            get().endGame();
+            return;
           }
 
           // 다음 줄 추가 (300ms 딜레이)
