@@ -325,127 +325,126 @@ export const useGameStore = create<GameStore>()(
         if (currentBlocks.length > 0) return;
         if (gameStatus !== 'playing') return;
 
-        // 스폰 중복 방지 (플래그만 사용, 쿨다운 제거)
+        // 스폰 중복 방지
         if (isSpawning) return;
         isSpawning = true;
 
-        const blockCount = getFallingBlockCount(level);
+        try {
+          const blockCount = getFallingBlockCount(level);
 
-        // nextBlocks가 부족하면 추가 생성
-        let currentNextBlocks = [...nextBlocks];
-        let currentNextSpecialTypes = [...nextSpecialTypes];
-        while (currentNextBlocks.length < 10) {
-          currentNextBlocks.push(getRandomBlockColor(level));
-          currentNextSpecialTypes.push(getSpecialType(level, blocksPlaced + currentNextBlocks.length));
-        }
-
-        if (currentNextBlocks.length < 1) {
-          isSpawning = false;
-          return;
-        }
-
-        // 블록 모양 선택
-        const shape = getRandomShape(blockCount);
-        const offsets = shape.offsets;
-
-        // 모양의 경계 계산
-        const minX = Math.min(...offsets.map(o => o[0]));
-        const maxX = Math.max(...offsets.map(o => o[0]));
-        const minY = Math.min(...offsets.map(o => o[1]));
-        const maxY = Math.max(...offsets.map(o => o[1]));
-        const shapeWidth = maxX - minX + 1;
-        const shapeHeight = maxY - minY + 1;
-
-        // 시작 위치 결정 (중앙에서 시작, 모양 크기 고려)
-        let baseX: number, baseY: number;
-
-        switch (gravityDirection) {
-          case 'down':
-            baseX = Math.floor((BOARD_CONFIG.COLUMNS - shapeWidth) / 2);
-            baseY = 0;
-            break;
-          case 'up':
-            baseX = Math.floor((BOARD_CONFIG.COLUMNS - shapeWidth) / 2);
-            baseY = BOARD_CONFIG.ROWS - 1 - shapeHeight + 1;
-            break;
-          case 'left':
-            baseX = BOARD_CONFIG.COLUMNS - shapeWidth;
-            baseY = Math.floor((BOARD_CONFIG.ROWS - shapeHeight) / 2);
-            break;
-          case 'right':
-            baseX = 0;
-            baseY = Math.floor((BOARD_CONFIG.ROWS - shapeHeight) / 2);
-            break;
-        }
-
-        // 모양에 따라 블록 생성
-        // 각 블록마다 다른 색상! (같은 색이면 바로 터져서 너무 쉬움)
-        const newBlocks: FallingBlock[] = [];
-
-        for (let i = 0; i < offsets.length; i++) {
-          const [dx, dy] = offsets[i];
-          const color = currentNextBlocks[i] || currentNextBlocks[0]; // 각 블록마다 다른 색
-          const specialType = i === 0 ? (currentNextSpecialTypes[0] || 'normal') : 'normal';
-
-          const startX = baseX + dx;
-          const startY = baseY + dy;
-
-          // 범위 체크
-          if (startX < 0 || startX >= BOARD_CONFIG.COLUMNS) continue;
-          if (startY < 0 || startY >= BOARD_CONFIG.ROWS) continue;
-
-          // 해당 위치에 블록이 없으면 추가
-          if (board[startY][startX] === null) {
-            newBlocks.push({
-              id: uuidv4(),
-              color,
-              x: startX,
-              y: startY,
-              targetY: startY,
-              specialType,
-            });
+          // nextBlocks가 부족하면 추가 생성
+          let currentNextBlocks = [...nextBlocks];
+          let currentNextSpecialTypes = [...nextSpecialTypes];
+          while (currentNextBlocks.length < 10) {
+            currentNextBlocks.push(getRandomBlockColor(level));
+            currentNextSpecialTypes.push(getSpecialType(level, blocksPlaced + currentNextBlocks.length));
           }
-        }
 
-        // 게임오버 체크 - 모든 시작 위치가 막힘
-        if (newBlocks.length === 0) {
-          isSpawning = false;
-          get().endGame();
-          return;
-        }
-
-        // 상단 줄 게임오버 체크
-        if (gravityDirection === 'down') {
-          let topRowBlocks = 0;
-          for (let x = 0; x < BOARD_CONFIG.COLUMNS; x++) {
-            if (board[0][x] !== null) topRowBlocks++;
-            if (board[1][x] !== null) topRowBlocks++;
+          if (currentNextBlocks.length < 1) {
+            return;
           }
-          if (topRowBlocks >= BOARD_CONFIG.COLUMNS) {
-            isSpawning = false;
+
+          // 블록 모양 선택
+          const shape = getRandomShape(blockCount);
+          const offsets = shape.offsets;
+
+          // 모양의 경계 계산
+          const minX = Math.min(...offsets.map(o => o[0]));
+          const maxX = Math.max(...offsets.map(o => o[0]));
+          const minY = Math.min(...offsets.map(o => o[1]));
+          const maxY = Math.max(...offsets.map(o => o[1]));
+          const shapeWidth = maxX - minX + 1;
+          const shapeHeight = maxY - minY + 1;
+
+          // 시작 위치 결정 (중앙에서 시작, 모양 크기 고려)
+          let baseX: number, baseY: number;
+
+          switch (gravityDirection) {
+            case 'down':
+              baseX = Math.floor((BOARD_CONFIG.COLUMNS - shapeWidth) / 2);
+              baseY = 0;
+              break;
+            case 'up':
+              baseX = Math.floor((BOARD_CONFIG.COLUMNS - shapeWidth) / 2);
+              baseY = BOARD_CONFIG.ROWS - 1 - shapeHeight + 1;
+              break;
+            case 'left':
+              baseX = BOARD_CONFIG.COLUMNS - shapeWidth;
+              baseY = Math.floor((BOARD_CONFIG.ROWS - shapeHeight) / 2);
+              break;
+            case 'right':
+              baseX = 0;
+              baseY = Math.floor((BOARD_CONFIG.ROWS - shapeHeight) / 2);
+              break;
+          }
+
+          // 모양에 따라 블록 생성
+          // 각 블록마다 다른 색상! (같은 색이면 바로 터져서 너무 쉬움)
+          const newBlocks: FallingBlock[] = [];
+
+          for (let i = 0; i < offsets.length; i++) {
+            const [dx, dy] = offsets[i];
+            const color = currentNextBlocks[i] || currentNextBlocks[0]; // 각 블록마다 다른 색
+            const specialType = i === 0 ? (currentNextSpecialTypes[0] || 'normal') : 'normal';
+
+            const startX = baseX + dx;
+            const startY = baseY + dy;
+
+            // 범위 체크
+            if (startX < 0 || startX >= BOARD_CONFIG.COLUMNS) continue;
+            if (startY < 0 || startY >= BOARD_CONFIG.ROWS) continue;
+
+            // 해당 위치에 블록이 없으면 추가
+            if (board[startY][startX] === null) {
+              newBlocks.push({
+                id: uuidv4(),
+                color,
+                x: startX,
+                y: startY,
+                targetY: startY,
+                specialType,
+              });
+            }
+          }
+
+          // 게임오버 체크 - 모든 시작 위치가 막힘
+          if (newBlocks.length === 0) {
             get().endGame();
             return;
           }
+
+          // 상단 줄 게임오버 체크
+          if (gravityDirection === 'down') {
+            let topRowBlocks = 0;
+            for (let x = 0; x < BOARD_CONFIG.COLUMNS; x++) {
+              if (board[0][x] !== null) topRowBlocks++;
+              if (board[1][x] !== null) topRowBlocks++;
+            }
+            if (topRowBlocks >= BOARD_CONFIG.COLUMNS) {
+              get().endGame();
+              return;
+            }
+          }
+
+          // 새 블록 색상들 생성 (블록 개수만큼 소비)
+          const newNextBlocks = [...currentNextBlocks.slice(blockCount)];
+          const newNextSpecialTypes = [...currentNextSpecialTypes.slice(blockCount)];
+
+          set({
+            currentBlock: newBlocks[0] || null,
+            currentBlocks: newBlocks,
+            nextBlocks: newNextBlocks,
+            nextSpecialTypes: newNextSpecialTypes,
+            canHold: true,
+            blocksPlaced: blocksPlaced + blockCount,
+            fallingBlockCount: blockCount,
+            currentShapeOffsets: offsets as [number, number][],
+            basePosition: { x: baseX, y: baseY },
+          });
+        } finally {
+          // 스폰 완료 플래그 해제 (항상 실행됨)
+          isSpawning = false;
         }
-
-        // 새 블록 색상들 생성 (블록 개수만큼 소비)
-        const newNextBlocks = [...currentNextBlocks.slice(blockCount)];
-        const newNextSpecialTypes = [...currentNextSpecialTypes.slice(blockCount)];
-
-        set({
-          currentBlock: newBlocks[0] || null,
-          currentBlocks: newBlocks,
-          nextBlocks: newNextBlocks,
-          nextSpecialTypes: newNextSpecialTypes,
-          canHold: true,
-          blocksPlaced: blocksPlaced + blockCount,
-          fallingBlockCount: blockCount,
-          currentShapeOffsets: offsets as [number, number][],
-          basePosition: { x: baseX, y: baseY },
-        });
-
-        // 스폰 완료 플래그 해제
-        isSpawning = false;
       },
 
       moveBlock: (direction) => {

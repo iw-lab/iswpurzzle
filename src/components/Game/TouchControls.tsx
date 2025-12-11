@@ -7,9 +7,27 @@ interface TouchControlsProps {
   visible?: boolean;
 }
 
+// 터치 디바운스 시간 (ms)
+const TOUCH_DEBOUNCE = 150;
+
 export function TouchControls({ visible = true }: TouchControlsProps) {
   const { playSound } = useAudio();
   const moveIntervalRef = useRef<number | null>(null);
+  const lastActionTimeRef = useRef<Record<string, number>>({});
+
+  // 디바운스된 액션 실행
+  const executeWithDebounce = useCallback((actionKey: string, action: () => void) => {
+    const now = Date.now();
+    const lastTime = lastActionTimeRef.current[actionKey] || 0;
+
+    if (now - lastTime < TOUCH_DEBOUNCE) {
+      return false; // 디바운스 중
+    }
+
+    lastActionTimeRef.current[actionKey] = now;
+    action();
+    return true;
+  }, []);
 
   // 키보드 이벤트 핸들링
   useEffect(() => {
@@ -115,25 +133,42 @@ export function TouchControls({ visible = true }: TouchControlsProps) {
     };
   }, []);
 
-  const handlePress = useCallback((action: () => void, sound: 'buttonClick' | 'blockRotate' | 'hardDrop' | 'blockMove' = 'buttonClick') => {
-    playSound(sound);
-    action();
-  }, [playSound]);
+  const handleHardDrop = useCallback(() => {
+    executeWithDebounce('hardDrop', () => {
+      playSound('hardDrop');
+      useGameStore.getState().hardDrop();
+    });
+  }, [playSound, executeWithDebounce]);
+
+  const handleRotate = useCallback(() => {
+    executeWithDebounce('rotate', () => {
+      playSound('blockRotate');
+      useGameStore.getState().rotateBlock();
+    });
+  }, [playSound, executeWithDebounce]);
+
+  const handleSoftDrop = useCallback(() => {
+    executeWithDebounce('softDrop', () => {
+      playSound('blockMove');
+      useGameStore.getState().softDrop();
+    });
+  }, [playSound, executeWithDebounce]);
 
   const startMoving = useCallback((dir: 'left' | 'right') => {
+    // 이동은 디바운스 적용하지 않음 (길게 누르기 지원)
     playSound('blockMove');
     useGameStore.getState().moveBlock(dir);
 
     // 기존 인터벌 정리
     if (moveIntervalRef.current) clearInterval(moveIntervalRef.current);
+    if ((moveIntervalRef as any).timeout) clearTimeout((moveIntervalRef as any).timeout);
 
-    // 길게 누르면 반복 이동 (첫 반복까지 200ms 대기)
+    // 길게 누르면 반복 이동 (첫 반복까지 300ms 대기)
     const startRepeat = setTimeout(() => {
       moveIntervalRef.current = window.setInterval(() => {
-        playSound('blockMove');
         useGameStore.getState().moveBlock(dir);
-      }, 100);
-    }, 200);
+      }, 80); // 반복 속도 약간 늦춤
+    }, 300); // 첫 반복까지 대기 시간 증가
 
     // stopMoving에서 정리할 수 있도록 저장
     (moveIntervalRef as any).timeout = startRepeat;
@@ -170,7 +205,7 @@ export function TouchControls({ visible = true }: TouchControlsProps) {
           />
           <DirectionButton
             icon="▼"
-            onStart={() => handlePress(() => useGameStore.getState().softDrop(), 'blockMove')}
+            onStart={handleSoftDrop}
           />
           <DirectionButton
             icon="▶"
@@ -188,8 +223,7 @@ export function TouchControls({ visible = true }: TouchControlsProps) {
                        ? 'bg-gradient-to-br from-purple-500 to-indigo-600 border-purple-700'
                        : 'bg-slate-700 border-slate-600 opacity-50'}`}
           whileTap={{ scale: 0.9 }}
-          onTouchStart={(e) => { e.preventDefault(); handlePress(() => useGameStore.getState().rotateBlock(), 'blockRotate'); }}
-          onMouseDown={() => handlePress(() => useGameStore.getState().rotateBlock(), 'blockRotate')}
+          onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); handleRotate(); }}
         >
           <span className="text-xl">↻</span>
           <span className="text-[8px] opacity-80">회전</span>
@@ -202,8 +236,7 @@ export function TouchControls({ visible = true }: TouchControlsProps) {
                      shadow-lg shadow-orange-500/30 border-b-4 border-orange-700
                      active:border-b-0 active:translate-y-1 transition-all"
           whileTap={{ scale: 0.95 }}
-          onTouchStart={(e) => { e.preventDefault(); handlePress(() => useGameStore.getState().hardDrop(), 'hardDrop'); }}
-          onMouseDown={() => handlePress(() => useGameStore.getState().hardDrop(), 'hardDrop')}
+          onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); handleHardDrop(); }}
         >
           <span className="text-xl">⚡</span>
           <span className="text-sm">DROP</span>
@@ -223,6 +256,18 @@ function DirectionButton({
   onStart: () => void;
   onEnd?: () => void;
 }) {
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onStart();
+  }, [onStart]);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onEnd?.();
+  }, [onEnd]);
+
   return (
     <motion.button
       className="w-14 h-14 rounded-2xl bg-slate-700/90 backdrop-blur
@@ -230,11 +275,9 @@ function DirectionButton({
                  shadow-lg border-b-4 border-slate-600
                  active:border-b-0 active:translate-y-1 transition-all"
       whileTap={{ scale: 0.9 }}
-      onTouchStart={(e) => { e.preventDefault(); onStart(); }}
-      onTouchEnd={(e) => { e.preventDefault(); onEnd?.(); }}
-      onMouseDown={onStart}
-      onMouseUp={onEnd}
-      onMouseLeave={onEnd}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
     >
       {icon}
     </motion.button>
