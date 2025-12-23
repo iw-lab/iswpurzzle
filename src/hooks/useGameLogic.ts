@@ -528,105 +528,108 @@ export function useGameLogic() {
     processingRef.current = true;
     setIsProcessingFusion(true);
 
-    let totalScore = 0;
-    let totalCleared = 0;
-    let currentChain = 0;
-    let workingBoard = useGameStore.getState().board;
+    try {
+      let totalScore = 0;
+      let totalCleared = 0;
+      let currentChain = 0;
+      let workingBoard = useGameStore.getState().board;
 
-    resetChain();
+      resetChain();
 
-    // 연쇄 반응 루프
-    while (true) {
-      const { result, newBoard } = await processFusion(workingBoard);
+      // 연쇄 반응 루프
+      while (true) {
+        const { result, newBoard } = await processFusion(workingBoard);
 
-      if (!result) break;
+        if (!result) break;
 
-      workingBoard = newBoard;
-      updateBoard(workingBoard);
+        workingBoard = newBoard;
+        updateBoard(workingBoard);
 
-      currentChain++;
-      totalScore += result.score;
-      totalCleared += result.clearedBlocks.length;
+        currentChain++;
+        totalScore += result.score;
+        totalCleared += result.clearedBlocks.length;
 
-      incrementChain();
-      setChainEffects(currentChain);
+        incrementChain();
+        setChainEffects(currentChain);
 
-      // 연쇄 딜레이
-      await new Promise((resolve) => setTimeout(resolve, TIMING_CONFIG.CHAIN_DELAY));
-    }
-
-    if (totalScore > 0) {
-      addScore(totalScore);
-      incrementCombo();
-
-      // 통계 업데이트
-      updateStatistics({
-        totalBlocksCleared: statistics.totalBlocksCleared + totalCleared,
-        totalFusions: statistics.totalFusions + 1,
-        maxChain: Math.max(statistics.maxChain, currentChain),
-      });
-
-      // 미션 업데이트
-      updateMissionProgress('blocks_fused', totalCleared);
-      if (currentChain >= 5) {
-        updateMissionProgress('chain', 1);
+        // 연쇄 딜레이
+        await new Promise((resolve) => setTimeout(resolve, TIMING_CONFIG.CHAIN_DELAY));
       }
 
-      // 퍼즐 모드 목표 업데이트
-      const currentMode = useGameStore.getState().gameMode;
-      if (currentMode === 'puzzle') {
-        const state = useGameStore.getState();
+      if (totalScore > 0) {
+        addScore(totalScore);
+        incrementCombo();
 
-        // 점수 목표 - 현재 점수 + 이번 점수로 설정 (누적이므로 이번 점수만 더함)
-        updateLevelObjective('score', totalScore);
+        // 통계 업데이트
+        updateStatistics({
+          totalBlocksCleared: statistics.totalBlocksCleared + totalCleared,
+          totalFusions: statistics.totalFusions + 1,
+          maxChain: Math.max(statistics.maxChain, currentChain),
+        });
 
-        // 블록 클리어 목표
-        updateLevelObjective('clearBlocks', totalCleared);
-
-        // 연쇄 목표 (최대 연쇄만 기록)
-        if (currentChain > 0) {
-          const currentObjective = state.levelObjectives.find(o => o.type === 'chains');
-          if (currentObjective && currentChain > currentObjective.current) {
-            // 기존값과 차이만큼만 업데이트
-            updateLevelObjective('chains', currentChain - currentObjective.current);
-          }
+        // 미션 업데이트
+        updateMissionProgress('blocks_fused', totalCleared);
+        if (currentChain >= 5) {
+          updateMissionProgress('chain', 1);
         }
 
-        // 퍼즐 완료 체크
+        // 퍼즐 모드 목표 업데이트
+        const currentMode = useGameStore.getState().gameMode;
+        if (currentMode === 'puzzle') {
+          const state = useGameStore.getState();
+
+          // 점수 목표 - 현재 점수 + 이번 점수로 설정 (누적이므로 이번 점수만 더함)
+          updateLevelObjective('score', totalScore);
+
+          // 블록 클리어 목표
+          updateLevelObjective('clearBlocks', totalCleared);
+
+          // 연쇄 목표 (최대 연쇄만 기록)
+          if (currentChain > 0) {
+            const currentObjective = state.levelObjectives.find(o => o.type === 'chains');
+            if (currentObjective && currentChain > currentObjective.current) {
+              // 기존값과 차이만큼만 업데이트
+              updateLevelObjective('chains', currentChain - currentObjective.current);
+            }
+          }
+
+          // 퍼즐 완료 체크
+          setTimeout(() => {
+            useGameStore.getState().checkPuzzleComplete();
+          }, 100);
+        }
+
+        // 업적 업데이트
+        updateAchievement('chain_5', currentChain);
+        updateAchievement('chain_10', currentChain);
+        updateAchievement('chain_15', currentChain);
+        updateAchievement('chain_20', currentChain);
+
+        // 배틀패스 XP
+        addBattlePassXP(Math.floor(totalScore / 100));
+
+        // 콤보 타임아웃 설정
+        if (comboTimeoutRef.current) {
+          clearTimeout(comboTimeoutRef.current);
+        }
+
+        comboTimeoutRef.current = window.setTimeout(() => {
+          resetCombo();
+        }, TIMING_CONFIG.COMBO_TIMEOUT);
+      }
+    } finally {
+      // 항상 실행 - 에러가 발생해도 플래그 리셋
+      setChainEffects(0);
+      setIsProcessingFusion(false);
+      processingRef.current = false;
+
+      // 새 블록 생성
+      const currentGameStatus = useGameStore.getState().gameStatus;
+      if (currentGameStatus === 'playing') {
         setTimeout(() => {
-          useGameStore.getState().checkPuzzleComplete();
-        }, 100);
+          spawnBlock();
+        }, 50);
       }
-
-      // 업적 업데이트
-      updateAchievement('chain_5', currentChain);
-      updateAchievement('chain_10', currentChain);
-      updateAchievement('chain_15', currentChain);
-      updateAchievement('chain_20', currentChain);
-
-      // 배틀패스 XP
-      addBattlePassXP(Math.floor(totalScore / 100));
-
-      // 콤보 타임아웃 설정
-      if (comboTimeoutRef.current) {
-        clearTimeout(comboTimeoutRef.current);
-      }
-
-      comboTimeoutRef.current = window.setTimeout(() => {
-        resetCombo();
-      }, TIMING_CONFIG.COMBO_TIMEOUT);
-    }
-
-    setChainEffects(0);
-    setIsProcessingFusion(false);
-    processingRef.current = false;
-
-    // 새 블록 생성
-    const currentGameStatus = useGameStore.getState().gameStatus;
-    if (currentGameStatus === 'playing') {
-      setTimeout(() => {
-        spawnBlock();
-      }, 50);
     }
   }, [
     processFusion,
@@ -689,7 +692,7 @@ export function useGameLogic() {
     }
   }, [board, gameStatus, currentBlocks.length, level, processChainReaction]);
 
-  // 게임 루프 (자동 낙하) - 다중 블록 지원
+  // 게임 루프 (자동 낙하) - 다중 블록 지원 + 주기적 융합 체크
   useEffect(() => {
     if (gameStatus !== 'playing' || isProcessingFusion) {
       if (dropIntervalRef.current) {
@@ -700,6 +703,7 @@ export function useGameLogic() {
     }
 
     lastDropTimeRef.current = Date.now();
+    let lastFusionCheck = Date.now();
 
     const gameLoop = () => {
       const now = Date.now();
@@ -712,6 +716,17 @@ export function useGameLogic() {
           lastDropTimeRef.current = now;
         }
       }
+
+      // 주기적 융합 체크 (500ms마다) - 현재 블록이 없을 때만
+      if (currentState.currentBlocks.length === 0 && !processingRef.current) {
+        if (now - lastFusionCheck >= 500) {
+          lastFusionCheck = now;
+          const groups = findFusionGroupsSimple(currentState.board, currentState.level);
+          if (groups.length > 0) {
+            processChainReaction();
+          }
+        }
+      }
     };
 
     dropIntervalRef.current = window.setInterval(gameLoop, 50);
@@ -722,7 +737,7 @@ export function useGameLogic() {
         dropIntervalRef.current = null;
       }
     };
-  }, [gameStatus, dropSpeed, isProcessingFusion]);
+  }, [gameStatus, dropSpeed, isProcessingFusion, processChainReaction]);
 
   // 컴포넌트 언마운트 시 정리
   useEffect(() => {
