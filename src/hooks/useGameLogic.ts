@@ -77,7 +77,41 @@ function findFusionGroups(board: GameBoard, level: number): Block[][] {
 
 // 간단한 융합 그룹 찾기 (보드 체크용)
 function findFusionGroupsSimple(board: GameBoard, level: number): Block[][] {
-  return findFusionGroups(board, level);
+  const groups = findFusionGroups(board, level);
+
+  // 디버깅: 보드에 있는 모든 블록 색상 카운트
+  const colorCounts: Record<string, number> = {};
+  for (let y = 0; y < BOARD_CONFIG.ROWS; y++) {
+    for (let x = 0; x < BOARD_CONFIG.COLUMNS; x++) {
+      const block = board[y][x];
+      if (block) {
+        colorCounts[block.color] = (colorCounts[block.color] || 0) + 1;
+      }
+    }
+  }
+
+  if (Object.keys(colorCounts).length > 0) {
+    const hasMany = Object.entries(colorCounts).filter(([_, count]) => count >= 4);
+    if (hasMany.length > 0 && groups.length === 0) {
+      console.warn('[FusionCheck] WARNING: Colors with 4+ blocks but no fusion groups:', hasMany);
+      // 디버깅: 각 색상별 연결 상태 확인
+      for (const [color] of hasMany) {
+        for (let y = 0; y < BOARD_CONFIG.ROWS; y++) {
+          for (let x = 0; x < BOARD_CONFIG.COLUMNS; x++) {
+            const block = board[y][x];
+            if (block && block.color === color) {
+              const connected = findConnectedBlocks(board, x, y, block.color as BlockColor);
+              if (connected.length >= 4) {
+                console.log(`[FusionCheck] Found connected ${color} at (${x},${y}): ${connected.length} blocks`);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return groups;
 }
 
 // 블록 제거 및 낙하 처리
@@ -408,6 +442,13 @@ export function useGameLogic() {
   const processFusion = useCallback(async (currentBoard: GameBoard): Promise<{ result: FusionResult | null; newBoard: GameBoard }> => {
     const groups = findFusionGroups(currentBoard, level);
 
+    console.log('[ProcessFusion] Found', groups.length, 'fusion groups');
+    if (groups.length > 0) {
+      groups.forEach((group, idx) => {
+        console.log(`[ProcessFusion] Group ${idx}: ${group.length} blocks, color: ${group[0]?.color}`);
+      });
+    }
+
     if (groups.length === 0) {
       return { result: null, newBoard: currentBoard };
     }
@@ -524,9 +565,13 @@ export function useGameLogic() {
 
   // 연쇄 반응 처리
   const processChainReaction = useCallback(async () => {
-    if (processingRef.current) return;
+    if (processingRef.current) {
+      console.log('[ChainReaction] Skipped - already processing');
+      return;
+    }
     processingRef.current = true;
     setIsProcessingFusion(true);
+    console.log('[ChainReaction] Started');
 
     try {
       let totalScore = 0;
@@ -537,10 +582,17 @@ export function useGameLogic() {
       resetChain();
 
       // 연쇄 반응 루프
-      while (true) {
+      let loopCount = 0;
+      const maxLoops = 100; // 무한 루프 방지
+
+      while (loopCount < maxLoops) {
+        loopCount++;
         const { result, newBoard } = await processFusion(workingBoard);
 
-        if (!result) break;
+        if (!result) {
+          console.log('[ChainReaction] No more fusions found after', loopCount, 'iterations');
+          break;
+        }
 
         workingBoard = newBoard;
         updateBoard(workingBoard);
@@ -717,14 +769,16 @@ export function useGameLogic() {
         }
       }
 
-      // 주기적 융합 체크 (500ms마다) - 현재 블록이 없을 때만
-      if (currentState.currentBlocks.length === 0 && !processingRef.current) {
-        if (now - lastFusionCheck >= 500) {
-          lastFusionCheck = now;
-          const groups = findFusionGroupsSimple(currentState.board, currentState.level);
-          if (groups.length > 0) {
-            processChainReaction();
-          }
+      // 주기적 융합 체크 (100ms마다) - 더 자주 체크
+      // 현재 블록이 있어도 보드의 융합 가능한 블록 체크
+      if (now - lastFusionCheck >= 100 && !processingRef.current) {
+        lastFusionCheck = now;
+
+        const groups = findFusionGroupsSimple(currentState.board, currentState.level);
+        if (groups.length > 0) {
+          console.log('[Fusion] Found fusion groups:', groups.length, 'groups, currentBlocks:', currentState.currentBlocks.length);
+          // 현재 블록이 있으면 잠시 멈추고 융합 처리
+          processChainReaction();
         }
       }
     };
