@@ -138,20 +138,20 @@ export const SPECIAL_BLOCK_CONFIG: Record<SpecialBlockType, {
 
 // 게임 타이밍 설정
 export const TIMING_CONFIG = {
-  BASE_DROP_SPEED: 600,         // 레벨 1 낙하 속도 (ms) - 더 빠르게!
-  SPEED_DECREASE_PER_LEVEL: 40, // 레벨당 속도 감소 - 더 급격하게!
-  MIN_DROP_SPEED: 80,           // 최소 낙하 속도 - 더 빠르게!
-  LOCK_DELAY: 300,              // 잠금 딜레이 감소
+  BASE_DROP_SPEED: 1000,        // 레벨 1 낙하 속도 (ms) - 느리게 시작
+  SPEED_DECREASE_PER_LEVEL: 20, // 레벨당 속도 감소 - 완만하게
+  MIN_DROP_SPEED: 200,          // 최소 낙하 속도 - 너무 빠르지 않게
+  LOCK_DELAY: 400,              // 잠금 딜레이
   DAS_DELAY: 120,
   ARR_RATE: 30,
   SOFT_DROP_MULTIPLIER: 15,
   FUSION_ANIMATION_DURATION: 180,
   CHAIN_DELAY: 120,
-  COMBO_TIMEOUT: 2000,          // 콤보 유지 시간 감소
+  COMBO_TIMEOUT: 3000,          // 콤보 유지 시간
   FEVER_DURATION: 8000,         // 피버 모드 지속 시간
   SPECIAL_EFFECT_DURATION: 300, // 특수 효과 지속 시간
-  GARBAGE_INTERVAL: 25,         // 쓰레기 블록 추가 간격 (초) - 더 빠르게
-  GARBAGE_WARNING_TIME: 3,      // 쓰레기 블록 경고 시간 (초)
+  GARBAGE_INTERVAL: 45,         // 쓰레기 블록 추가 간격 (초) - 늦게
+  GARBAGE_WARNING_TIME: 5,      // 쓰레기 블록 경고 시간 (초)
 };
 
 // 점수 설정
@@ -192,10 +192,10 @@ export const FEVER_CONFIG = {
 
 // 난이도 설정
 export const DIFFICULTY_CONFIG = {
-  // 레벨별 특수 블록 등장 확률 증가 (감소됨: 0.012 -> 0.006)
-  SPECIAL_CHANCE_PER_LEVEL: 0.006,
-  // 레벨별 돌 블록 등장 확률 (감소됨: 0.008 -> 0.004)
-  STONE_CHANCE_PER_LEVEL: 0.004,
+  // 레벨별 특수 블록 등장 확률 증가 (완만하게)
+  SPECIAL_CHANCE_PER_LEVEL: 0.004,
+  // 레벨별 돌 블록 등장 확률 (완만하게)
+  STONE_CHANCE_PER_LEVEL: 0.003,
   // 위험 레벨 임계값 (상단에서 몇 줄 차면)
   DANGER_THRESHOLD_1: 4,
   DANGER_THRESHOLD_2: 3,
@@ -203,27 +203,27 @@ export const DIFFICULTY_CONFIG = {
   // 레벨별 필요 클리어 블록 수
   BLOCKS_PER_LEVEL: 50,
   // 다중 블록 낙하 설정 (현재 사용 안 함 - getFallingBlockCount 함수로 대체)
-  MULTI_BLOCK_START_LEVEL: 1,      // 2개 블록 시작 레벨 (레벨 1부터)
-  TRIPLE_BLOCK_START_LEVEL: 5,     // 3개 블록 시작 레벨
+  MULTI_BLOCK_START_LEVEL: 2,      // 2개 블록 시작 레벨 (레벨 2부터)
+  TRIPLE_BLOCK_START_LEVEL: 8,     // 3개 블록 시작 레벨
   // 쓰레기 블록 설정
-  GARBAGE_START_LEVEL: 5,          // 쓰레기 블록 시작 레벨 (레벨 5부터)
+  GARBAGE_START_LEVEL: 10,         // 쓰레기 블록 시작 레벨 (레벨 10부터)
   GARBAGE_ROWS_PER_INTERVAL: 1,    // 기본 추가 줄 수
-  GARBAGE_MAX_ROWS: 3,             // 최대 쓰레기 줄 수 (한번에 최대 3줄)
+  GARBAGE_MAX_ROWS: 2,             // 최대 쓰레기 줄 수 (한번에 최대 2줄)
   // 레벨별 쓰레기 간격 감소
-  GARBAGE_INTERVAL_DECREASE: 0.5,  // 레벨당 감소 초
-  GARBAGE_MIN_INTERVAL: 10,        // 최소 쓰레기 간격 (초)
+  GARBAGE_INTERVAL_DECREASE: 0.3,  // 레벨당 감소 초 (완만하게)
+  GARBAGE_MIN_INTERVAL: 20,        // 최소 쓰레기 간격 (초)
 };
 
 // 레벨별 동시 낙하 블록 수 계산
 export function getFallingBlockCount(level: number): number {
-  if (level >= 30) return 8;  // 레벨 30부터 8개
-  if (level >= 25) return 7;  // 레벨 25부터 7개
-  if (level >= 20) return 6;  // 레벨 20부터 6개
-  if (level >= 15) return 5;  // 레벨 15부터 5개
-  if (level >= 10) return 4;  // 레벨 10부터 4개
-  if (level >= 5) return 3;   // 레벨 5부터 3개
-  if (level >= 3) return 2;   // 레벨 3부터 2개
-  return 1;                   // 레벨 1-2는 1개
+  if (level >= 40) return 8;  // 레벨 40부터 8개
+  if (level >= 35) return 7;  // 레벨 35부터 7개
+  if (level >= 30) return 6;  // 레벨 30부터 6개
+  if (level >= 25) return 5;  // 레벨 25부터 5개
+  if (level >= 20) return 4;  // 레벨 20부터 4개
+  if (level >= 10) return 3;  // 레벨 10부터 3개
+  if (level >= 2) return 2;   // 레벨 2부터 2개
+  return 1;                   // 레벨 1만 1개
 }
 
 // 블록 모양 정의 (상대 좌표)

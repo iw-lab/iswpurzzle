@@ -10,7 +10,7 @@ interface NextBlockPreviewProps {
 }
 
 export function NextBlockPreview({
-  cellSize = 24,
+  cellSize = 28,
   maxBlocks = NEXT_PREVIEW_COUNT,
 }: NextBlockPreviewProps) {
   const { nextBlocks, nextSpecialTypes } = useGameStore();
@@ -18,32 +18,36 @@ export function NextBlockPreview({
   const displaySpecialTypes = nextSpecialTypes?.slice(0, maxBlocks) || [];
 
   return (
-    <div className="glass-panel rounded-xl p-3 flex flex-col items-center min-w-[60px]">
-      <h3 className="text-[10px] font-bold text-gray-400 mb-3 tracking-widest text-center">NEXT</h3>
-      <div className="flex flex-col gap-3 items-center">
-        {displayBlocks.map((color, index) => (
-          <motion.div
-            key={`next-${index}`}
-            className="relative"
-            initial={{ opacity: 0, scale: 0 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: index * 0.1 }}
-            style={{
-              transform: `scale(${index === 0 ? 1 : 0.8})`,
-              opacity: index === 0 ? 1 : 0.6,
-              filter: index === 0 ? 'none' : 'grayscale(30%)',
-            }}
-          >
-            <Block
-              color={color}
-              size={cellSize}
-              specialType={displaySpecialTypes[index] || 'normal'}
-            />
-            {index === 0 && (
-              <div className="absolute -inset-2 rounded-full border border-white/20 animate-pulse pointer-events-none" />
-            )}
-          </motion.div>
-        ))}
+    <div className="glass-panel rounded-xl p-4 flex flex-col items-center min-w-[80px]">
+      <h3 className="text-[10px] font-bold text-gray-400 mb-4 tracking-widest text-center">NEXT</h3>
+      <div className="flex flex-col gap-4 items-center">
+        {displayBlocks.map((color, index) => {
+          const blockSize = index === 0 ? cellSize : Math.floor(cellSize * 0.75);
+          return (
+            <motion.div
+              key={`next-${index}`}
+              className="relative flex items-center justify-center"
+              initial={{ opacity: 0, scale: 0 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: index * 0.1 }}
+              style={{
+                width: cellSize + 8,
+                height: cellSize + 8,
+                opacity: index === 0 ? 1 : 0.5,
+                filter: index === 0 ? 'none' : 'grayscale(30%)',
+              }}
+            >
+              <Block
+                color={color}
+                size={blockSize}
+                specialType={displaySpecialTypes[index] || 'normal'}
+              />
+              {index === 0 && (
+                <div className="absolute -inset-1 rounded-lg border-2 border-white/30 animate-pulse pointer-events-none" />
+              )}
+            </motion.div>
+          );
+        })}
       </div>
     </div>
   );
