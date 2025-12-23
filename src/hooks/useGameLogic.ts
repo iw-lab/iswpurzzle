@@ -75,6 +75,11 @@ function findFusionGroups(board: GameBoard, level: number): Block[][] {
   return groups;
 }
 
+// 간단한 융합 그룹 찾기 (보드 체크용)
+function findFusionGroupsSimple(board: GameBoard, level: number): Block[][] {
+  return findFusionGroups(board, level);
+}
+
 // 블록 제거 및 낙하 처리
 function applyGravity(
   board: GameBoard,
@@ -391,7 +396,8 @@ export function useGameLogic() {
   const comboTimeoutRef = useRef<number | null>(null);
   const lastDropTimeRef = useRef<number>(0);
   const processingRef = useRef<boolean>(false);
-  const lastBlockPlacedRef = useRef<boolean>(false);
+  const lastBlockCountRef = useRef<number>(0);
+  const boardVersionRef = useRef<number>(0);
 
   // 낙하 속도 계산
   const dropSpeed = activePowerUp?.type === 'timeSlow'
@@ -641,14 +647,47 @@ export function useGameLogic() {
 
   // 블록이 배치되었을 때 처리 (다중 블록 지원)
   useEffect(() => {
-    // currentBlocks가 있다가 비면 (모든 블록 배치됨) 융합 체크
-    if (currentBlocks.length > 0) {
-      lastBlockPlacedRef.current = true;
-    } else if (lastBlockPlacedRef.current && gameStatus === 'playing' && !processingRef.current) {
-      lastBlockPlacedRef.current = false;
-      processChainReaction();
+    const prevCount = lastBlockCountRef.current;
+    const currCount = currentBlocks.length;
+    lastBlockCountRef.current = currCount;
+
+    // 블록이 있다가 0이 되면 (모든 블록 배치됨) 융합 체크
+    if (prevCount > 0 && currCount === 0 && gameStatus === 'playing' && !processingRef.current) {
+      // 약간의 딜레이를 주어 보드 업데이트가 완료되도록 함
+      setTimeout(() => {
+        if (!processingRef.current && useGameStore.getState().gameStatus === 'playing') {
+          processChainReaction();
+        }
+      }, 50);
     }
-  }, [currentBlocks, gameStatus, processChainReaction]);
+  }, [currentBlocks.length, gameStatus, processChainReaction]);
+
+  // 보드 변경 시 추가 융합 체크 (안전장치)
+  useEffect(() => {
+    boardVersionRef.current++;
+    const currentVersion = boardVersionRef.current;
+
+    // 게임 중이고, 현재 블록이 없고, 처리 중이 아닐 때만
+    if (gameStatus === 'playing' && currentBlocks.length === 0 && !processingRef.current) {
+      // 보드에 융합 가능한 블록이 있는지 확인
+      const checkForFusions = () => {
+        if (boardVersionRef.current !== currentVersion) return;
+        if (processingRef.current) return;
+        if (useGameStore.getState().currentBlocks.length > 0) return;
+
+        const currentBoard = useGameStore.getState().board;
+        const groups = findFusionGroupsSimple(currentBoard, level);
+
+        if (groups.length > 0) {
+          processChainReaction();
+        }
+      };
+
+      // 지연 실행으로 다른 상태 업데이트와 충돌 방지
+      const timeoutId = setTimeout(checkForFusions, 100);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [board, gameStatus, currentBlocks.length, level, processChainReaction]);
 
   // 게임 루프 (자동 낙하) - 다중 블록 지원
   useEffect(() => {
