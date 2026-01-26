@@ -493,15 +493,20 @@ export function useGameLogic() {
 
     // 실제로 제거될 블록들
     for (const block of blocksToRemove) {
-      effects.push({ x: block.x, y: block.y, color: block.color });
-      workingBoard[block.y][block.x] = null;
-      totalCleared++;
+      // 안전한 좌표 검증
+      if (block.y >= 0 && block.y < BOARD_CONFIG.ROWS &&
+          block.x >= 0 && block.x < BOARD_CONFIG.COLUMNS &&
+          workingBoard[block.y]) {
+        effects.push({ x: block.x, y: block.y, color: block.color });
+        workingBoard[block.y][block.x] = null;
+        totalCleared++;
 
-      // 특수 블록 카운트
-      if (block.specialType !== 'normal') {
-        specialBlocksCleared++;
-        if (block.specialType === 'multiplier') {
-          hasMultiplierBlock = true;
+        // 특수 블록 카운트
+        if (block.specialType !== 'normal') {
+          specialBlocksCleared++;
+          if (block.specialType === 'multiplier') {
+            hasMultiplierBlock = true;
+          }
         }
       }
     }
@@ -595,13 +600,22 @@ export function useGameLogic() {
     }
     processingRef.current = true;
     setIsProcessingFusion(true);
-    console.log('[ChainReaction] Started');
+    console.log('[ChainReaction] ===== STARTED =====');
 
     try {
       let totalScore = 0;
       let totalCleared = 0;
       let currentChain = 0;
       let workingBoard = useGameStore.getState().board;
+
+      // 디버그: 현재 보드 상태 로깅
+      let blockCount = 0;
+      for (let y = 0; y < BOARD_CONFIG.ROWS; y++) {
+        for (let x = 0; x < BOARD_CONFIG.COLUMNS; x++) {
+          if (workingBoard[y]?.[x]) blockCount++;
+        }
+      }
+      console.log('[ChainReaction] Board has', blockCount, 'blocks');
 
       resetChain();
 
@@ -693,8 +707,11 @@ export function useGameLogic() {
           resetCombo();
         }, TIMING_CONFIG.COMBO_TIMEOUT);
       }
+    } catch (error) {
+      console.error('[ChainReaction] ERROR:', error);
     } finally {
       // 항상 실행 - 에러가 발생해도 플래그 리셋
+      console.log('[ChainReaction] ===== FINISHED =====');
       setChainEffects(0);
       setIsProcessingFusion(false);
       processingRef.current = false;
