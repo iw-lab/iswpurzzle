@@ -73,28 +73,60 @@ function findConnectedBlocks(
   return connected;
 }
 
-// 융합 가능한 블록 그룹 찾기 (레벨에 따라 최소 블록 수 변동)
+// 융합 가능한 블록 그룹 찾기 - 통합 함수
 function findFusionGroups(board: GameBoard, level: number): Block[][] {
+  const minBlocks = getMinBlocksToFuse(level);
   const groups: Block[][] = [];
   const processed = new Set<string>();
-  const minBlocks = getMinBlocksToFuse(level);
 
+  // 모든 셀을 순회하며 연결된 블록 그룹 찾기
   for (let y = 0; y < BOARD_CONFIG.ROWS; y++) {
     for (let x = 0; x < BOARD_CONFIG.COLUMNS; x++) {
       const block = board[y]?.[x];
       if (!block) continue;
-
-      // 돌 블록은 건너뜀
       if (block.specialType === 'stone') continue;
 
       const key = `${x},${y}`;
       if (processed.has(key)) continue;
 
-      const connected = findConnectedBlocks(board, x, y, block.color);
+      // BFS로 연결된 블록 찾기
+      const connected: Block[] = [];
+      const visited = new Set<string>();
+      const queue: [number, number][] = [[x, y]];
 
+      while (queue.length > 0) {
+        const [cx, cy] = queue.shift()!;
+        const cellKey = `${cx},${cy}`;
+
+        if (visited.has(cellKey)) continue;
+        if (cx < 0 || cx >= BOARD_CONFIG.COLUMNS) continue;
+        if (cy < 0 || cy >= BOARD_CONFIG.ROWS) continue;
+
+        const cellBlock = board[cy]?.[cx];
+        if (!cellBlock) continue;
+        if (cellBlock.specialType === 'stone') continue;
+
+        // 색상 매칭: 시작 블록 색상과 같거나 rainbow
+        const colorMatches =
+          cellBlock.color === block.color ||
+          cellBlock.color === 'rainbow' ||
+          block.color === 'rainbow';
+
+        if (!colorMatches) continue;
+
+        visited.add(cellKey);
+        connected.push({ ...cellBlock, x: cx, y: cy });
+
+        // 상하좌우 탐색
+        queue.push([cx - 1, cy]);
+        queue.push([cx + 1, cy]);
+        queue.push([cx, cy - 1]);
+        queue.push([cx, cy + 1]);
+      }
+
+      // 4개 이상이면 그룹에 추가
       if (connected.length >= minBlocks) {
         groups.push(connected);
-        // 연결된 블록들의 실제 보드 위치를 기준으로 처리 완료 표시
         connected.forEach((b) => processed.add(`${b.x},${b.y}`));
       }
     }
@@ -103,44 +135,8 @@ function findFusionGroups(board: GameBoard, level: number): Block[][] {
   return groups;
 }
 
-// 간단한 융합 그룹 찾기 (보드 체크용)
-function findFusionGroupsSimple(board: GameBoard, level: number): Block[][] {
-  const groups = findFusionGroups(board, level);
-
-  // 디버깅: 보드에 있는 모든 블록 색상 카운트
-  const colorCounts: Record<string, number> = {};
-  for (let y = 0; y < BOARD_CONFIG.ROWS; y++) {
-    for (let x = 0; x < BOARD_CONFIG.COLUMNS; x++) {
-      const block = board[y][x];
-      if (block) {
-        colorCounts[block.color] = (colorCounts[block.color] || 0) + 1;
-      }
-    }
-  }
-
-  if (Object.keys(colorCounts).length > 0) {
-    const hasMany = Object.entries(colorCounts).filter(([_, count]) => count >= 4);
-    if (hasMany.length > 0 && groups.length === 0) {
-      console.warn('[FusionCheck] WARNING: Colors with 4+ blocks but no fusion groups:', hasMany);
-      // 디버깅: 각 색상별 연결 상태 확인
-      for (const [color] of hasMany) {
-        for (let y = 0; y < BOARD_CONFIG.ROWS; y++) {
-          for (let x = 0; x < BOARD_CONFIG.COLUMNS; x++) {
-            const block = board[y][x];
-            if (block && block.color === color) {
-              const connected = findConnectedBlocks(board, x, y, block.color as BlockColor);
-              if (connected.length >= 4) {
-                console.log(`[FusionCheck] Found connected ${color} at (${x},${y}): ${connected.length} blocks`);
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  return groups;
-}
+// findFusionGroupsSimple은 findFusionGroups와 동일
+const findFusionGroupsSimple = findFusionGroups;
 
 // 블록 제거 및 낙하 처리
 function applyGravity(
