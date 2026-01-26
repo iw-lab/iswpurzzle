@@ -943,12 +943,12 @@ export const useGameStore = create<GameStore>()(
             .fill(null)
             .map(() => Array(BOARD_CONFIG.COLUMNS).fill(null));
 
-          // 기존 블록들을 한 줄 위로 이동 (y좌표도 업데이트)
+          // 기존 블록들을 한 줄 위로 이동 (x, y 좌표 모두 업데이트)
           for (let y = 1; y < BOARD_CONFIG.ROWS; y++) {
             for (let x = 0; x < BOARD_CONFIG.COLUMNS; x++) {
               const block = board[y][x];
               if (block) {
-                newBoard[y - 1][x] = { ...block, y: y - 1 };
+                newBoard[y - 1][x] = { ...block, x: x, y: y - 1 };
               }
             }
           }

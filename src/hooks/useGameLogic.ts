@@ -24,6 +24,13 @@ function findConnectedBlocks(
   const visited = new Set<string>();
   const queue: [number, number][] = [[startX, startY]];
 
+  // 시작점 유효성 체크
+  if (startX < 0 || startX >= BOARD_CONFIG.COLUMNS) return connected;
+  if (startY < 0 || startY >= BOARD_CONFIG.ROWS) return connected;
+
+  const startBlock = board[startY]?.[startX];
+  if (!startBlock) return connected;
+
   while (queue.length > 0) {
     const [x, y] = queue.shift()!;
     const key = `${x},${y}`;
@@ -32,12 +39,29 @@ function findConnectedBlocks(
     if (x < 0 || x >= BOARD_CONFIG.COLUMNS) continue;
     if (y < 0 || y >= BOARD_CONFIG.ROWS) continue;
 
-    const block = board[y][x];
+    const block = board[y]?.[x];
     if (!block) continue;
-    if (block.color !== targetColor && block.color !== 'rainbow' && targetColor !== 'rainbow') continue;
+
+    // 색상 비교: 석재(stone) 블록은 매칭에서 제외
+    if (block.specialType === 'stone') continue;
+
+    // 색상 매칭 체크: rainbow는 모든 색과 매칭
+    const colorMatches =
+      block.color === targetColor ||
+      block.color === 'rainbow' ||
+      targetColor === 'rainbow';
+
+    if (!colorMatches) continue;
 
     visited.add(key);
-    connected.push(block);
+
+    // 블록의 x, y 좌표를 보드 위치와 동기화하여 저장
+    const syncedBlock: Block = {
+      ...block,
+      x: x,
+      y: y,
+    };
+    connected.push(syncedBlock);
 
     // 상하좌우 탐색
     queue.push([x - 1, y]);
@@ -57,8 +81,11 @@ function findFusionGroups(board: GameBoard, level: number): Block[][] {
 
   for (let y = 0; y < BOARD_CONFIG.ROWS; y++) {
     for (let x = 0; x < BOARD_CONFIG.COLUMNS; x++) {
-      const block = board[y][x];
+      const block = board[y]?.[x];
       if (!block) continue;
+
+      // 돌 블록은 건너뜀
+      if (block.specialType === 'stone') continue;
 
       const key = `${x},${y}`;
       if (processed.has(key)) continue;
@@ -67,6 +94,7 @@ function findFusionGroups(board: GameBoard, level: number): Block[][] {
 
       if (connected.length >= minBlocks) {
         groups.push(connected);
+        // 연결된 블록들의 실제 보드 위치를 기준으로 처리 완료 표시
         connected.forEach((b) => processed.add(`${b.x},${b.y}`));
       }
     }
@@ -129,7 +157,7 @@ function applyGravity(
       let writeY = BOARD_CONFIG.ROWS - 1;
       for (let y = BOARD_CONFIG.ROWS - 1; y >= 0; y--) {
         if (board[y][x]) {
-          newBoard[writeY][x] = { ...board[y][x]!, y: writeY };
+          newBoard[writeY][x] = { ...board[y][x]!, x: x, y: writeY };
           writeY--;
         }
       }
@@ -140,7 +168,7 @@ function applyGravity(
       let writeY = 0;
       for (let y = 0; y < BOARD_CONFIG.ROWS; y++) {
         if (board[y][x]) {
-          newBoard[writeY][x] = { ...board[y][x]!, y: writeY };
+          newBoard[writeY][x] = { ...board[y][x]!, x: x, y: writeY };
           writeY++;
         }
       }
@@ -151,7 +179,7 @@ function applyGravity(
       let writeX = 0;
       for (let x = 0; x < BOARD_CONFIG.COLUMNS; x++) {
         if (board[y][x]) {
-          newBoard[y][writeX] = { ...board[y][x]!, x: writeX };
+          newBoard[y][writeX] = { ...board[y][x]!, x: writeX, y: y };
           writeX++;
         }
       }
@@ -162,7 +190,7 @@ function applyGravity(
       let writeX = BOARD_CONFIG.COLUMNS - 1;
       for (let x = BOARD_CONFIG.COLUMNS - 1; x >= 0; x--) {
         if (board[y][x]) {
-          newBoard[y][writeX] = { ...board[y][x]!, x: writeX };
+          newBoard[y][writeX] = { ...board[y][x]!, x: writeX, y: y };
           writeX--;
         }
       }
