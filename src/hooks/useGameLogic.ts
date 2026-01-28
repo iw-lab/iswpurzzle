@@ -662,28 +662,43 @@ export function useGameLogic() {
 
   // 연쇄 반응 처리
   const processChainReaction = useCallback(async () => {
+    // 동기적으로 플래그 체크 및 설정 (레이스 컨디션 방지)
     if (processingRef.current) {
       console.log('[ChainReaction] Skipped - already processing');
       return;
     }
+
+    // 즉시 플래그 설정 (다른 호출 차단)
     processingRef.current = true;
     setIsProcessingFusion(true);
+
+    // 약간의 딜레이로 보드 상태가 완전히 업데이트되도록 보장
+    await new Promise(resolve => setTimeout(resolve, 20));
+
     console.log('[ChainReaction] ===== STARTED =====');
 
     try {
       let totalScore = 0;
       let totalCleared = 0;
       let currentChain = 0;
+
+      // 최신 보드 상태 가져오기 (딜레이 후)
       let workingBoard = useGameStore.getState().board;
 
       // 디버그: 현재 보드 상태 로깅
       let blockCount = 0;
+      const colorCounts: Record<string, number> = {};
       for (let y = 0; y < BOARD_CONFIG.ROWS; y++) {
         for (let x = 0; x < BOARD_CONFIG.COLUMNS; x++) {
-          if (workingBoard[y]?.[x]) blockCount++;
+          const block = workingBoard[y]?.[x];
+          if (block) {
+            blockCount++;
+            colorCounts[block.color] = (colorCounts[block.color] || 0) + 1;
+          }
         }
       }
       console.log('[ChainReaction] Board has', blockCount, 'blocks');
+      console.log('[ChainReaction] Color distribution:', colorCounts);
 
       resetChain();
 
@@ -782,14 +797,16 @@ export function useGameLogic() {
       console.log('[ChainReaction] ===== FINISHED =====');
       setChainEffects(0);
       setIsProcessingFusion(false);
+
+      // 플래그 리셋 전 잠시 대기 (다른 체크가 끼어들지 않도록)
+      await new Promise(resolve => setTimeout(resolve, 30));
       processingRef.current = false;
 
-      // 새 블록 생성
-      const currentGameStatus = useGameStore.getState().gameStatus;
-      if (currentGameStatus === 'playing') {
-        setTimeout(() => {
-          spawnBlock();
-        }, 50);
+      // 새 블록 생성 (현재 블록이 없을 때만)
+      const state = useGameStore.getState();
+      if (state.gameStatus === 'playing' && state.currentBlocks.length === 0) {
+        console.log('[ChainReaction] Spawning new block after chain reaction');
+        spawnBlock();
       }
     }
   }, [
@@ -816,14 +833,34 @@ export function useGameLogic() {
     lastBlockCountRef.current = currCount;
 
     // 블록이 있다가 0이 되면 (모든 블록 배치됨) 융합 체크
-    if (prevCount > 0 && currCount === 0 && gameStatus === 'playing' && !processingRef.current) {
-      // 즉시 융합 체크 시작 (스폰보다 먼저 실행되도록)
-      console.log('[BlockPlaced] Blocks placed, checking for fusions immediately');
-      processChainReaction();
-    }
-  }, [currentBlocks.length, gameStatus, processChainReaction]);
+    if (prevCount > 0 && currCount === 0 && gameStatus === 'playing') {
+      // 약간의 딜레이 후 융합 체크 (보드 상태가 완전히 반영되도록)
+      const checkTimeout = setTimeout(() => {
+        if (processingRef.current) {
+          console.log('[BlockPlaced] Skipped - already processing');
+          return;
+        }
+        console.log('[BlockPlaced] Blocks placed, checking for fusions...');
 
-  // 보드 변경 시 추가 융합 체크 (안전장치)
+        // 현재 보드 상태 확인
+        const state = useGameStore.getState();
+        const groups = findFusionGroupsSimple(state.board, state.level);
+
+        if (groups.length > 0) {
+          console.log('[BlockPlaced] Found', groups.length, 'fusion groups!');
+          processChainReaction();
+        } else {
+          console.log('[BlockPlaced] No fusion groups found, spawning new block');
+          // 융합할 그룹이 없으면 새 블록 스폰
+          spawnBlock();
+        }
+      }, 30);
+
+      return () => clearTimeout(checkTimeout);
+    }
+  }, [currentBlocks.length, gameStatus, processChainReaction, spawnBlock]);
+
+  // 보드 변경 시 추가 융합 체크 (안전장치) - 더 긴 딜레이로 안정성 확보
   useEffect(() => {
     boardVersionRef.current++;
     const currentVersion = boardVersionRef.current;
@@ -832,20 +869,32 @@ export function useGameLogic() {
     if (gameStatus === 'playing' && currentBlocks.length === 0 && !processingRef.current) {
       // 보드에 융합 가능한 블록이 있는지 확인
       const checkForFusions = () => {
-        if (boardVersionRef.current !== currentVersion) return;
-        if (processingRef.current) return;
-        if (useGameStore.getState().currentBlocks.length > 0) return;
+        // 버전 체크로 오래된 호출 무시
+        if (boardVersionRef.current !== currentVersion) {
+          console.log('[BoardCheck] Skipped - board version changed');
+          return;
+        }
+        if (processingRef.current) {
+          console.log('[BoardCheck] Skipped - already processing');
+          return;
+        }
 
-        const currentBoard = useGameStore.getState().board;
-        const groups = findFusionGroupsSimple(currentBoard, level);
+        const state = useGameStore.getState();
+        if (state.currentBlocks.length > 0) {
+          console.log('[BoardCheck] Skipped - has falling blocks');
+          return;
+        }
+
+        const groups = findFusionGroupsSimple(state.board, level);
 
         if (groups.length > 0) {
+          console.log('[BoardCheck] Found', groups.length, 'fusion groups, starting chain reaction');
           processChainReaction();
         }
       };
 
-      // 지연 실행으로 다른 상태 업데이트와 충돌 방지
-      const timeoutId = setTimeout(checkForFusions, 100);
+      // 더 긴 딜레이로 다른 상태 업데이트와 충돌 방지
+      const timeoutId = setTimeout(checkForFusions, 150);
       return () => clearTimeout(timeoutId);
     }
   }, [board, gameStatus, currentBlocks.length, level, processChainReaction]);
@@ -875,15 +924,14 @@ export function useGameLogic() {
         }
       }
 
-      // 주기적 융합 체크 (100ms마다) - 더 자주 체크
-      // 현재 블록이 있어도 보드의 융합 가능한 블록 체크
-      if (now - lastFusionCheck >= 100 && !processingRef.current) {
+      // 주기적 융합 체크 (200ms마다) - 현재 블록이 없을 때만!
+      // 현재 블록이 떨어지는 중에는 체크하지 않음 (배치 후에만 체크)
+      if (now - lastFusionCheck >= 200 && !processingRef.current && currentState.currentBlocks.length === 0) {
         lastFusionCheck = now;
 
         const groups = findFusionGroupsSimple(currentState.board, currentState.level);
         if (groups.length > 0) {
-          console.log('[Fusion] Found fusion groups:', groups.length, 'groups, currentBlocks:', currentState.currentBlocks.length);
-          // 현재 블록이 있으면 잠시 멈추고 융합 처리
+          console.log('[Fusion] Periodic check found fusion groups:', groups.length);
           processChainReaction();
         }
       }
