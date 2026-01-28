@@ -13,137 +13,63 @@ import {
   getMinBlocksToFuse,
 } from '../constants';
 
-// BFS로 연결된 같은 색 블록 찾기
-function findConnectedBlocks(
-  board: GameBoard,
-  startX: number,
-  startY: number,
-  targetColor: BlockColor
-): Block[] {
-  const connected: Block[] = [];
-  const visited = new Set<string>();
-  const queue: [number, number][] = [[startX, startY]];
-
-  // 시작점 유효성 체크
-  if (startX < 0 || startX >= BOARD_CONFIG.COLUMNS) return connected;
-  if (startY < 0 || startY >= BOARD_CONFIG.ROWS) return connected;
-
-  const startBlock = board[startY]?.[startX];
-  if (!startBlock) return connected;
-
-  while (queue.length > 0) {
-    const [x, y] = queue.shift()!;
-    const key = `${x},${y}`;
-
-    if (visited.has(key)) continue;
-    if (x < 0 || x >= BOARD_CONFIG.COLUMNS) continue;
-    if (y < 0 || y >= BOARD_CONFIG.ROWS) continue;
-
-    const block = board[y]?.[x];
-    if (!block) continue;
-
-    // 색상 비교: 석재(stone) 블록은 매칭에서 제외
-    if (block.specialType === 'stone') continue;
-
-    // 색상 매칭 체크: rainbow는 모든 색과 매칭
-    const colorMatches =
-      block.color === targetColor ||
-      block.color === 'rainbow' ||
-      targetColor === 'rainbow';
-
-    if (!colorMatches) continue;
-
-    visited.add(key);
-
-    // 블록의 x, y 좌표를 보드 위치와 동기화하여 저장
-    const syncedBlock: Block = {
-      ...block,
-      x: x,
-      y: y,
-    };
-    connected.push(syncedBlock);
-
-    // 상하좌우 탐색
-    queue.push([x - 1, y]);
-    queue.push([x + 1, y]);
-    queue.push([x, y - 1]);
-    queue.push([x, y + 1]);
-  }
-
-  return connected;
-}
-
-// 융합 가능한 블록 그룹 찾기 - 통합 함수
+// 융합 가능한 블록 그룹 찾기 - 배열 인덱스만 사용 (블록 내부 좌표 무시)
 function findFusionGroups(board: GameBoard, level: number): Block[][] {
   const minBlocks = getMinBlocksToFuse(level);
   const groups: Block[][] = [];
-  const processed = new Set<string>();
+  const globalVisited = new Set<string>();
 
-  // 디버그: 보드의 모든 블록 색상 출력
-  const boardColors: string[][] = [];
-  let totalBlocks = 0;
-  for (let y = 0; y < BOARD_CONFIG.ROWS; y++) {
-    const row: string[] = [];
-    for (let x = 0; x < BOARD_CONFIG.COLUMNS; x++) {
-      const b = board[y]?.[x];
-      if (b) {
-        row.push(b.color.charAt(0).toUpperCase()); // 첫 글자만
-        totalBlocks++;
-      } else {
-        row.push('.');
-      }
-    }
-    boardColors.push(row);
-  }
+  // 모든 셀을 순회
+  for (let startY = 0; startY < BOARD_CONFIG.ROWS; startY++) {
+    for (let startX = 0; startX < BOARD_CONFIG.COLUMNS; startX++) {
+      const startKey = `${startX},${startY}`;
 
-  // 블록이 10개 이상일 때만 디버그 출력 (성능 고려)
-  if (totalBlocks >= 10) {
-    console.log('[FindFusion] Board state (', totalBlocks, 'blocks):');
-    // 하단 5줄만 출력
-    for (let y = BOARD_CONFIG.ROWS - 5; y < BOARD_CONFIG.ROWS; y++) {
-      console.log('  Row', y, ':', boardColors[y].join(' '));
-    }
-  }
+      // 이미 처리된 위치는 건너뜀
+      if (globalVisited.has(startKey)) continue;
 
-  // 모든 셀을 순회하며 연결된 블록 그룹 찾기
-  for (let y = 0; y < BOARD_CONFIG.ROWS; y++) {
-    for (let x = 0; x < BOARD_CONFIG.COLUMNS; x++) {
-      const block = board[y]?.[x];
-      if (!block) continue;
-      if (block.specialType === 'stone') continue;
-      // rainbow 블록은 시작점으로 사용하지 않음 (다른 색상에서 연결되어야 함)
-      if (block.color === 'rainbow') continue;
+      const startBlock = board[startY]?.[startX];
+      if (!startBlock) continue;
+      if (startBlock.specialType === 'stone') continue;
 
-      const key = `${x},${y}`;
-      if (processed.has(key)) continue;
+      // rainbow 블록은 시작점으로 사용하지 않음 (다른 색에 의해 포함됨)
+      if (startBlock.color === 'rainbow') continue;
 
-      // BFS로 연결된 블록 찾기
+      const targetColor = startBlock.color;
+
+      // BFS로 연결된 같은 색 블록 찾기
       const connected: Block[] = [];
-      const visited = new Set<string>();
-      const queue: [number, number][] = [[x, y]];
-      const targetColor = block.color; // 시작 색상 고정
+      const localVisited = new Set<string>();
+      const queue: [number, number][] = [[startX, startY]];
 
       while (queue.length > 0) {
         const [cx, cy] = queue.shift()!;
         const cellKey = `${cx},${cy}`;
 
-        if (visited.has(cellKey)) continue;
+        // 이미 방문한 셀은 건너뜀
+        if (localVisited.has(cellKey)) continue;
+
+        // 범위 체크
         if (cx < 0 || cx >= BOARD_CONFIG.COLUMNS) continue;
         if (cy < 0 || cy >= BOARD_CONFIG.ROWS) continue;
 
-        const cellBlock = board[cy]?.[cx];
-        if (!cellBlock) continue;
-        if (cellBlock.specialType === 'stone') continue;
+        // 블록 가져오기 (배열 인덱스로 직접 접근)
+        const block = board[cy]?.[cx];
+        if (!block) continue;
+        if (block.specialType === 'stone') continue;
 
-        // 색상 매칭: 시작 색상과 같거나 rainbow
-        const colorMatches =
-          cellBlock.color === targetColor ||
-          cellBlock.color === 'rainbow';
+        // 색상 매칭 체크
+        const isMatch = block.color === targetColor || block.color === 'rainbow';
+        if (!isMatch) continue;
 
-        if (!colorMatches) continue;
+        // 방문 표시
+        localVisited.add(cellKey);
 
-        visited.add(cellKey);
-        connected.push({ ...cellBlock, x: cx, y: cy });
+        // 연결된 블록 추가 (좌표는 배열 인덱스로 강제 설정)
+        connected.push({
+          ...block,
+          x: cx,
+          y: cy,
+        });
 
         // 상하좌우 탐색
         queue.push([cx - 1, cy]);
@@ -152,26 +78,17 @@ function findFusionGroups(board: GameBoard, level: number): Block[][] {
         queue.push([cx, cy + 1]);
       }
 
-      // 3개 이상 연결되면 디버그 출력
-      if (connected.length >= 3) {
-        console.log(`[FindFusion] Found ${connected.length} connected ${targetColor} blocks at (${x},${y}), need ${minBlocks} to fuse`);
-      }
-
-      // 4개 이상이면 그룹에 추가
+      // 4개 이상 연결되면 그룹에 추가
       if (connected.length >= minBlocks) {
         groups.push(connected);
-        // 모든 방문한 블록을 processed에 추가
-        visited.forEach(k => processed.add(k));
-        console.log(`[FindFusion] ✓ Group added: ${connected.length} ${targetColor} blocks`);
+        // 전역 방문 표시 (다른 시작점에서 중복 검색 방지)
+        localVisited.forEach(k => globalVisited.add(k));
       }
     }
   }
 
   return groups;
 }
-
-// findFusionGroupsSimple은 findFusionGroups와 동일
-const findFusionGroupsSimple = findFusionGroups;
 
 // 블록 제거 및 낙하 처리
 function applyGravity(
@@ -844,7 +761,7 @@ export function useGameLogic() {
 
         // 현재 보드 상태 확인
         const state = useGameStore.getState();
-        const groups = findFusionGroupsSimple(state.board, state.level);
+        const groups = findFusionGroups(state.board, state.level);
 
         if (groups.length > 0) {
           console.log('[BlockPlaced] Found', groups.length, 'fusion groups!');
@@ -885,7 +802,7 @@ export function useGameLogic() {
           return;
         }
 
-        const groups = findFusionGroupsSimple(state.board, level);
+        const groups = findFusionGroups(state.board, level);
 
         if (groups.length > 0) {
           console.log('[BoardCheck] Found', groups.length, 'fusion groups, starting chain reaction');
@@ -929,7 +846,7 @@ export function useGameLogic() {
       if (now - lastFusionCheck >= 200 && !processingRef.current && currentState.currentBlocks.length === 0) {
         lastFusionCheck = now;
 
-        const groups = findFusionGroupsSimple(currentState.board, currentState.level);
+        const groups = findFusionGroups(currentState.board, currentState.level);
         if (groups.length > 0) {
           console.log('[Fusion] Periodic check found fusion groups:', groups.length);
           processChainReaction();

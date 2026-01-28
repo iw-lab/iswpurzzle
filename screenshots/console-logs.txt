@@ -1,0 +1,77 @@
+[vite] connecting...
+[vite] connected.
+%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[BlockPlaced] Blocks placed, checking for fusions...
+[BlockPlaced] No fusion groups found, spawning new block
+[BlockPlaced] Blocks placed, checking for fusions...
+[BlockPlaced] No fusion groups found, spawning new block
+[BlockPlaced] Blocks placed, checking for fusions...
+[BlockPlaced] No fusion groups found, spawning new block
+[BlockPlaced] Blocks placed, checking for fusions...
+[BlockPlaced] No fusion groups found, spawning new block
+[BlockPlaced] Blocks placed, checking for fusions...
+[BlockPlaced] No fusion groups found, spawning new block
+[BlockPlaced] Blocks placed, checking for fusions...
+[BlockPlaced] No fusion groups found, spawning new block
+[BlockPlaced] Blocks placed, checking for fusions...
+[BlockPlaced] No fusion groups found, spawning new block
+[BlockPlaced] Blocks placed, checking for fusions...
+[BlockPlaced] No fusion groups found, spawning new block
+[BlockPlaced] Blocks placed, checking for fusions...
+[BlockPlaced] No fusion groups found, spawning new block
+[BlockPlaced] Blocks placed, checking for fusions...
+[FindFusion] Board state ( 10 blocks):
+  Row 11 : . . . G . . . .
+  Row 12 : . . . G . . . .
+  Row 13 : . . . B . . . .
+  Row 14 : . . . P . . . .
+  Row 15 : . . . G . . . .
+[BlockPlaced] No fusion groups found, spawning new block
+[BlockPlaced] Blocks placed, checking for fusions...
+[FindFusion] Board state ( 11 blocks):
+  Row 11 : . . . G . . . .
+  Row 12 : . . . G . . . .
+  Row 13 : . . . B . . . .
+  Row 14 : . . . P . . . .
+  Row 15 : . . . G . . . .
+[BlockPlaced] No fusion groups found, spawning new block
+[BlockPlaced] Blocks placed, checking for fusions...
+[FindFusion] Board state ( 12 blocks):
+  Row 11 : . . . G . . . .
+  Row 12 : . . . G . . . .
+  Row 13 : . . . B . . . .
+  Row 14 : . . . P . . . .
+  Row 15 : . . . G . . . .
+[BlockPlaced] No fusion groups found, spawning new block
+[BlockPlaced] Blocks placed, checking for fusions...
+[FindFusion] Board state ( 13 blocks):
+  Row 11 : . . . G . . . .
+  Row 12 : . . . G . . . .
+  Row 13 : . . . B . . . .
+  Row 14 : . . . P . . . .
+  Row 15 : . . . G . . . .
+[BlockPlaced] No fusion groups found, spawning new block
+[BlockPlaced] Blocks placed, checking for fusions...
+[FindFusion] Board state ( 14 blocks):
+  Row 11 : . . . G . . . .
+  Row 12 : . . . G . . . .
+  Row 13 : . . . B . . . .
+  Row 14 : . . . P . . . .
+  Row 15 : . . . G . . . .
+[BlockPlaced] No fusion groups found, spawning new block
+[BlockPlaced] Blocks placed, checking for fusions...
+[FindFusion] Board state ( 15 blocks):
+  Row 11 : . . . G . . . .
+  Row 12 : . . . G . . . .
+  Row 13 : . . . B . . . .
+  Row 14 : . . . P . . . .
+  Row 15 : . . . G . . . .
+[BlockPlaced] No fusion groups found, spawning new block
+[BlockPlaced] Blocks placed, checking for fusions...
+[FindFusion] Board state ( 16 blocks):
+  Row 11 : . . . G . . . .
+  Row 12 : . . . G . . . .
+  Row 13 : . . . B . . . .
+  Row 14 : . . . P . . . .
+  Row 15 : . . . G . . . .
+[BlockPlaced] No fusion groups found, spawning new block

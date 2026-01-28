@@ -726,17 +726,34 @@ export const useGameStore = create<GameStore>()(
 
         // 모든 낙하 블록을 보드에 배치
         for (const fallingBlock of currentBlocks) {
+          const posX = Math.round(fallingBlock.x);
+          const posY = Math.round(fallingBlock.y);
+
+          // 범위 체크
+          if (posX < 0 || posX >= BOARD_CONFIG.COLUMNS) continue;
+          if (posY < 0 || posY >= BOARD_CONFIG.ROWS) continue;
+
           const newBlock: Block = {
             id: uuidv4(),
             color: fallingBlock.color,
-            x: fallingBlock.x,
-            y: fallingBlock.y,
+            // 중요: 배열 인덱스와 블록 좌표를 완전히 동기화!
+            x: posX,
+            y: posY,
             specialType: fallingBlock.specialType,
             frozenCount: fallingBlock.specialType === 'frozen' ? 2 : undefined,
             createdAt: Date.now(),
           };
 
-          newBoard[fallingBlock.y][fallingBlock.x] = newBlock;
+          newBoard[posY][posX] = newBlock;
+        }
+
+        // 배치 후 모든 블록의 좌표를 배열 위치와 동기화 (안전장치)
+        for (let y = 0; y < BOARD_CONFIG.ROWS; y++) {
+          for (let x = 0; x < BOARD_CONFIG.COLUMNS; x++) {
+            if (newBoard[y][x]) {
+              newBoard[y][x] = { ...newBoard[y][x]!, x, y };
+            }
+          }
         }
 
         set({ board: newBoard, currentBlock: null, currentBlocks: [] });
@@ -819,7 +836,13 @@ export const useGameStore = create<GameStore>()(
       },
 
       updateBoard: (board) => {
-        set({ board });
+        // 모든 블록의 좌표를 배열 위치와 동기화
+        const syncedBoard = board.map((row, y) =>
+          row.map((block, x) =>
+            block ? { ...block, x, y } : null
+          )
+        );
+        set({ board: syncedBoard });
       },
 
       addScore: (points) => {

@@ -1,104 +1,182 @@
-// 융합 로직 테스트
-const BOARD_CONFIG = { COLUMNS: 8, ROWS: 16 };
+import { chromium } from 'playwright';
 
-function getMinBlocksToFuse() { return 4; }
+async function testBlockFusion() {
+  console.log('=== 블록 융합 테스트 시작 ===\n');
 
-function findFusionGroups(board, level) {
-  const minBlocks = getMinBlocksToFuse(level);
-  const groups = [];
-  const processed = new Set();
+  const browser = await chromium.launch({ headless: false });
+  const context = await browser.newContext();
+  const page = await context.newPage();
 
-  for (let y = 0; y < BOARD_CONFIG.ROWS; y++) {
-    for (let x = 0; x < BOARD_CONFIG.COLUMNS; x++) {
-      const block = board[y]?.[x];
-      if (!block) continue;
-      if (block.specialType === 'stone') continue;
+  // 로컬 스토리지 초기화를 위해 먼저 페이지 로드
+  await page.goto('http://localhost:3000');
+  await page.evaluate(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+  console.log('스토리지 초기화 완료');
 
-      const key = `${x},${y}`;
-      if (processed.has(key)) continue;
+  const logs = [];
 
-      const connected = [];
-      const visited = new Set();
-      const queue = [[x, y]];
+  // 모든 콘솔 메시지 캡처
+  page.on('console', msg => {
+    const text = msg.text();
+    logs.push(text);
+    console.log('[BROWSER]', text);
+  });
 
-      while (queue.length > 0) {
-        const [cx, cy] = queue.shift();
-        const cellKey = `${cx},${cy}`;
+  // 에러도 캡처
+  page.on('pageerror', err => {
+    console.log('[PAGE ERROR]', err.message);
+  });
 
-        if (visited.has(cellKey)) continue;
-        if (cx < 0 || cx >= BOARD_CONFIG.COLUMNS) continue;
-        if (cy < 0 || cy >= BOARD_CONFIG.ROWS) continue;
+  try {
+    console.log('페이지 새로고침...');
+    await page.reload({ waitUntil: 'networkidle', timeout: 30000 });
+    console.log('페이지 로드 완료');
 
-        const cellBlock = board[cy]?.[cx];
-        if (!cellBlock) continue;
-        if (cellBlock.specialType === 'stone') continue;
+    await page.screenshot({ path: 'test-1-initial.png' });
+    await page.waitForTimeout(1000);
 
-        const colorMatches =
-          cellBlock.color === block.color ||
-          cellBlock.color === 'rainbow' ||
-          block.color === 'rainbow';
+    // 게임 상태 확인
+    const gameStatus = await page.evaluate(() => {
+      try {
+        const stored = localStorage.getItem('chromafall-game-storage');
+        return stored ? JSON.parse(stored) : null;
+      } catch { return null; }
+    });
+    console.log('저장된 게임 상태:', gameStatus?.state?.gameStatus || 'none');
 
-        if (!colorMatches) continue;
+    // 시작 버튼 클릭
+    console.log('시작 버튼 찾는 중...');
+    const startBtn = page.locator('button:has-text("게임 시작"), button:has-text("시작")').first();
+    const startVisible = await startBtn.isVisible({ timeout: 5000 }).catch(() => false);
 
-        visited.add(cellKey);
-        connected.push({ ...cellBlock, x: cx, y: cy });
+    if (startVisible) {
+      console.log('시작 버튼 클릭');
+      await startBtn.click();
+      await page.waitForTimeout(500);
+    } else {
+      console.log('시작 버튼 없음');
+    }
 
-        queue.push([cx - 1, cy]);
-        queue.push([cx + 1, cy]);
-        queue.push([cx, cy - 1]);
-        queue.push([cx, cy + 1]);
+    await page.screenshot({ path: 'test-2-after-start.png' });
+
+    // 클래식 모드 버튼 클릭
+    console.log('클래식 모드 버튼 찾는 중...');
+    const classicBtn = page.locator('button:has-text("클래식")').first();
+    const classicVisible = await classicBtn.isVisible({ timeout: 3000 }).catch(() => false);
+
+    if (classicVisible) {
+      console.log('클래식 모드 버튼 클릭');
+      await classicBtn.click();
+      await page.waitForTimeout(1000);
+    } else {
+      console.log('클래식 버튼 없음');
+    }
+
+    await page.screenshot({ path: 'test-3-after-classic.png' });
+
+    // 게임이 playing 상태인지 확인
+    const playingState = await page.evaluate(() => {
+      // @ts-ignore
+      const store = window.__ZUSTAND_STORE__;
+      if (store) {
+        return store.getState().gameStatus;
+      }
+      return 'unknown';
+    });
+    console.log('현재 게임 상태:', playingState);
+
+    // 게임이 시작되었는지 확인 - 게임 보드 찾기
+    console.log('\n=== 게임 플레이 시작 ===\n');
+
+    // 게임 보드 영역에 포커스
+    await page.click('body');
+    await page.waitForTimeout(200);
+
+    // 블록 드롭 테스트 - 같은 열에 집중시켜 융합 확률 높이기
+    const columns = [0, 1, 2, 3, 4, 5, 6, 7]; // 8열
+    const targetColumn = 3; // 중앙 근처에 집중
+
+    for (let i = 0; i < 40; i++) {
+      // 현재 블록을 특정 열로 이동
+      // 블록은 중앙(4열 근처)에서 시작하므로 목표 열로 이동
+      const targetCol = i % 8; // 0~7열 순환
+      const startCol = 4; // 시작 위치 (중앙)
+      const movesToTarget = targetCol - startCol;
+
+      if (movesToTarget < 0) {
+        // 왼쪽으로 이동
+        for (let m = 0; m < Math.abs(movesToTarget); m++) {
+          await page.keyboard.press('ArrowLeft');
+          await page.waitForTimeout(30);
+        }
+      } else if (movesToTarget > 0) {
+        // 오른쪽으로 이동
+        for (let m = 0; m < movesToTarget; m++) {
+          await page.keyboard.press('ArrowRight');
+          await page.waitForTimeout(30);
+        }
       }
 
-      if (connected.length >= minBlocks) {
-        groups.push(connected);
-        connected.forEach((b) => processed.add(`${b.x},${b.y}`));
+      // 하드 드롭
+      await page.keyboard.press('Space');
+      console.log(`[${i + 1}/40] 블록 드롭 -> 열 ${targetCol}`);
+      await page.waitForTimeout(300);
+
+      // 5번마다 스크린샷
+      if ((i + 1) % 10 === 0) {
+        await page.screenshot({ path: `test-drop-${i + 1}.png` });
       }
     }
+
+    await page.screenshot({ path: 'test-4-after-drops.png' });
+
+    // 추가 시간 대기 (연쇄 반응 처리)
+    console.log('\n연쇄 반응 대기 중...');
+    await page.waitForTimeout(2000);
+
+    await page.screenshot({ path: 'test-5-final.png' });
+
+    // 결과 분석
+    console.log('\n=== 로그 분석 ===');
+
+    const fusionLogs = logs.filter(l =>
+      l.includes('FindFusion') ||
+      l.includes('MATCH') ||
+      l.includes('ChainReaction') ||
+      l.includes('BlockPlaced') ||
+      l.includes('ProcessFusion')
+    );
+
+    console.log(`관련 로그 수: ${fusionLogs.length}`);
+    fusionLogs.forEach(l => console.log('  >', l));
+
+    const matchLogs = logs.filter(l => l.includes('MATCH'));
+
+    console.log('\n=== 결과 ===');
+    console.log(`전체 로그 수: ${logs.length}`);
+    console.log(`매칭 성공 횟수: ${matchLogs.length}`);
+
+    if (matchLogs.length > 0) {
+      console.log('✅ 블록 융합 정상 작동!');
+    } else {
+      console.log('❌ 블록 융합 미발생');
+
+      // 디버깅: 전체 로그 출력
+      console.log('\n=== 전체 로그 ===');
+      logs.slice(-50).forEach(l => console.log('  ', l));
+    }
+
+    // 브라우저 닫기 전 대기
+    await page.waitForTimeout(3000);
+
+  } catch (err) {
+    console.error('테스트 오류:', err);
+    await page.screenshot({ path: 'test-error.png' });
+  } finally {
+    await browser.close();
   }
-
-  return groups;
 }
 
-// 테스트 보드 생성 (16x8)
-function createTestBoard() {
-  const board = Array(16).fill(null).map(() => Array(8).fill(null));
-  
-  // 세로로 4개 노란색 블록 (x=1, y=12~15)
-  board[12][1] = { color: 'yellow', specialType: 'normal', x: 1, y: 12 };
-  board[13][1] = { color: 'yellow', specialType: 'normal', x: 1, y: 13 };
-  board[14][1] = { color: 'yellow', specialType: 'normal', x: 1, y: 14 };
-  board[15][1] = { color: 'yellow', specialType: 'normal', x: 1, y: 15 };
-  
-  // 다른 색 블록들
-  board[15][0] = { color: 'red', specialType: 'normal', x: 0, y: 15 };
-  board[15][2] = { color: 'blue', specialType: 'normal', x: 2, y: 15 };
-  
-  return board;
-}
-
-// 테스트 실행
-const board = createTestBoard();
-console.log('=== 테스트 보드 ===');
-for (let y = 10; y < 16; y++) {
-  let row = `y=${y}: `;
-  for (let x = 0; x < 8; x++) {
-    const block = board[y][x];
-    row += block ? block.color[0].toUpperCase() : '.';
-  }
-  console.log(row);
-}
-
-console.log('\n=== 융합 그룹 찾기 (레벨 10) ===');
-const groups = findFusionGroups(board, 10);
-console.log('찾은 그룹 수:', groups.length);
-groups.forEach((group, i) => {
-  console.log(`그룹 ${i+1}: ${group.length}개 블록, 색상: ${group[0].color}`);
-  group.forEach(b => console.log(`  - (${b.x}, ${b.y})`));
-});
-
-if (groups.length === 0) {
-  console.log('❌ 테스트 실패: 4개 연결된 노란색 블록을 찾지 못함');
-  process.exit(1);
-} else if (groups[0].length >= 4) {
-  console.log('✅ 테스트 성공: 4개 이상 연결된 블록 그룹을 찾음');
-}
+testBlockFusion();
