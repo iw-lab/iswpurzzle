@@ -79,12 +79,40 @@ function findFusionGroups(board: GameBoard, level: number): Block[][] {
   const groups: Block[][] = [];
   const processed = new Set<string>();
 
+  // 디버그: 보드의 모든 블록 색상 출력
+  const boardColors: string[][] = [];
+  let totalBlocks = 0;
+  for (let y = 0; y < BOARD_CONFIG.ROWS; y++) {
+    const row: string[] = [];
+    for (let x = 0; x < BOARD_CONFIG.COLUMNS; x++) {
+      const b = board[y]?.[x];
+      if (b) {
+        row.push(b.color.charAt(0).toUpperCase()); // 첫 글자만
+        totalBlocks++;
+      } else {
+        row.push('.');
+      }
+    }
+    boardColors.push(row);
+  }
+
+  // 블록이 10개 이상일 때만 디버그 출력 (성능 고려)
+  if (totalBlocks >= 10) {
+    console.log('[FindFusion] Board state (', totalBlocks, 'blocks):');
+    // 하단 5줄만 출력
+    for (let y = BOARD_CONFIG.ROWS - 5; y < BOARD_CONFIG.ROWS; y++) {
+      console.log('  Row', y, ':', boardColors[y].join(' '));
+    }
+  }
+
   // 모든 셀을 순회하며 연결된 블록 그룹 찾기
   for (let y = 0; y < BOARD_CONFIG.ROWS; y++) {
     for (let x = 0; x < BOARD_CONFIG.COLUMNS; x++) {
       const block = board[y]?.[x];
       if (!block) continue;
       if (block.specialType === 'stone') continue;
+      // rainbow 블록은 시작점으로 사용하지 않음 (다른 색상에서 연결되어야 함)
+      if (block.color === 'rainbow') continue;
 
       const key = `${x},${y}`;
       if (processed.has(key)) continue;
@@ -93,6 +121,7 @@ function findFusionGroups(board: GameBoard, level: number): Block[][] {
       const connected: Block[] = [];
       const visited = new Set<string>();
       const queue: [number, number][] = [[x, y]];
+      const targetColor = block.color; // 시작 색상 고정
 
       while (queue.length > 0) {
         const [cx, cy] = queue.shift()!;
@@ -106,11 +135,10 @@ function findFusionGroups(board: GameBoard, level: number): Block[][] {
         if (!cellBlock) continue;
         if (cellBlock.specialType === 'stone') continue;
 
-        // 색상 매칭: 시작 블록 색상과 같거나 rainbow
+        // 색상 매칭: 시작 색상과 같거나 rainbow
         const colorMatches =
-          cellBlock.color === block.color ||
-          cellBlock.color === 'rainbow' ||
-          block.color === 'rainbow';
+          cellBlock.color === targetColor ||
+          cellBlock.color === 'rainbow';
 
         if (!colorMatches) continue;
 
@@ -124,10 +152,17 @@ function findFusionGroups(board: GameBoard, level: number): Block[][] {
         queue.push([cx, cy + 1]);
       }
 
+      // 3개 이상 연결되면 디버그 출력
+      if (connected.length >= 3) {
+        console.log(`[FindFusion] Found ${connected.length} connected ${targetColor} blocks at (${x},${y}), need ${minBlocks} to fuse`);
+      }
+
       // 4개 이상이면 그룹에 추가
       if (connected.length >= minBlocks) {
         groups.push(connected);
-        connected.forEach((b) => processed.add(`${b.x},${b.y}`));
+        // 모든 방문한 블록을 processed에 추가
+        visited.forEach(k => processed.add(k));
+        console.log(`[FindFusion] ✓ Group added: ${connected.length} ${targetColor} blocks`);
       }
     }
   }
@@ -399,6 +434,14 @@ function processFrozenBlocks(blocks: Block[], board: GameBoard): {
   const blocksToRemove: Block[] = [];
 
   for (const block of blocks) {
+    // 좌표 유효성 검증
+    if (block.y < 0 || block.y >= BOARD_CONFIG.ROWS ||
+        block.x < 0 || block.x >= BOARD_CONFIG.COLUMNS ||
+        !newBoard[block.y]) {
+      console.warn('[processFrozenBlocks] Invalid block coordinates:', block.x, block.y);
+      continue;
+    }
+
     if (block.specialType === 'frozen') {
       const currentCount = block.frozenCount || 2;
       if (currentCount > 1) {
@@ -469,7 +512,8 @@ export function useGameLogic() {
     console.log('[ProcessFusion] Found', groups.length, 'fusion groups');
     if (groups.length > 0) {
       groups.forEach((group, idx) => {
-        console.log(`[ProcessFusion] Group ${idx}: ${group.length} blocks, color: ${group[0]?.color}`);
+        console.log(`[ProcessFusion] Group ${idx}: ${group.length} blocks, color: ${group[0]?.color}, positions:`,
+          group.map(b => `(${b.x},${b.y})`).join(', '));
       });
     }
 
@@ -485,20 +529,42 @@ export function useGameLogic() {
 
     // 먼저 얼음 블록 처리
     let workingBoard = currentBoard.map((row) => [...row]);
+
+    // 모든 그룹의 블록을 합치되, 중복 제거 (좌표 기준)
     const allBlocks = groups.flat();
+    const uniqueBlocksMap = new Map<string, Block>();
+    for (const block of allBlocks) {
+      const key = `${block.x},${block.y}`;
+      if (!uniqueBlocksMap.has(key)) {
+        uniqueBlocksMap.set(key, block);
+      }
+    }
+    const uniqueBlocks = Array.from(uniqueBlocksMap.values());
+
+    console.log('[ProcessFusion] Unique blocks to process:', uniqueBlocks.length);
 
     // 얼음 블록 필터링
-    const { blocksToRemove, updatedBoard } = processFrozenBlocks(allBlocks, workingBoard);
+    const { blocksToRemove, updatedBoard } = processFrozenBlocks(uniqueBlocks, workingBoard);
     workingBoard = updatedBoard;
+
+    // 이미 제거된 위치 추적
+    const removedPositions = new Set<string>();
 
     // 실제로 제거될 블록들
     for (const block of blocksToRemove) {
+      const posKey = `${block.x},${block.y}`;
+
+      // 이미 제거된 위치는 건너뜀
+      if (removedPositions.has(posKey)) continue;
+
       // 안전한 좌표 검증
       if (block.y >= 0 && block.y < BOARD_CONFIG.ROWS &&
           block.x >= 0 && block.x < BOARD_CONFIG.COLUMNS &&
-          workingBoard[block.y]) {
+          workingBoard[block.y] &&
+          workingBoard[block.y][block.x] !== null) {
         effects.push({ x: block.x, y: block.y, color: block.color });
         workingBoard[block.y][block.x] = null;
+        removedPositions.add(posKey);
         totalCleared++;
 
         // 특수 블록 카운트
@@ -510,6 +576,8 @@ export function useGameLogic() {
         }
       }
     }
+
+    console.log('[ProcessFusion] Actually cleared:', totalCleared, 'blocks');
 
     setFusionEffects(effects);
 
@@ -749,12 +817,9 @@ export function useGameLogic() {
 
     // 블록이 있다가 0이 되면 (모든 블록 배치됨) 융합 체크
     if (prevCount > 0 && currCount === 0 && gameStatus === 'playing' && !processingRef.current) {
-      // 약간의 딜레이를 주어 보드 업데이트가 완료되도록 함
-      setTimeout(() => {
-        if (!processingRef.current && useGameStore.getState().gameStatus === 'playing') {
-          processChainReaction();
-        }
-      }, 50);
+      // 즉시 융합 체크 시작 (스폰보다 먼저 실행되도록)
+      console.log('[BlockPlaced] Blocks placed, checking for fusions immediately');
+      processChainReaction();
     }
   }, [currentBlocks.length, gameStatus, processChainReaction]);
 
