@@ -188,6 +188,7 @@ export const FEVER_CONFIG = {
   GAUGE_PER_COMBO: 5,     // 콤보당 게이지 증가
   MAX_GAUGE: 100,
   DECAY_RATE: 2,          // 초당 게이지 감소
+  FEVER_DURATION: 8000,   // 피버 모드 지속 시간 (ms)
 };
 
 // 난이도 설정
@@ -598,7 +599,7 @@ export const GAME_MODE_CONFIG = {
   },
   zen: {
     name: '젠',
-    description: '점수 없이 편안하게',
+    description: '게임오버 없이 편안하게',
     icon: '🧘',
     hasTimeLimit: false,
     hasLevelLimit: false,
@@ -606,15 +607,16 @@ export const GAME_MODE_CONFIG = {
   },
   daily: {
     name: '일일 챌린지',
-    description: '매일 새로운 도전!',
+    description: '매일 새로운 도전! 3분!',
     icon: '📅',
     hasTimeLimit: true,
     timeLimit: 180,
     hasLevelLimit: false,
+    isDaily: true,
   },
   survival: {
     name: '서바이벌',
-    description: '점점 빨라지는 속도!',
+    description: '10초마다 빨라진다!',
     icon: '💀',
     hasTimeLimit: false,
     hasLevelLimit: false,
@@ -629,6 +631,27 @@ export const GAME_MODE_CONFIG = {
     hasObjectives: true,
   },
 };
+
+// 일일 챌린지용 시드 생성 (날짜 기반)
+export function getDailySeed(): number {
+  const today = new Date();
+  const dateStr = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+  let hash = 0;
+  for (let i = 0; i < dateStr.length; i++) {
+    const char = dateStr.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // 32bit integer 변환
+  }
+  return Math.abs(hash);
+}
+
+// 시드 기반 랜덤 생성기 (일일 챌린지용)
+export function seededRandom(seed: number): () => number {
+  return function() {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    return seed / 0x7fffffff;
+  };
+}
 
 // 터치 컨트롤 설정
 export const TOUCH_CONFIG = {

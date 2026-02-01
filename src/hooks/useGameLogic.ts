@@ -13,11 +13,32 @@ import {
   getMinBlocksToFuse,
 } from '../constants';
 
-// 융합 가능한 블록 그룹 찾기 - 배열 인덱스만 사용 (블록 내부 좌표 무시)
-function findFusionGroups(board: GameBoard, level: number): Block[][] {
-  const minBlocks = getMinBlocksToFuse(level);
+// 융합 가능한 블록 그룹 찾기 - 항상 4개 이상이면 터짐 (레벨 무관!)
+function findFusionGroups(board: GameBoard, _level?: number): Block[][] {
+  const MIN_BLOCKS = 4; // 항상 4개! 절대로 변경 금지!
   const groups: Block[][] = [];
   const globalVisited = new Set<string>();
+
+  // 디버그: 보드 상태 출력
+  let totalBlocks = 0;
+  const colorMap: Record<string, { count: number; positions: string[] }> = {};
+
+  for (let y = 0; y < BOARD_CONFIG.ROWS; y++) {
+    for (let x = 0; x < BOARD_CONFIG.COLUMNS; x++) {
+      const block = board[y]?.[x];
+      if (block) {
+        totalBlocks++;
+        if (!colorMap[block.color]) {
+          colorMap[block.color] = { count: 0, positions: [] };
+        }
+        colorMap[block.color].count++;
+        colorMap[block.color].positions.push(`(${x},${y})`);
+      }
+    }
+  }
+
+  console.log('[FindFusion] Total blocks:', totalBlocks);
+  console.log('[FindFusion] Colors:', Object.entries(colorMap).map(([c, d]) => `${c}:${d.count}`).join(', '));
 
   // 모든 셀을 순회
   for (let startY = 0; startY < BOARD_CONFIG.ROWS; startY++) {
@@ -57,7 +78,7 @@ function findFusionGroups(board: GameBoard, level: number): Block[][] {
         if (!block) continue;
         if (block.specialType === 'stone') continue;
 
-        // 색상 매칭 체크
+        // 색상 매칭 체크 - 정확한 비교!
         const isMatch = block.color === targetColor || block.color === 'rainbow';
         if (!isMatch) continue;
 
@@ -71,15 +92,16 @@ function findFusionGroups(board: GameBoard, level: number): Block[][] {
           y: cy,
         });
 
-        // 상하좌우 탐색
+        // 상하좌우 탐색 (대각선은 제외!)
         queue.push([cx - 1, cy]);
         queue.push([cx + 1, cy]);
         queue.push([cx, cy - 1]);
         queue.push([cx, cy + 1]);
       }
 
-      // 4개 이상 연결되면 그룹에 추가
-      if (connected.length >= minBlocks) {
+      // 4개 이상 연결되면 그룹에 추가 - 무조건!
+      if (connected.length >= MIN_BLOCKS) {
+        console.log(`[FindFusion] *** FOUND GROUP: ${targetColor} x${connected.length} at ${connected.map(b => `(${b.x},${b.y})`).join(', ')}`);
         groups.push(connected);
         // 전역 방문 표시 (다른 시작점에서 중복 검색 방지)
         localVisited.forEach(k => globalVisited.add(k));
@@ -87,6 +109,7 @@ function findFusionGroups(board: GameBoard, level: number): Block[][] {
     }
   }
 
+  console.log('[FindFusion] Found', groups.length, 'fusion groups');
   return groups;
 }
 
@@ -424,14 +447,17 @@ export function useGameLogic() {
 
   // 융합 처리 (보드를 인자로 받음) - 특수 블록 효과 포함
   const processFusion = useCallback(async (currentBoard: GameBoard): Promise<{ result: FusionResult | null; newBoard: GameBoard }> => {
-    const groups = findFusionGroups(currentBoard, level);
+    // level 파라미터 제거 - 항상 4개면 터짐!
+    const groups = findFusionGroups(currentBoard);
 
-    console.log('[ProcessFusion] Found', groups.length, 'fusion groups');
+    console.log('[ProcessFusion] Checking for fusion groups...');
     if (groups.length > 0) {
       groups.forEach((group, idx) => {
-        console.log(`[ProcessFusion] Group ${idx}: ${group.length} blocks, color: ${group[0]?.color}, positions:`,
+        console.log(`[ProcessFusion] *** FUSING Group ${idx}: ${group.length} blocks, color: ${group[0]?.color}, positions:`,
           group.map(b => `(${b.x},${b.y})`).join(', '));
       });
+    } else {
+      console.log('[ProcessFusion] No fusion groups found');
     }
 
     if (groups.length === 0) {
@@ -761,10 +787,10 @@ export function useGameLogic() {
 
         // 현재 보드 상태 확인
         const state = useGameStore.getState();
-        const groups = findFusionGroups(state.board, state.level);
+        const groups = findFusionGroups(state.board);
 
         if (groups.length > 0) {
-          console.log('[BlockPlaced] Found', groups.length, 'fusion groups!');
+          console.log('[BlockPlaced] Found', groups.length, 'fusion groups! Starting chain reaction.');
           processChainReaction();
         } else {
           console.log('[BlockPlaced] No fusion groups found, spawning new block');
@@ -777,7 +803,7 @@ export function useGameLogic() {
     }
   }, [currentBlocks.length, gameStatus, processChainReaction, spawnBlock]);
 
-  // 보드 변경 시 추가 융합 체크 (안전장치) - 더 긴 딜레이로 안정성 확보
+  // 보드 변경 시 추가 융합 체크 (안전장치) - 더 짧은 딜레이로 반응성 향상
   useEffect(() => {
     boardVersionRef.current++;
     const currentVersion = boardVersionRef.current;
@@ -788,33 +814,30 @@ export function useGameLogic() {
       const checkForFusions = () => {
         // 버전 체크로 오래된 호출 무시
         if (boardVersionRef.current !== currentVersion) {
-          console.log('[BoardCheck] Skipped - board version changed');
           return;
         }
         if (processingRef.current) {
-          console.log('[BoardCheck] Skipped - already processing');
           return;
         }
 
         const state = useGameStore.getState();
         if (state.currentBlocks.length > 0) {
-          console.log('[BoardCheck] Skipped - has falling blocks');
           return;
         }
 
-        const groups = findFusionGroups(state.board, level);
+        const groups = findFusionGroups(state.board);
 
         if (groups.length > 0) {
-          console.log('[BoardCheck] Found', groups.length, 'fusion groups, starting chain reaction');
+          console.log('[BoardCheck] Found', groups.length, 'fusion groups, starting chain reaction!');
           processChainReaction();
         }
       };
 
-      // 더 긴 딜레이로 다른 상태 업데이트와 충돌 방지
-      const timeoutId = setTimeout(checkForFusions, 150);
+      // 짧은 딜레이로 빠른 반응
+      const timeoutId = setTimeout(checkForFusions, 50);
       return () => clearTimeout(timeoutId);
     }
-  }, [board, gameStatus, currentBlocks.length, level, processChainReaction]);
+  }, [board, gameStatus, currentBlocks.length, processChainReaction]);
 
   // 게임 루프 (자동 낙하) - 다중 블록 지원 + 주기적 융합 체크
   useEffect(() => {
@@ -841,14 +864,13 @@ export function useGameLogic() {
         }
       }
 
-      // 주기적 융합 체크 (200ms마다) - 현재 블록이 없을 때만!
-      // 현재 블록이 떨어지는 중에는 체크하지 않음 (배치 후에만 체크)
-      if (now - lastFusionCheck >= 200 && !processingRef.current && currentState.currentBlocks.length === 0) {
+      // 주기적 융합 체크 (100ms마다) - 더 자주 체크!
+      if (now - lastFusionCheck >= 100 && !processingRef.current && currentState.currentBlocks.length === 0) {
         lastFusionCheck = now;
 
-        const groups = findFusionGroups(currentState.board, currentState.level);
+        const groups = findFusionGroups(currentState.board);
         if (groups.length > 0) {
-          console.log('[Fusion] Periodic check found fusion groups:', groups.length);
+          console.log('[GameLoop] Found fusion groups:', groups.length, '- starting chain reaction');
           processChainReaction();
         }
       }

@@ -4,7 +4,7 @@ import { useGameStore } from './stores/gameStore';
 import { useUserStore } from './stores/userStore';
 import { useAudio } from './hooks';
 import { GameMode, ThemeColors } from './types';
-import { BOARD_CONFIG, GAME_MODE_CONFIG } from './constants';
+import { BOARD_CONFIG, GAME_MODE_CONFIG, getDropSpeed } from './constants';
 import { THEMES } from './constants/shopItems';
 
 // Game Components
@@ -250,10 +250,47 @@ function App() {
         >
           {gameStatus === 'paused' ? '▶' : '⏸'}
         </button>
-        <div className="text-center">
-          <div className="text-[10px] text-gray-400 font-bold tracking-widest">LEVEL</div>
-          <div className="text-xl font-black text-cyan-400 font-mono leading-none">{level}</div>
+
+        {/* 모드 표시 */}
+        <div className="flex flex-col items-center">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">{GAME_MODE_CONFIG[gameMode]?.icon || '🎮'}</span>
+            <span className="text-xs text-gray-400 font-bold tracking-wider uppercase">
+              {GAME_MODE_CONFIG[gameMode]?.name || gameMode}
+            </span>
+          </div>
+          <div className="flex items-center gap-3 mt-0.5">
+            <div className="text-center">
+              <div className="text-[9px] text-gray-500 font-bold">LV</div>
+              <div className="text-sm font-black text-cyan-400 font-mono leading-none">{level}</div>
+            </div>
+            {gameMode === 'survival' && (
+              <div className="text-center">
+                <div className="text-[9px] text-orange-400 font-bold">SPD</div>
+                <div className="text-sm font-black text-orange-400 font-mono leading-none">
+                  {Math.round((1000 - getDropSpeed(level)) / 8)}%
+                </div>
+              </div>
+            )}
+            {(gameMode === 'timeAttack' || gameMode === 'daily') && (
+              <div className="text-center">
+                <div className="text-[9px] text-red-400 font-bold">TIME</div>
+                <div className={`text-sm font-black font-mono leading-none ${
+                  gameTime >= ((GAME_MODE_CONFIG[gameMode] as any)?.timeLimit || 120) - 30 ? 'text-red-400 animate-pulse' : 'text-white'
+                }`}>
+                  {Math.max(0, ((GAME_MODE_CONFIG[gameMode] as any)?.timeLimit || 120) - gameTime)}s
+                </div>
+              </div>
+            )}
+            {gameMode === 'zen' && (
+              <div className="text-center">
+                <div className="text-[9px] text-purple-400 font-bold">ZEN</div>
+                <div className="text-sm text-purple-400">🧘</div>
+              </div>
+            )}
+          </div>
         </div>
+
         <button
           onClick={() => { playSound('buttonClick'); setShowSettings(true); }}
           className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-xl backdrop-blur-md active:scale-95 transition-transform"

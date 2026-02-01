@@ -1,18 +1,29 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../stores/gameStore';
-import { GRAVITY_ICONS, FEVER_CONFIG, BLOCK_COLOR_MAP } from '../../constants';
+import { GRAVITY_ICONS, FEVER_CONFIG, BLOCK_COLOR_MAP, GAME_MODE_CONFIG, getDropSpeed } from '../../constants';
 import type { BlockColor } from '../../types';
 
 export function ScoreBoard() {
   const { score, level, combo, chainCount, gravityDirection, gameTime, activePowerUp, statistics, feverGauge, isFeverMode, gameMode, movesRemaining, puzzleLevel, levelObjectives } = useGameStore();
   const isPuzzleMode = gameMode === 'puzzle';
+  const isTimeAttack = gameMode === 'timeAttack' || gameMode === 'daily';
+  const isSurvival = gameMode === 'survival';
+  const isZen = gameMode === 'zen';
+
+  const modeConfig = GAME_MODE_CONFIG[gameMode] as { timeLimit?: number; hasTimeLimit?: boolean };
+  const timeLimit = modeConfig?.timeLimit || 120;
+  const remainingTime = Math.max(0, timeLimit - gameTime);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
+
+  // Survival 모드 속도 계산
+  const currentSpeed = getDropSpeed(level);
+  const speedPercent = Math.round((1000 - currentSpeed) / 8); // 0~100%
 
   const isHighScore = score > statistics.highScore && score > 0;
 
@@ -34,6 +45,61 @@ export function ScoreBoard() {
           <span className="absolute top-2 right-2 text-[10px] bg-yellow-500 text-black px-1.5 py-0.5 rounded font-bold animate-pulse">NEW</span>
         )}
       </div>
+
+      {/* 타임어택/일일 모드 남은 시간 */}
+      {isTimeAttack && (
+        <motion.div
+          className={`glass-panel p-4 rounded-xl text-center relative overflow-hidden ${remainingTime <= 30 ? 'border-2 border-red-500 bg-red-900/30' : ''}`}
+          animate={remainingTime <= 30 ? { scale: [1, 1.02, 1] } : {}}
+          transition={{ duration: 0.5, repeat: Infinity }}
+        >
+          <p className={`text-xs font-bold tracking-wider mb-1 ${remainingTime <= 30 ? 'text-red-400' : 'text-orange-400'}`}>
+            ⏰ TIME REMAINING
+          </p>
+          <motion.p
+            className={`text-3xl font-mono font-bold ${remainingTime <= 30 ? 'text-red-400' : remainingTime <= 60 ? 'text-orange-400' : 'text-white'}`}
+            animate={remainingTime <= 10 ? { scale: [1, 1.1, 1] } : {}}
+            transition={{ duration: 0.3, repeat: Infinity }}
+          >
+            {formatTime(remainingTime)}
+          </motion.p>
+          <div className="w-full bg-gray-700/50 h-2 rounded-full mt-2 overflow-hidden">
+            <motion.div
+              className={`h-full ${remainingTime <= 30 ? 'bg-red-500' : remainingTime <= 60 ? 'bg-orange-500' : 'bg-green-500'}`}
+              style={{ width: `${(remainingTime / timeLimit) * 100}%` }}
+            />
+          </div>
+        </motion.div>
+      )}
+
+      {/* Zen 모드 표시 */}
+      {isZen && (
+        <div className="glass-panel p-4 rounded-xl text-center bg-gradient-to-br from-purple-900/30 to-indigo-900/30 border border-purple-500/30">
+          <p className="text-xs font-bold text-purple-300 tracking-wider mb-1">🧘 ZEN MODE</p>
+          <p className="text-sm text-gray-400">No Game Over • Relax & Play</p>
+        </div>
+      )}
+
+      {/* Survival 모드 속도 표시 */}
+      {isSurvival && (
+        <div className="glass-panel p-4 rounded-xl relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-500 via-orange-500 to-yellow-500" />
+          <p className="text-xs font-bold text-red-400 tracking-wider mb-1">💀 SURVIVAL MODE</p>
+          <div className="flex justify-between items-center">
+            <span className="text-gray-400 text-xs">SPEED</span>
+            <span className="text-lg font-bold text-orange-400">{speedPercent}%</span>
+          </div>
+          <div className="w-full bg-gray-700/50 h-2 rounded-full mt-1 overflow-hidden">
+            <motion.div
+              className="h-full bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500"
+              initial={false}
+              animate={{ width: `${speedPercent}%` }}
+              transition={{ duration: 0.3 }}
+            />
+          </div>
+          <p className="text-[10px] text-gray-500 mt-1 text-center">Speed increases every 10 seconds!</p>
+        </div>
+      )}
 
       {/* 정보 그리드 */}
       <div className="grid grid-cols-2 gap-2">
@@ -116,13 +182,13 @@ export function ScoreBoard() {
       </AnimatePresence>
 
       {/* 피버 게이지 */}
-      <div className={`glass-panel p-3 rounded-xl ${isFeverMode ? 'border-2 border-orange-500 bg-orange-900/30' : ''}`}>
+      <div className={`glass-panel p-3 rounded-xl ${isFeverMode ? 'border-2 border-orange-500 bg-orange-900/30 animate-pulse' : ''}`}>
         <div className="flex justify-between items-center mb-2">
           <span className={`text-xs font-bold ${isFeverMode ? 'text-orange-300' : 'text-gray-400'}`}>
             {isFeverMode ? '🔥 FEVER MODE!' : 'FEVER GAUGE'}
           </span>
           <span className={`text-xs font-mono ${isFeverMode ? 'text-orange-400' : 'text-gray-500'}`}>
-            {Math.floor(feverGauge || 0)}%
+            {isFeverMode ? 'ACTIVE!' : `${Math.floor(feverGauge || 0)}%`}
           </span>
         </div>
         <div className="w-full bg-gray-700/50 h-3 rounded-full overflow-hidden">
@@ -132,21 +198,35 @@ export function ScoreBoard() {
               : 'bg-gradient-to-r from-orange-600 to-yellow-500'}`}
             initial={false}
             animate={{
-              width: `${Math.min(feverGauge || 0, FEVER_CONFIG.MAX_GAUGE)}%`,
+              width: isFeverMode ? '100%' : `${Math.min(feverGauge || 0, FEVER_CONFIG.MAX_GAUGE)}%`,
             }}
             transition={{ duration: 0.3 }}
             style={{
-              boxShadow: isFeverMode ? '0 0 10px #ff6b00' : 'none',
+              boxShadow: isFeverMode ? '0 0 15px #ff6b00, 0 0 30px #ff4500' : 'none',
             }}
           />
         </div>
         {isFeverMode && (
+          <motion.div className="mt-2">
+            <motion.p
+              className="text-center text-sm text-orange-300 font-bold"
+              animate={{ scale: [1, 1.1, 1] }}
+              transition={{ duration: 0.5, repeat: Infinity }}
+            >
+              🔥 x3 SCORE MULTIPLIER! 🔥
+            </motion.p>
+            <p className="text-center text-[10px] text-orange-400/70 mt-0.5">
+              Clear blocks for massive points!
+            </p>
+          </motion.div>
+        )}
+        {!isFeverMode && feverGauge >= 80 && (
           <motion.p
-            className="text-center text-xs text-orange-300 mt-1 font-bold"
-            animate={{ opacity: [1, 0.5, 1] }}
-            transition={{ duration: 0.5, repeat: Infinity }}
+            className="text-center text-[10px] text-orange-400 mt-1"
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 1, repeat: Infinity }}
           >
-            x3 SCORE MULTIPLIER!
+            Almost there! Keep combo going!
           </motion.p>
         )}
       </div>

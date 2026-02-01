@@ -5,6 +5,7 @@ import { useGameStore } from '../../stores/gameStore';
 import { useUserStore } from '../../stores/userStore';
 import { useAudio } from '../../hooks/useAudio';
 import { submitScore, getPlayerId, getPlayerName, setPlayerName } from '../../services/firebase';
+import { GAME_MODE_CONFIG } from '../../constants';
 
 interface GameOverScreenProps {
   onRestart: () => void;
@@ -123,9 +124,22 @@ export function GameOverScreen({ onRestart, onMainMenu, onContinue }: GameOverSc
         animate={{ scale: 1, y: 0 }}
         transition={{ delay: 0.2, type: 'spring' }}
       >
-        {/* 타이틀 */}
+        {/* 타이틀 및 모드 */}
         <div className="text-center mb-6">
-          <h2 className="text-3xl font-bold text-white mb-2">GAME OVER</h2>
+          {/* 모드 표시 */}
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <span className="text-2xl">{GAME_MODE_CONFIG[gameMode]?.icon || '🎮'}</span>
+            <span className="text-sm text-gray-400 font-bold tracking-wider uppercase">
+              {GAME_MODE_CONFIG[gameMode]?.name || gameMode} MODE
+            </span>
+          </div>
+
+          <h2 className="text-3xl font-bold text-white mb-2">
+            {gameMode === 'timeAttack' ? 'TIME UP!' :
+             gameMode === 'survival' ? 'DEFEATED!' :
+             gameMode === 'puzzle' ? 'FAILED!' :
+             'GAME OVER'}
+          </h2>
           {isHighScore && score > 0 && (
             <motion.p
               className="text-yellow-400 font-bold"
@@ -133,8 +147,25 @@ export function GameOverScreen({ onRestart, onMainMenu, onContinue }: GameOverSc
               animate={{ scale: 1 }}
               transition={{ delay: 0.5, type: 'spring' }}
             >
-              NEW HIGH SCORE!
+              🏆 NEW HIGH SCORE! 🏆
             </motion.p>
+          )}
+
+          {/* 모드별 특별 메시지 */}
+          {gameMode === 'survival' && (
+            <p className="text-orange-400 text-sm mt-1">
+              생존 시간: {Math.floor(gameTime / 60)}분 {gameTime % 60}초
+            </p>
+          )}
+          {gameMode === 'timeAttack' && (
+            <p className="text-cyan-400 text-sm mt-1">
+              2분 안에 {formatScore(score)}점을 기록했습니다!
+            </p>
+          )}
+          {gameMode === 'daily' && (
+            <p className="text-purple-400 text-sm mt-1">
+              📅 오늘의 챌린지 완료!
+            </p>
           )}
         </div>
 

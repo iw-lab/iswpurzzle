@@ -294,7 +294,20 @@ export const useGameStore = create<GameStore>()(
       },
 
       endGame: () => {
-        const { score, statistics, combo, chainCount } = get();
+        const { score, statistics, combo, chainCount, gameMode } = get();
+
+        // Zen 모드는 게임오버가 없음 - 상단 4줄만 클리어하고 계속
+        if (gameMode === 'zen') {
+          const { board } = get();
+          const newBoard = board.map((row, y) => {
+            if (y < 4) return Array(BOARD_CONFIG.COLUMNS).fill(null);
+            return row;
+          });
+          set({ board: newBoard });
+          setTimeout(() => get().spawnBlock(), 100);
+          return;
+        }
+
         set({
           gameStatus: 'gameover',
           statistics: {
@@ -910,7 +923,11 @@ export const useGameStore = create<GameStore>()(
       },
 
       activateFeverMode: () => {
-        set({ isFeverMode: true, feverGauge: FEVER_CONFIG.MAX_GAUGE });
+        set({
+          isFeverMode: true,
+          feverGauge: FEVER_CONFIG.MAX_GAUGE,
+          feverStartTime: Date.now(),
+        } as any);
       },
 
       deactivateFeverMode: () => {
@@ -1082,7 +1099,7 @@ export const useGameStore = create<GameStore>()(
       },
 
       incrementGameTime: () => {
-        const { gameTime, comboTimer, feverGauge, isFeverMode } = get();
+        const { gameTime, comboTimer, feverGauge, isFeverMode, gameMode, level } = get();
 
         // 콤보 타이머 감소
         if (comboTimer > 0) {
@@ -1094,13 +1111,31 @@ export const useGameStore = create<GameStore>()(
           }
         }
 
+        // 피버 모드 지속시간 체크 (8초)
+        if (isFeverMode) {
+          const feverStartTime = (get() as any).feverStartTime || Date.now();
+          if (Date.now() - feverStartTime > FEVER_CONFIG.FEVER_DURATION) {
+            get().deactivateFeverMode();
+          }
+        }
+
         // 피버 게이지 감소 (피버 모드가 아닐 때)
         if (!isFeverMode && feverGauge > 0) {
           set({ feverGauge: Math.max(0, feverGauge - FEVER_CONFIG.DECAY_RATE) });
         }
 
-        // 쓰레기 블록 타이머
-        get().incrementGarbageTimer();
+        // 쓰레기 블록 타이머 (Zen 모드와 퍼즐 모드 제외)
+        if (gameMode !== 'zen' && gameMode !== 'puzzle') {
+          get().incrementGarbageTimer();
+        }
+
+        // Survival 모드: 시간에 따라 레벨 자동 증가 (더 빠른 속도)
+        if (gameMode === 'survival') {
+          // 10초마다 레벨업
+          if (gameTime > 0 && gameTime % 10 === 0 && level < 50) {
+            set({ level: level + 1 });
+          }
+        }
 
         set({ gameTime: gameTime + 1 });
       },
