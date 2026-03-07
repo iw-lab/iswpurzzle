@@ -1,6 +1,6 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { v4 as uuidv4 } from 'uuid';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import { v4 as uuidv4 } from "uuid";
 import type {
   GameState,
   GameBoard,
@@ -15,7 +15,7 @@ import type {
   MissionProgress,
   SpecialBlockType,
   LevelObjective,
-} from '../types';
+} from "../types";
 import {
   BOARD_CONFIG,
   getColorsForLevel,
@@ -33,8 +33,11 @@ import {
   getGarbageInterval,
   getRandomShape,
   rotateShape,
-} from '../constants';
-import { generateDailyMissions, generateWeeklyMissions } from '../constants/missions';
+} from "../constants";
+import {
+  generateDailyMissions,
+  generateWeeklyMissions,
+} from "../constants/missions";
 
 // 빈 보드 생성
 function createEmptyBoard(): GameBoard {
@@ -60,17 +63,20 @@ function getSpecialType(level: number, blocksPlaced: number): SpecialBlockType {
   if (Math.random() < chance) {
     return determineSpecialBlockType(level);
   }
-  return 'normal';
+  return "normal";
 }
 
 // 다음 블록 배열 생성
-function generateNextBlocks(count: number, level: number): { colors: BlockColor[], specialTypes: SpecialBlockType[] } {
+function generateNextBlocks(
+  count: number,
+  level: number,
+): { colors: BlockColor[]; specialTypes: SpecialBlockType[] } {
   const colors: BlockColor[] = [];
   const specialTypes: SpecialBlockType[] = [];
 
   for (let i = 0; i < count; i++) {
     colors.push(getRandomBlockColor(level));
-    specialTypes.push(i === 0 ? getSpecialType(level, 0) : 'normal');
+    specialTypes.push(i === 0 ? getSpecialType(level, 0) : "normal");
   }
 
   return { colors, specialTypes };
@@ -115,11 +121,11 @@ const initialGameState: GameState = {
   combo: 0,
   maxCombo: 0,
   chainCount: 0,
-  gameStatus: 'ready',
-  gameMode: 'classic',
+  gameStatus: "ready",
+  gameMode: "classic",
   powerUps: [],
   activePowerUp: null,
-  gravityDirection: 'down',
+  gravityDirection: "down",
   gameTime: 0,
   statistics: initialStatistics,
   continues: 0,
@@ -154,7 +160,7 @@ interface GameStore extends GameState {
 
   // 블록 제어
   spawnBlock: () => void;
-  moveBlock: (direction: 'left' | 'right') => void;
+  moveBlock: (direction: "left" | "right") => void;
   rotateBlock: () => void;
   softDrop: () => void;
   hardDrop: () => void;
@@ -210,6 +216,9 @@ interface GameStore extends GameState {
   nextPuzzleLevel: () => void;
   checkPuzzleComplete: () => void;
 
+  // 챌린지 모드
+  nextChallengeLevel: () => void;
+
   // 블록 카운터
   blocksPlaced: number;
 }
@@ -220,25 +229,29 @@ export const useGameStore = create<GameStore>()(
       ...initialGameState,
       blocksPlaced: 0,
 
-      startGame: (mode = 'classic') => {
+      startGame: (mode = "classic") => {
         isSpawning = false; // 스폰 플래그 초기화
         const level = 1;
-        const puzzleLevel = mode === 'puzzle' ? 1 : 1;
+        const puzzleLevel = mode === "puzzle" ? 1 : 1;
 
         // 퍼즐 모드는 블록 1개씩만 떨어짐
-        const blockCount = mode === 'puzzle' ? 1 : getFallingBlockCount(level);
-        const { colors, specialTypes } = generateNextBlocks(5 + blockCount, level);
+        const blockCount = mode === "puzzle" ? 1 : getFallingBlockCount(level);
+        const { colors, specialTypes } = generateNextBlocks(
+          5 + blockCount,
+          level,
+        );
 
         // 모드별 목표 설정
         let objectives: LevelObjective[] = [];
-        if (mode === 'challenge') {
+        if (mode === "challenge") {
           objectives = generateLevelObjectives(level);
-        } else if (mode === 'puzzle') {
+        } else if (mode === "puzzle") {
           objectives = generatePuzzleObjectives(puzzleLevel);
         }
 
         // 퍼즐 모드 이동 횟수
-        const movesRemaining = mode === 'puzzle' ? PUZZLE_CONFIG.getMovesForLevel(puzzleLevel) : 0;
+        const movesRemaining =
+          mode === "puzzle" ? PUZZLE_CONFIG.getMovesForLevel(puzzleLevel) : 0;
 
         set({
           board: createEmptyBoard(),
@@ -254,10 +267,10 @@ export const useGameStore = create<GameStore>()(
           combo: 0,
           maxCombo: 0,
           chainCount: 0,
-          gameStatus: 'playing',
+          gameStatus: "playing",
           gameMode: mode,
           activePowerUp: null,
-          gravityDirection: 'down',
+          gravityDirection: "down",
           gameTime: 0,
           continues: 0,
           adWatchedThisGame: false,
@@ -282,14 +295,14 @@ export const useGameStore = create<GameStore>()(
       },
 
       pauseGame: () => {
-        if (get().gameStatus === 'playing') {
-          set({ gameStatus: 'paused' });
+        if (get().gameStatus === "playing") {
+          set({ gameStatus: "paused" });
         }
       },
 
       resumeGame: () => {
-        if (get().gameStatus === 'paused') {
-          set({ gameStatus: 'playing' });
+        if (get().gameStatus === "paused") {
+          set({ gameStatus: "playing" });
         }
       },
 
@@ -297,7 +310,7 @@ export const useGameStore = create<GameStore>()(
         const { score, statistics, combo, chainCount, gameMode } = get();
 
         // Zen 모드는 게임오버가 없음 - 상단 4줄만 클리어하고 계속
-        if (gameMode === 'zen') {
+        if (gameMode === "zen") {
           const { board } = get();
           const newBoard = board.map((row, y) => {
             if (y < 4) return Array(BOARD_CONFIG.COLUMNS).fill(null);
@@ -309,7 +322,7 @@ export const useGameStore = create<GameStore>()(
         }
 
         set({
-          gameStatus: 'gameover',
+          gameStatus: "gameover",
           statistics: {
             ...statistics,
             totalGamesPlayed: statistics.totalGamesPlayed + 1,
@@ -332,11 +345,20 @@ export const useGameStore = create<GameStore>()(
       },
 
       spawnBlock: () => {
-        const { nextBlocks, nextSpecialTypes, level, gravityDirection, board, blocksPlaced, currentBlocks, gameStatus } = get();
+        const {
+          nextBlocks,
+          nextSpecialTypes,
+          level,
+          gravityDirection,
+          board,
+          blocksPlaced,
+          currentBlocks,
+          gameStatus,
+        } = get();
 
         // 이미 블록이 있거나 게임 중이 아니면 생성하지 않음
         if (currentBlocks.length > 0) return;
-        if (gameStatus !== 'playing') return;
+        if (gameStatus !== "playing") return;
 
         // 스폰 중복 방지
         if (isSpawning) return;
@@ -350,7 +372,9 @@ export const useGameStore = create<GameStore>()(
           let currentNextSpecialTypes = [...nextSpecialTypes];
           while (currentNextBlocks.length < 10) {
             currentNextBlocks.push(getRandomBlockColor(level));
-            currentNextSpecialTypes.push(getSpecialType(level, blocksPlaced + currentNextBlocks.length));
+            currentNextSpecialTypes.push(
+              getSpecialType(level, blocksPlaced + currentNextBlocks.length),
+            );
           }
 
           if (currentNextBlocks.length < 1) {
@@ -362,10 +386,10 @@ export const useGameStore = create<GameStore>()(
           const offsets = shape.offsets;
 
           // 모양의 경계 계산
-          const minX = Math.min(...offsets.map(o => o[0]));
-          const maxX = Math.max(...offsets.map(o => o[0]));
-          const minY = Math.min(...offsets.map(o => o[1]));
-          const maxY = Math.max(...offsets.map(o => o[1]));
+          const minX = Math.min(...offsets.map((o) => o[0]));
+          const maxX = Math.max(...offsets.map((o) => o[0]));
+          const minY = Math.min(...offsets.map((o) => o[1]));
+          const maxY = Math.max(...offsets.map((o) => o[1]));
           const shapeWidth = maxX - minX + 1;
           const shapeHeight = maxY - minY + 1;
 
@@ -373,19 +397,19 @@ export const useGameStore = create<GameStore>()(
           let baseX: number, baseY: number;
 
           switch (gravityDirection) {
-            case 'down':
+            case "down":
               baseX = Math.floor((BOARD_CONFIG.COLUMNS - shapeWidth) / 2);
               baseY = 0;
               break;
-            case 'up':
+            case "up":
               baseX = Math.floor((BOARD_CONFIG.COLUMNS - shapeWidth) / 2);
               baseY = BOARD_CONFIG.ROWS - 1 - shapeHeight + 1;
               break;
-            case 'left':
+            case "left":
               baseX = BOARD_CONFIG.COLUMNS - shapeWidth;
               baseY = Math.floor((BOARD_CONFIG.ROWS - shapeHeight) / 2);
               break;
-            case 'right':
+            case "right":
               baseX = 0;
               baseY = Math.floor((BOARD_CONFIG.ROWS - shapeHeight) / 2);
               break;
@@ -398,7 +422,8 @@ export const useGameStore = create<GameStore>()(
           for (let i = 0; i < offsets.length; i++) {
             const [dx, dy] = offsets[i];
             const color = currentNextBlocks[i] || currentNextBlocks[0]; // 각 블록마다 다른 색
-            const specialType = i === 0 ? (currentNextSpecialTypes[0] || 'normal') : 'normal';
+            const specialType =
+              i === 0 ? currentNextSpecialTypes[0] || "normal" : "normal";
 
             const startX = baseX + dx;
             const startY = baseY + dy;
@@ -427,7 +452,7 @@ export const useGameStore = create<GameStore>()(
           }
 
           // 상단 줄 게임오버 체크
-          if (gravityDirection === 'down') {
+          if (gravityDirection === "down") {
             let topRowBlocks = 0;
             for (let x = 0; x < BOARD_CONFIG.COLUMNS; x++) {
               if (board[0][x] !== null) topRowBlocks++;
@@ -441,7 +466,9 @@ export const useGameStore = create<GameStore>()(
 
           // 새 블록 색상들 생성 (블록 개수만큼 소비)
           const newNextBlocks = [...currentNextBlocks.slice(blockCount)];
-          const newNextSpecialTypes = [...currentNextSpecialTypes.slice(blockCount)];
+          const newNextSpecialTypes = [
+            ...currentNextSpecialTypes.slice(blockCount),
+          ];
 
           set({
             currentBlock: newBlocks[0] || null,
@@ -472,10 +499,10 @@ export const useGameStore = create<GameStore>()(
           let newX = block.x;
           let newY = block.y;
 
-          if (gravityDirection === 'down' || gravityDirection === 'up') {
-            newX = direction === 'left' ? block.x - 1 : block.x + 1;
+          if (gravityDirection === "down" || gravityDirection === "up") {
+            newX = direction === "left" ? block.x - 1 : block.x + 1;
           } else {
-            newY = direction === 'left' ? block.y - 1 : block.y + 1;
+            newY = direction === "left" ? block.y - 1 : block.y + 1;
           }
 
           // 범위 체크 - 하나라도 벗어나면 전체 이동 취소
@@ -519,8 +546,12 @@ export const useGameStore = create<GameStore>()(
           const newY = pivot.y + relX;
 
           // 범위 체크
-          if (newX < 0 || newX >= BOARD_CONFIG.COLUMNS ||
-              newY < 0 || newY >= BOARD_CONFIG.ROWS) {
+          if (
+            newX < 0 ||
+            newX >= BOARD_CONFIG.COLUMNS ||
+            newY < 0 ||
+            newY >= BOARD_CONFIG.ROWS
+          ) {
             canRotate = false;
             break;
           }
@@ -540,7 +571,14 @@ export const useGameStore = create<GameStore>()(
 
         // 벽 킥 시도 (회전이 안 될 경우 밀어보기)
         if (!canRotate) {
-          const kicks = [[-1, 0], [1, 0], [-2, 0], [2, 0], [0, -1], [0, 1]];
+          const kicks = [
+            [-1, 0],
+            [1, 0],
+            [-2, 0],
+            [2, 0],
+            [0, -1],
+            [0, 1],
+          ];
 
           for (const [kickX, kickY] of kicks) {
             const kickedBlocks: FallingBlock[] = [];
@@ -553,9 +591,13 @@ export const useGameStore = create<GameStore>()(
               const newX = pivot.x - relY + kickX;
               const newY = pivot.y + relX + kickY;
 
-              if (newX < 0 || newX >= BOARD_CONFIG.COLUMNS ||
-                  newY < 0 || newY >= BOARD_CONFIG.ROWS ||
-                  board[newY]?.[newX] !== null) {
+              if (
+                newX < 0 ||
+                newX >= BOARD_CONFIG.COLUMNS ||
+                newY < 0 ||
+                newY >= BOARD_CONFIG.ROWS ||
+                board[newY]?.[newX] !== null
+              ) {
                 kickWorks = false;
                 break;
               }
@@ -575,8 +617,8 @@ export const useGameStore = create<GameStore>()(
         if (canRotate && newBlocks.length === currentBlocks.length) {
           // 새 오프셋 계산 (첫 번째 블록 기준)
           const firstBlock = newBlocks[0];
-          const newOffsets: [number, number][] = newBlocks.map(b =>
-            [b.x - firstBlock.x, b.y - firstBlock.y] as [number, number]
+          const newOffsets: [number, number][] = newBlocks.map(
+            (b) => [b.x - firstBlock.x, b.y - firstBlock.y] as [number, number],
           );
 
           set({
@@ -596,15 +638,21 @@ export const useGameStore = create<GameStore>()(
 
         // 먼저 모든 블록이 이동 가능한지 확인
         let anyBlocked = false;
-        const currentPositions = new Set(currentBlocks.map(b => `${b.x},${b.y}`));
+        const currentPositions = new Set(
+          currentBlocks.map((b) => `${b.x},${b.y}`),
+        );
 
         for (const block of currentBlocks) {
           const newX = block.x + dx;
           const newY = block.y + dy;
 
           // 범위 체크
-          if (newX < 0 || newX >= BOARD_CONFIG.COLUMNS ||
-              newY < 0 || newY >= BOARD_CONFIG.ROWS) {
+          if (
+            newX < 0 ||
+            newX >= BOARD_CONFIG.COLUMNS ||
+            newY < 0 ||
+            newY >= BOARD_CONFIG.ROWS
+          ) {
             anyBlocked = true;
             break;
           }
@@ -623,7 +671,7 @@ export const useGameStore = create<GameStore>()(
         }
 
         // 모든 블록 함께 이동
-        const updatedBlocks = currentBlocks.map(block => ({
+        const updatedBlocks = currentBlocks.map((block) => ({
           ...block,
           x: block.x + dx,
           y: block.y + dy,
@@ -644,13 +692,13 @@ export const useGameStore = create<GameStore>()(
         // 각 블록이 개별적으로 떨어질 수 있는 최대 거리 계산 (분리 낙하!)
         // 이미 배치된 블록들의 위치를 추적
         const placedPositions = new Set<string>();
-        const newBoard = board.map(row => [...row]);
+        const newBoard = board.map((row) => [...row]);
 
         // 블록들을 낙하 방향 기준으로 정렬 (아래/오른쪽에 있는 블록 먼저 처리)
         const sortedBlocks = [...currentBlocks].sort((a, b) => {
-          if (gravityDirection === 'down') return b.y - a.y;  // 아래쪽 먼저
-          if (gravityDirection === 'up') return a.y - b.y;    // 위쪽 먼저
-          if (gravityDirection === 'right') return b.x - a.x; // 오른쪽 먼저
+          if (gravityDirection === "down") return b.y - a.y; // 아래쪽 먼저
+          if (gravityDirection === "up") return a.y - b.y; // 위쪽 먼저
+          if (gravityDirection === "right") return b.x - a.x; // 오른쪽 먼저
           return a.x - b.x; // 왼쪽 먼저
         });
 
@@ -690,7 +738,7 @@ export const useGameStore = create<GameStore>()(
             x: newX,
             y: newY,
             specialType: block.specialType,
-            frozenCount: block.specialType === 'frozen' ? 2 : undefined,
+            frozenCount: block.specialType === "frozen" ? 2 : undefined,
             createdAt: Date.now(),
           };
         }
@@ -704,7 +752,12 @@ export const useGameStore = create<GameStore>()(
       },
 
       doHoldBlock: () => {
-        const { currentBlock, holdBlock: currentHold, holdSpecialType: currentHoldSpecial, canHold } = get();
+        const {
+          currentBlock,
+          holdBlock: currentHold,
+          holdSpecialType: currentHoldSpecial,
+          canHold,
+        } = get();
         if (!currentBlock || !canHold) return;
 
         if (currentHold && currentHoldSpecial !== null) {
@@ -753,7 +806,7 @@ export const useGameStore = create<GameStore>()(
             x: posX,
             y: posY,
             specialType: fallingBlock.specialType,
-            frozenCount: fallingBlock.specialType === 'frozen' ? 2 : undefined,
+            frozenCount: fallingBlock.specialType === "frozen" ? 2 : undefined,
             createdAt: Date.now(),
           };
 
@@ -772,12 +825,12 @@ export const useGameStore = create<GameStore>()(
         set({ board: newBoard, currentBlock: null, currentBlocks: [] });
 
         // 퍼즐 모드: 이동 횟수 감소
-        if (gameMode === 'puzzle') {
+        if (gameMode === "puzzle") {
           get().decrementMoves();
         }
 
         // 대기 중인 쓰레기 블록 추가 (퍼즐 모드에서는 쓰레기 블록 없음)
-        if (garbagePending > 0 && gameMode !== 'puzzle') {
+        if (garbagePending > 0 && gameMode !== "puzzle") {
           // 약간의 딜레이 후 쓰레기 블록 추가 (시각적 효과를 위해)
           setTimeout(() => {
             get().addGarbageRows(get().garbagePending);
@@ -799,7 +852,7 @@ export const useGameStore = create<GameStore>()(
 
       cycleGravity: () => {
         const { gravityDirection } = get();
-        const directions: GravityDirection[] = ['down', 'right', 'up', 'left'];
+        const directions: GravityDirection[] = ["down", "right", "up", "left"];
         const currentIndex = directions.indexOf(gravityDirection);
         const nextIndex = (currentIndex + 1) % directions.length;
         set({ gravityDirection: directions[nextIndex] });
@@ -823,7 +876,9 @@ export const useGameStore = create<GameStore>()(
 
       usePowerUp: (type) => {
         const { powerUps } = get();
-        const powerUpIndex = powerUps.findIndex((p) => p.type === type && p.count > 0);
+        const powerUpIndex = powerUps.findIndex(
+          (p) => p.type === type && p.count > 0,
+        );
 
         if (powerUpIndex < 0) return;
 
@@ -851,16 +906,14 @@ export const useGameStore = create<GameStore>()(
       updateBoard: (board) => {
         // 모든 블록의 좌표를 배열 위치와 동기화
         const syncedBoard = board.map((row, y) =>
-          row.map((block, x) =>
-            block ? { ...block, x, y } : null
-          )
+          row.map((block, x) => (block ? { ...block, x, y } : null)),
         );
         set({ board: syncedBoard });
       },
 
       addScore: (points) => {
         const { score, activePowerUp, isFeverMode } = get();
-        let multiplier = activePowerUp?.type === 'scoreMultiplier' ? 2 : 1;
+        let multiplier = activePowerUp?.type === "scoreMultiplier" ? 2 : 1;
         if (isFeverMode) multiplier *= 3;
         set({ score: score + points * multiplier });
         get().checkLevelUp();
@@ -902,7 +955,10 @@ export const useGameStore = create<GameStore>()(
 
         if (score >= threshold) {
           const newLevel = level + 1;
-          const objectives = gameMode === 'challenge' ? generateLevelObjectives(newLevel) : get().levelObjectives;
+          const objectives =
+            gameMode === "challenge"
+              ? generateLevelObjectives(newLevel)
+              : get().levelObjectives;
           set({
             level: newLevel,
             levelObjectives: objectives,
@@ -936,7 +992,7 @@ export const useGameStore = create<GameStore>()(
 
       updateLevelObjective: (type, value) => {
         const { levelObjectives } = get();
-        const newObjectives = levelObjectives.map(obj => {
+        const newObjectives = levelObjectives.map((obj) => {
           if (obj.type === type && !obj.completed) {
             const newCurrent = obj.current + value;
             return {
@@ -951,8 +1007,11 @@ export const useGameStore = create<GameStore>()(
         set({ levelObjectives: newObjectives });
 
         // 모든 목표 달성 체크
-        if (newObjectives.length > 0 && newObjectives.every(obj => obj.completed)) {
-          set({ gameStatus: 'levelComplete' });
+        if (
+          newObjectives.length > 0 &&
+          newObjectives.every((obj) => obj.completed)
+        ) {
+          set({ gameStatus: "levelComplete" });
         }
       },
 
@@ -1006,7 +1065,7 @@ export const useGameStore = create<GameStore>()(
                 color: colors[Math.floor(Math.random() * colors.length)],
                 x,
                 y: bottomY,
-                specialType: Math.random() < 0.1 ? 'stone' : 'normal',
+                specialType: Math.random() < 0.1 ? "stone" : "normal",
                 createdAt: Date.now(),
               };
             }
@@ -1049,7 +1108,7 @@ export const useGameStore = create<GameStore>()(
           // 쓰레기 블록 추가 예약
           const rows = Math.min(
             DIFFICULTY_CONFIG.GARBAGE_ROWS_PER_INTERVAL + Math.floor(level / 5),
-            DIFFICULTY_CONFIG.GARBAGE_MAX_ROWS
+            DIFFICULTY_CONFIG.GARBAGE_MAX_ROWS,
           );
           set({ garbageTimer: 0, garbagePending: garbagePending + rows });
         } else {
@@ -1099,7 +1158,14 @@ export const useGameStore = create<GameStore>()(
       },
 
       incrementGameTime: () => {
-        const { gameTime, comboTimer, feverGauge, isFeverMode, gameMode, level } = get();
+        const {
+          gameTime,
+          comboTimer,
+          feverGauge,
+          isFeverMode,
+          gameMode,
+          level,
+        } = get();
 
         // 콤보 타이머 감소
         if (comboTimer > 0) {
@@ -1121,16 +1187,18 @@ export const useGameStore = create<GameStore>()(
 
         // 피버 게이지 감소 (피버 모드가 아닐 때)
         if (!isFeverMode && feverGauge > 0) {
-          set({ feverGauge: Math.max(0, feverGauge - FEVER_CONFIG.DECAY_RATE) });
+          set({
+            feverGauge: Math.max(0, feverGauge - FEVER_CONFIG.DECAY_RATE),
+          });
         }
 
         // 쓰레기 블록 타이머 (Zen 모드와 퍼즐 모드 제외)
-        if (gameMode !== 'zen' && gameMode !== 'puzzle') {
+        if (gameMode !== "zen" && gameMode !== "puzzle") {
           get().incrementGarbageTimer();
         }
 
         // Survival 모드: 시간에 따라 레벨 자동 증가 (더 빠른 속도)
-        if (gameMode === 'survival') {
+        if (gameMode === "survival") {
           // 10초마다 레벨업
           if (gameTime > 0 && gameTime % 10 === 0 && level < 50) {
             set({ level: level + 1 });
@@ -1150,7 +1218,7 @@ export const useGameStore = create<GameStore>()(
 
         set({
           board: newBoard,
-          gameStatus: 'playing',
+          gameStatus: "playing",
           continues: continues + 1,
         });
 
@@ -1160,7 +1228,7 @@ export const useGameStore = create<GameStore>()(
       // 퍼즐 모드: 이동 횟수 감소
       decrementMoves: () => {
         const { movesRemaining, gameMode } = get();
-        if (gameMode !== 'puzzle') return;
+        if (gameMode !== "puzzle") return;
 
         const newMoves = movesRemaining - 1;
         set({ movesRemaining: newMoves });
@@ -1190,9 +1258,38 @@ export const useGameStore = create<GameStore>()(
           movesRemaining: newMoves,
           levelObjectives: newObjectives,
           puzzleCompleted: false,
-          gameStatus: 'playing',
+          gameStatus: "playing",
           combo: 0,
           chainCount: 0,
+        });
+
+        setTimeout(() => get().spawnBlock(), 100);
+      },
+
+      // 챌린지 모드: 다음 레벨로 진행
+      nextChallengeLevel: () => {
+        const { level } = get();
+        const newLevel = level + 1;
+        const newObjectives = generateLevelObjectives(newLevel);
+        const blockCount = getFallingBlockCount(newLevel);
+        const { colors, specialTypes } = generateNextBlocks(
+          5 + blockCount,
+          newLevel,
+        );
+
+        set({
+          board: createEmptyBoard(),
+          currentBlock: null,
+          currentBlocks: [],
+          nextBlocks: colors,
+          nextSpecialTypes: specialTypes,
+          level: newLevel,
+          levelObjectives: newObjectives,
+          gameStatus: "playing",
+          combo: 0,
+          chainCount: 0,
+          feverGauge: 0,
+          isFeverMode: false,
         });
 
         setTimeout(() => get().spawnBlock(), 100);
@@ -1201,14 +1298,14 @@ export const useGameStore = create<GameStore>()(
       // 퍼즐 모드: 클리어 체크
       checkPuzzleComplete: () => {
         const { levelObjectives, gameMode, movesRemaining } = get();
-        if (gameMode !== 'puzzle') return;
+        if (gameMode !== "puzzle") return;
 
         // 모든 목표 달성 확인
-        const allCompleted = levelObjectives.every(obj => obj.completed);
+        const allCompleted = levelObjectives.every((obj) => obj.completed);
 
         if (allCompleted) {
           // 퍼즐 클리어!
-          set({ puzzleCompleted: true, gameStatus: 'levelComplete' });
+          set({ puzzleCompleted: true, gameStatus: "levelComplete" });
         } else if (movesRemaining <= 0) {
           // 이동 횟수 소진, 목표 미달성 = 게임오버
           get().endGame();
@@ -1216,12 +1313,12 @@ export const useGameStore = create<GameStore>()(
       },
     }),
     {
-      name: 'chromafall-game-storage',
+      name: "chromafall-game-storage",
       partialize: (state) => ({
         statistics: state.statistics,
         powerUps: state.powerUps,
         missionProgress: state.missionProgress,
       }),
-    }
-  )
+    },
+  ),
 );
