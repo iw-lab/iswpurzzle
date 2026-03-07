@@ -456,13 +456,6 @@ export function useGameLogic() {
   const comboTimeoutRef = useRef<number | null>(null);
   const lastDropTimeRef = useRef<number>(0);
   const processingRef = useRef<boolean>(false);
-  const lastBlockCountRef = useRef<number>(0);
-
-  // useCallback 참조를 ref에 저장하여 useEffect 의존성에서 제거
-  const processChainReactionRef = useRef<() => Promise<void>>(() =>
-    Promise.resolve(),
-  );
-  const spawnBlockRef = useRef(spawnBlock);
 
   // 낙하 속도 계산
   const dropSpeed =
@@ -470,8 +463,8 @@ export function useGameLogic() {
       ? getDropSpeed(level) * 2
       : getDropSpeed(level);
 
-  // 단일 융합 처리 (보드를 인자로 받아서 처리 후 새 보드 반환)
-  const processFusion = useCallback(
+  // 단일 융합 처리 (순수 함수 - 보드를 인자로 받아서 처리 후 새 보드 반환)
+  const processSingleFusion = useCallback(
     async (
       currentBoard: GameBoard,
     ): Promise<{ result: FusionResult | null; newBoard: GameBoard }> => {
@@ -572,7 +565,7 @@ export function useGameLogic() {
         setSpecialEffects(allSpecialEffects);
       }
 
-      // 점수 계산 - 스토어에서 직접 읽기 (클로저 의존 제거)
+      // 점수 계산 - 스토어에서 직접 읽기
       const state = useGameStore.getState();
       const isPerfectClear = isBoardEmpty(workingBoard);
       const powerUpMultiplier =
@@ -634,9 +627,8 @@ export function useGameLogic() {
     [level],
   );
 
-  // 연쇄 반응 처리 - 의존성 최소화, 스토어에서 직접 읽기
-  const processChainReaction = useCallback(async () => {
-    // 이미 처리 중이면 스킵
+  // 연쇄 반응 전체 처리 - 스토어에서 직접 읽기, 완료 후 게임 루프가 다음 액션 결정
+  const doChainReaction = useCallback(async () => {
     if (processingRef.current) return;
 
     processingRef.current = true;
@@ -647,28 +639,29 @@ export function useGameLogic() {
       let totalCleared = 0;
       let currentChain = 0;
 
-      // Zustand은 동기적이므로 즉시 최신 보드를 가져올 수 있음
       let workingBoard = useGameStore.getState().board;
 
-      resetChain();
+      // 스토어 함수는 안정적 참조이므로 직접 호출 가능
+      const store = useGameStore.getState();
+      store.resetChain();
 
       let loopCount = 0;
       const maxLoops = 100;
 
       while (loopCount < maxLoops) {
         loopCount++;
-        const { result, newBoard } = await processFusion(workingBoard);
+        const { result, newBoard } = await processSingleFusion(workingBoard);
 
         if (!result) break;
 
         workingBoard = newBoard;
-        updateBoard(workingBoard);
+        useGameStore.getState().updateBoard(workingBoard);
 
         currentChain++;
         totalScore += result.score;
         totalCleared += result.clearedBlocks.length;
 
-        incrementChain();
+        useGameStore.getState().incrementChain();
         setChainEffects(currentChain);
 
         await new Promise((resolve) =>
@@ -677,21 +670,23 @@ export function useGameLogic() {
       }
 
       if (totalScore > 0) {
-        addScore(totalScore);
-        incrementCombo();
+        useGameStore.getState().addScore(totalScore);
+        useGameStore.getState().incrementCombo();
 
-        // 통계 업데이트 - 스토어에서 직접 읽기
+        // 통계 업데이트
         const stats = useGameStore.getState().statistics;
-        updateStatistics({
+        useGameStore.getState().updateStatistics({
           totalBlocksCleared: stats.totalBlocksCleared + totalCleared,
           totalFusions: stats.totalFusions + 1,
           maxChain: Math.max(stats.maxChain, currentChain),
         });
 
         // 미션 업데이트
-        updateMissionProgress("blocks_fused", totalCleared);
+        useGameStore
+          .getState()
+          .updateMissionProgress("blocks_fused", totalCleared);
         if (currentChain >= 5) {
-          updateMissionProgress("chain", 1);
+          useGameStore.getState().updateMissionProgress("chain", 1);
         }
 
         // 퍼즐/챌린지 모드 목표 업데이트
@@ -700,19 +695,21 @@ export function useGameLogic() {
           currentState.gameMode === "puzzle" ||
           currentState.gameMode === "challenge"
         ) {
-          updateLevelObjective("score", totalScore);
-          updateLevelObjective("clearBlocks", totalCleared);
+          currentState.updateLevelObjective("score", totalScore);
+          currentState.updateLevelObjective("clearBlocks", totalCleared);
 
           if (currentChain > 0) {
             const chainObj = currentState.levelObjectives.find(
               (o) => o.type === "chains",
             );
             if (chainObj && currentChain > chainObj.current) {
-              updateLevelObjective("chains", currentChain - chainObj.current);
+              currentState.updateLevelObjective(
+                "chains",
+                currentChain - chainObj.current,
+              );
             }
           }
 
-          // 퍼즐 완료 체크
           if (currentState.gameMode === "puzzle") {
             setTimeout(() => {
               useGameStore.getState().checkPuzzleComplete();
@@ -734,7 +731,7 @@ export function useGameLogic() {
           clearTimeout(comboTimeoutRef.current);
         }
         comboTimeoutRef.current = window.setTimeout(() => {
-          resetCombo();
+          useGameStore.getState().resetCombo();
         }, TIMING_CONFIG.COMBO_TIMEOUT);
       }
     } catch (error) {
@@ -743,63 +740,21 @@ export function useGameLogic() {
       setChainEffects(0);
       setIsProcessingFusion(false);
       processingRef.current = false;
-
-      // 새 블록 생성
-      const state = useGameStore.getState();
-      if (state.gameStatus === "playing" && state.currentBlocks.length === 0) {
-        spawnBlock();
-      }
+      // 주의: 여기서 spawnBlock 호출하지 않음!
+      // 게임 루프가 다음 틱에서 블록 없음을 감지하고 스폰함
     }
-  }, [
-    processFusion,
-    addScore,
-    incrementCombo,
-    resetCombo,
-    incrementChain,
-    resetChain,
-    spawnBlock,
-    updateBoard,
-    updateStatistics,
-    updateMissionProgress,
-    updateLevelObjective,
-    updateAchievement,
-    addBattlePassXP,
-  ]);
+  }, [processSingleFusion, updateAchievement, addBattlePassXP]);
 
-  // ref를 항상 최신 콜백으로 업데이트 (렌더마다 동기적으로)
-  processChainReactionRef.current = processChainReaction;
-  spawnBlockRef.current = spawnBlock;
+  // doChainReaction을 ref에 저장 (게임 루프에서 사용)
+  const doChainReactionRef = useRef(doChainReaction);
+  doChainReactionRef.current = doChainReaction;
 
-  // 블록이 배치되었을 때 처리 - 유일한 융합 트리거 포인트
-  // 핵심: processChainReaction/spawnBlock을 deps에서 제거하여 ref 변경으로 인한 effect 재실행 방지
+  // ============================================================
+  // 게임 루프 - 모든 게임 로직의 유일한 드라이버
+  // React의 useEffect/useState 의존 없이, Zustand 스토어에서 직접 읽음
+  // ============================================================
   useEffect(() => {
-    const prevCount = lastBlockCountRef.current;
-    const currCount = currentBlocks.length;
-    lastBlockCountRef.current = currCount;
-
-    // 블록이 있다가 0이 되면 (모든 블록 배치됨) 융합 체크
-    if (prevCount > 0 && currCount === 0 && gameStatus === "playing") {
-      const checkTimeout = setTimeout(() => {
-        if (processingRef.current) return;
-
-        const state = useGameStore.getState();
-        const groups = findFusionGroups(state.board);
-
-        if (groups.length > 0) {
-          processChainReactionRef.current();
-        } else {
-          spawnBlockRef.current();
-        }
-      }, 50);
-
-      return () => clearTimeout(checkTimeout);
-    }
-  }, [currentBlocks.length, gameStatus]);
-
-  // 게임 루프 (자동 낙하만 담당 + 안전장치 융합 체크)
-  // 핵심: processChainReaction을 deps에서 제거 - ref로 호출
-  useEffect(() => {
-    if (gameStatus !== "playing" || isProcessingFusion) {
+    if (gameStatus !== "playing") {
       if (dropIntervalRef.current) {
         clearInterval(dropIntervalRef.current);
         dropIntervalRef.current = null;
@@ -808,34 +763,36 @@ export function useGameLogic() {
     }
 
     lastDropTimeRef.current = Date.now();
-    let lastSafetyCheck = Date.now();
 
     const gameLoop = () => {
-      const now = Date.now();
-      const currentState = useGameStore.getState();
+      // 처리 중이면 스킵
+      if (processingRef.current) return;
 
-      // 블록이 있으면 낙하 처리
-      if (currentState.currentBlocks.length > 0 && !processingRef.current) {
+      const now = Date.now();
+      const state = useGameStore.getState();
+
+      // 게임 중이 아니면 스킵
+      if (state.gameStatus !== "playing") return;
+
+      // 1) 블록이 떨어지고 있으면 → 낙하 처리
+      if (state.currentBlocks.length > 0) {
         if (now - lastDropTimeRef.current >= dropSpeed) {
-          currentState.softDrop();
+          state.softDrop();
           lastDropTimeRef.current = now;
         }
         return;
       }
 
-      // 안전장치: 블록도 없고 처리 중도 아닌데 보드에 융합 가능한 그룹이 있으면 처리
-      // 200ms마다 체크 (더 빠른 감지)
-      if (
-        !processingRef.current &&
-        currentState.currentBlocks.length === 0 &&
-        now - lastSafetyCheck >= 200
-      ) {
-        lastSafetyCheck = now;
-        const groups = findFusionGroups(currentState.board);
-        if (groups.length > 0) {
-          processChainReactionRef.current();
-        }
+      // 2) 블록이 없음 → 보드에서 융합 가능한 그룹 체크
+      const groups = findFusionGroups(state.board);
+      if (groups.length > 0) {
+        // 융합 가능! 연쇄 반응 시작
+        doChainReactionRef.current();
+        return;
       }
+
+      // 3) 융합 그룹 없음 → 새 블록 스폰
+      state.spawnBlock();
     };
 
     dropIntervalRef.current = window.setInterval(gameLoop, 50);
@@ -846,7 +803,7 @@ export function useGameLogic() {
         dropIntervalRef.current = null;
       }
     };
-  }, [gameStatus, dropSpeed, isProcessingFusion]);
+  }, [gameStatus, dropSpeed]);
 
   // 컴포넌트 언마운트 시 정리
   useEffect(() => {
