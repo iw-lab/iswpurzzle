@@ -22,14 +22,14 @@ export const BLOCK_COLORS: Record<number, BlockColor[]> = {
 
 // 블록 색상 코드 (각 색상이 확실히 구분되도록 설정)
 export const BLOCK_COLOR_MAP: Record<BlockColor, string> = {
-  red: "#dc2626", // 순수 빨강
-  blue: "#1d4ed8", // 진한 파랑 (시안과 확실히 구분)
-  green: "#16a34a", // 초록
-  yellow: "#facc15", // 밝은 노랑 (주황과 확실히 구분)
-  purple: "#7c3aed", // 보라
-  cyan: "#06b6d4", // 하늘색 (파랑보다 밝고 연하게)
-  pink: "#ec4899", // 핫핑크 (빨강보다 분홍빛 강조)
-  orange: "#ea580c", // 진한 주황 (빨강/노랑 사이 독자적)
+  red: "#ef4444", // 밝은 빨강 (주황과 색조 차이 극대화)
+  blue: "#2563eb", // 진한 파랑
+  green: "#22c55e", // 밝은 초록
+  yellow: "#fde047", // 레몬 노랑
+  purple: "#a855f7", // 밝은 보라
+  cyan: "#22d3ee", // 밝은 시안 (파랑과 명도+채도 차이)
+  pink: "#f472b6", // 밝은 핑크 (빨강과 색조 차이)
+  orange: "#f97316", // 밝은 오렌지 (빨강보다 확실히 노란빛)
   rainbow:
     "linear-gradient(45deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #8b00ff)",
 };
