@@ -458,6 +458,12 @@ export function useGameLogic() {
   const processingRef = useRef<boolean>(false);
   const lastBlockCountRef = useRef<number>(0);
 
+  // useCallback 참조를 ref에 저장하여 useEffect 의존성에서 제거
+  const processChainReactionRef = useRef<() => Promise<void>>(() =>
+    Promise.resolve(),
+  );
+  const spawnBlockRef = useRef(spawnBlock);
+
   // 낙하 속도 계산
   const dropSpeed =
     activePowerUp?.type === "timeSlow"
@@ -760,7 +766,12 @@ export function useGameLogic() {
     addBattlePassXP,
   ]);
 
+  // ref를 항상 최신 콜백으로 업데이트 (렌더마다 동기적으로)
+  processChainReactionRef.current = processChainReaction;
+  spawnBlockRef.current = spawnBlock;
+
   // 블록이 배치되었을 때 처리 - 유일한 융합 트리거 포인트
+  // 핵심: processChainReaction/spawnBlock을 deps에서 제거하여 ref 변경으로 인한 effect 재실행 방지
   useEffect(() => {
     const prevCount = lastBlockCountRef.current;
     const currCount = currentBlocks.length;
@@ -775,17 +786,18 @@ export function useGameLogic() {
         const groups = findFusionGroups(state.board);
 
         if (groups.length > 0) {
-          processChainReaction();
+          processChainReactionRef.current();
         } else {
-          spawnBlock();
+          spawnBlockRef.current();
         }
       }, 50);
 
       return () => clearTimeout(checkTimeout);
     }
-  }, [currentBlocks.length, gameStatus, processChainReaction, spawnBlock]);
+  }, [currentBlocks.length, gameStatus]);
 
   // 게임 루프 (자동 낙하만 담당 + 안전장치 융합 체크)
+  // 핵심: processChainReaction을 deps에서 제거 - ref로 호출
   useEffect(() => {
     if (gameStatus !== "playing" || isProcessingFusion) {
       if (dropIntervalRef.current) {
@@ -808,20 +820,20 @@ export function useGameLogic() {
           currentState.softDrop();
           lastDropTimeRef.current = now;
         }
-        return; // 블록이 떨어지고 있으면 융합 체크 불필요
+        return;
       }
 
       // 안전장치: 블록도 없고 처리 중도 아닌데 보드에 융합 가능한 그룹이 있으면 처리
-      // 500ms마다만 체크 (성능)
+      // 200ms마다 체크 (더 빠른 감지)
       if (
         !processingRef.current &&
         currentState.currentBlocks.length === 0 &&
-        now - lastSafetyCheck >= 500
+        now - lastSafetyCheck >= 200
       ) {
         lastSafetyCheck = now;
         const groups = findFusionGroups(currentState.board);
         if (groups.length > 0) {
-          processChainReaction();
+          processChainReactionRef.current();
         }
       }
     };
@@ -834,7 +846,7 @@ export function useGameLogic() {
         dropIntervalRef.current = null;
       }
     };
-  }, [gameStatus, dropSpeed, isProcessingFusion, processChainReaction]);
+  }, [gameStatus, dropSpeed, isProcessingFusion]);
 
   // 컴포넌트 언마운트 시 정리
   useEffect(() => {
