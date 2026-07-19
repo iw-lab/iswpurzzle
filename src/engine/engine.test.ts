@@ -357,6 +357,44 @@ describe("calculateScore", () => {
   });
 });
 
+// ── 특수 블록 구성 ───────────────────────────────────────────
+describe("특수 블록", () => {
+  it("등장하는 특수 블록은 시인성 있는 6종뿐이다", async () => {
+    const { SPECIAL_BLOCK_CONFIG } = await import("../constants/gameConfig");
+    const active = Object.entries(SPECIAL_BLOCK_CONFIG)
+      .filter(([type, cfg]) => type !== "normal" && cfg.baseChance > 0)
+      .map(([type]) => type)
+      .sort();
+    expect(active).toEqual([
+      "bomb",
+      "cross",
+      "frozen",
+      "lightning",
+      "multiplier",
+      "stone",
+    ]);
+  });
+
+  it("효과가 안 보이던 shuffle·colorShift는 등장하지 않는다", async () => {
+    const { SPECIAL_BLOCK_CONFIG } = await import("../constants/gameConfig");
+    expect(SPECIAL_BLOCK_CONFIG.shuffle.baseChance).toBe(0);
+    expect(SPECIAL_BLOCK_CONFIG.colorShift.baseChance).toBe(0);
+  });
+
+  it("determineSpecialBlockType은 비활성 타입을 만들지 않는다", async () => {
+    const { determineSpecialBlockType } = await import(
+      "../constants/gameConfig"
+    );
+    for (let lv = 1; lv <= 30; lv++) {
+      for (let i = 0; i < 60; i++) {
+        const t = determineSpecialBlockType(lv);
+        expect(t).not.toBe("shuffle");
+        expect(t).not.toBe("colorShift");
+      }
+    }
+  });
+});
+
 // ── 시드 난수 (데일리 재현성) ────────────────────────────────
 describe("시드 난수", () => {
   afterEach(() => setRandomSource(null));

@@ -6,6 +6,7 @@ export function useControls() {
   const repeatTimerRef = useRef<number | null>(null);
   const repeatDirectionRef = useRef<'left' | 'right' | null>(null);
   const dasTimerRef = useRef<number | null>(null);
+  const softDropTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const clearAllTimers = () => {
@@ -18,6 +19,10 @@ export function useControls() {
         dasTimerRef.current = null;
       }
       repeatDirectionRef.current = null;
+      if (softDropTimerRef.current) {
+        clearInterval(softDropTimerRef.current);
+        softDropTimerRef.current = null;
+      }
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -96,10 +101,17 @@ export function useControls() {
         return;
       }
 
-      // 소프트 드롭
+      // 소프트 드롭 — 누르고 있으면 연속 낙하한다.
+      // 브라우저 키 리피트에만 의존하면 OS 설정에 따라 체감이 제각각이라
+      // 직접 반복 타이머를 건다(자연 낙하보다 확실히 빠르게).
       if (code === 'ArrowDown' || code === 'KeyS') {
         e.preventDefault();
         state.softDrop();
+        if (softDropTimerRef.current) clearInterval(softDropTimerRef.current);
+        softDropTimerRef.current = window.setInterval(() => {
+          const st = useGameStore.getState();
+          if (st.gameStatus === 'playing') st.softDrop();
+        }, 45);
         return;
       }
 
@@ -119,6 +131,12 @@ export function useControls() {
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'ArrowDown' || e.code === 'KeyS') {
+        if (softDropTimerRef.current) {
+          clearInterval(softDropTimerRef.current);
+          softDropTimerRef.current = null;
+        }
+      }
       const code = e.code;
       pressedKeys.current.delete(code);
 

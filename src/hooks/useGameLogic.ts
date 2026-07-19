@@ -33,6 +33,8 @@ function processSpecialBlockEffects(
   board: GameBoard,
   clearedBlocks: Block[],
   level: number,
+  /** 이번 스텝에 이미 내구도가 깎인 얼음 — 연쇄 1회당 1단계만 진행시킨다(#29). */
+  protectedFrozen: Set<string> = new Set(),
 ): {
   additionalCleared: Block[];
   newBoard: GameBoard;
@@ -42,6 +44,9 @@ function processSpecialBlockEffects(
   const additionalCleared: Block[] = [];
   const effects: SpecialEffect[] = [];
   const processedPositions = new Set<string>();
+
+  /** 이번 스텝에 이미 손상된 얼음인가 (그렇다면 이 스텝에서는 무적) */
+  const isProtected = (x: number, y: number) => protectedFrozen.has(`${x},${y}`);
 
   for (const block of clearedBlocks) {
     if (block.specialType === "normal") continue;
@@ -74,6 +79,9 @@ function processSpecialBlockEffects(
             ) {
               const targetBlock = newBoard[ny][nx];
               if (targetBlock && !clearedBlocks.includes(targetBlock)) {
+                if (targetBlock.specialType === "frozen" && isProtected(nx, ny)) {
+                  continue; // 같은 스텝에서 두 번 깎이지 않는다
+                }
                 if (
                   targetBlock.specialType === "frozen" &&
                   (targetBlock.frozenCount || 2) > 1
@@ -103,6 +111,9 @@ function processSpecialBlockEffects(
               targetBlock.color === block.color &&
               !clearedBlocks.includes(targetBlock)
             ) {
+              if (targetBlock.specialType === "frozen" && isProtected(x, y)) {
+                continue;
+              }
               if (
                 targetBlock.specialType === "frozen" &&
                 (targetBlock.frozenCount || 2) > 1
@@ -126,6 +137,9 @@ function processSpecialBlockEffects(
         for (let x = 0; x < BOARD_CONFIG.COLUMNS; x++) {
           const targetBlock = newBoard[block.y][x];
           if (targetBlock && !clearedBlocks.includes(targetBlock)) {
+            if (targetBlock.specialType === "frozen" && isProtected(x, block.y)) {
+              continue;
+            }
             if (
               targetBlock.specialType === "frozen" &&
               (targetBlock.frozenCount || 2) > 1
@@ -144,6 +158,9 @@ function processSpecialBlockEffects(
         for (let y = 0; y < BOARD_CONFIG.ROWS; y++) {
           const targetBlock = newBoard[y][block.x];
           if (targetBlock && !clearedBlocks.includes(targetBlock)) {
+            if (targetBlock.specialType === "frozen" && isProtected(block.x, y)) {
+              continue;
+            }
             if (
               targetBlock.specialType === "frozen" &&
               (targetBlock.frozenCount || 2) > 1
@@ -272,9 +289,12 @@ function processFrozenBlocks(
 ): {
   blocksToRemove: Block[];
   updatedBoard: GameBoard;
+  /** 이번 스텝에 내구도가 깎인 얼음 좌표 — 같은 스텝에서 또 맞지 않도록 보호한다(#29). */
+  damagedFrozen: Set<string>;
 } {
   const newBoard = board.map((row) => [...row]);
   const blocksToRemove: Block[] = [];
+  const damagedFrozen = new Set<string>();
 
   for (const block of blocks) {
     if (
@@ -294,6 +314,7 @@ function processFrozenBlocks(
           ...block,
           frozenCount: currentCount - 1,
         };
+        damagedFrozen.add(`${block.x},${block.y}`);
       } else {
         blocksToRemove.push(block);
       }
@@ -302,7 +323,7 @@ function processFrozenBlocks(
     }
   }
 
-  return { blocksToRemove, updatedBoard: newBoard };
+  return { blocksToRemove, updatedBoard: newBoard, damagedFrozen };
 }
 
 export function useGameLogic() {
@@ -326,7 +347,6 @@ export function useGameLogic() {
   const [specialEffects, setSpecialEffects] = useState<SpecialEffect[]>([]);
 
   const dropIntervalRef = useRef<number | null>(null);
-  const comboTimeoutRef = useRef<number | null>(null);
   const lastDropTimeRef = useRef<number>(0);
   const processingRef = useRef<boolean>(false);
   const lockStartRef = useRef<number | null>(null);
@@ -374,10 +394,8 @@ export function useGameLogic() {
       const uniqueBlocks = Array.from(uniqueBlocksMap.values());
 
       // 얼음 블록 필터링
-      const { blocksToRemove, updatedBoard } = processFrozenBlocks(
-        uniqueBlocks,
-        workingBoard,
-      );
+      const { blocksToRemove, updatedBoard, damagedFrozen } =
+        processFrozenBlocks(uniqueBlocks, workingBoard);
       workingBoard = updatedBoard;
 
       const removedPositions = new Set<string>();
@@ -416,6 +434,7 @@ export function useGameLogic() {
         workingBoard,
         blocksToRemove,
         level,
+        damagedFrozen,
       );
       workingBoard = specialResult.newBoard;
       totalCleared += specialResult.additionalCleared.length;
@@ -636,12 +655,10 @@ export function useGameLogic() {
         // 배틀패스 XP
         addBattlePassXP(Math.floor(totalScore / 100));
 
-        // 콤보 타임아웃
-        if (comboTimeoutRef.current) clearTimeout(comboTimeoutRef.current);
-        comboTimeoutRef.current = window.setTimeout(() => {
-          if (useGameStore.getState().sessionEpoch !== epoch) return;
-          useGameStore.getState().resetCombo();
-        }, TIMING_CONFIG.COMBO_TIMEOUT);
+        // 콤보 타임아웃은 스토어의 comboTimer가 단일 진실이다(#20).
+        // 예전에는 여기 3초 setTimeout과 스토어의 1초 틱이 동시에 돌아
+        // 어느 쪽이 진짜인지 알 수 없었다. incrementCombo가 타이머를
+        // 되감으므로 여기서는 아무것도 하지 않는다.
       }
 
       // 퍼즐 클리어 판정은 연쇄가 완전히 정산된 지금 수행한다(#5)
@@ -756,9 +773,6 @@ export function useGameLogic() {
     return () => {
       if (dropIntervalRef.current) {
         clearInterval(dropIntervalRef.current);
-      }
-      if (comboTimeoutRef.current) {
-        clearTimeout(comboTimeoutRef.current);
       }
     };
   }, []);

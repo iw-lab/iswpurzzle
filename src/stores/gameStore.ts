@@ -28,6 +28,7 @@ import {
   FEVER_CONFIG,
   DIFFICULTY_CONFIG,
   getFallingBlockCount,
+  TIMING_CONFIG,
   getGarbageInterval,
   getRandomShape,
   getModeTimeLimit,
@@ -1040,7 +1041,8 @@ export const useGameStore = create<GameStore>()(
         set({
           combo: newCombo,
           maxCombo: Math.max(maxCombo, newCombo),
-          comboTimer: 3,
+          // 콤보 유지 시간의 단일 진실 (초 단위, incrementGameTime이 감소시킨다)
+          comboTimer: Math.round(TIMING_CONFIG.COMBO_TIMEOUT / 1000),
         });
 
         // 콤보 피버 게이지 증가
@@ -1344,6 +1346,20 @@ export const useGameStore = create<GameStore>()(
           });
         }
 
+        // 파워업 지속시간 — 게임 시간 기준으로 만료시킨다.
+        // 예전에는 PowerUpBar의 setTimeout이 유일한 해제 경로여서,
+        // 일시정지 중에도 시간이 흐르고 재시작하면 구 타이머가 새 판의
+        // 파워업을 꺼버렸다. freeze가 여기 걸리면 낙하가 영구 정지한다.
+        const active = get().activePowerUp;
+        if (active?.remainingTime !== undefined) {
+          const left = active.remainingTime - 1;
+          if (left <= 0) {
+            get().deactivatePowerUp();
+          } else {
+            set({ activePowerUp: { ...active, remainingTime: left } });
+          }
+        }
+
         // 쓰레기 블록 타이머 (Zen 모드와 퍼즐 모드 제외)
         if (gameMode !== "zen" && gameMode !== "puzzle") {
           get().incrementGarbageTimer();
@@ -1485,3 +1501,12 @@ export const useGameStore = create<GameStore>()(
     },
   ),
 );
+
+// 개발 빌드 한정 디버그 훅 — 헤드리스 QA에서 스토어 상태를 들여다보기 위한 통로.
+// 프로덕션 번들에는 포함되지 않는다(import.meta.env.DEV 트리셰이킹).
+if (import.meta.env.DEV && typeof window !== "undefined") {
+  (window as unknown as { __chromafall?: unknown }).__chromafall = {
+    get: () => useGameStore.getState(),
+    set: (patch: Partial<GameStore>) => useGameStore.setState(patch),
+  };
+}

@@ -153,13 +153,13 @@ export function PowerUpBar() {
 
     // 지속 효과가 있는 파워업은 활성화
     if (type === 'timeSlow' || type === 'scoreMultiplier' || type === 'freeze') {
-      activatePowerUp({ type, count: 1, isActive: true, remainingTime: type === 'scoreMultiplier' ? 30 : 5 });
-
-      // 일정 시간 후 비활성화
-      const duration = type === 'scoreMultiplier' ? 30000 : 5000;
-      setTimeout(() => {
-        useGameStore.getState().deactivatePowerUp();
-      }, duration);
+      // 만료는 스토어의 게임 시간 틱이 처리한다(일시정지·재시작에 안전).
+      activatePowerUp({
+        type,
+        count: 1,
+        isActive: true,
+        remainingTime: type === 'scoreMultiplier' ? 30 : 5,
+      });
     }
   };
 

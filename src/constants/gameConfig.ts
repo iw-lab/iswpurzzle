@@ -130,20 +130,23 @@ export const SPECIAL_BLOCK_CONFIG: Record<
     minLevel: 4,
     color: "#fdcb6e",
   },
+  // shuffle / colorShift는 효과가 눈에 보이지 않아 "왜 색이 바뀌었지?" 라는
+  // 혼란만 남겼다. baseChance 0으로 등장을 막아 6종 체계로 정리한다(계획서 §3.4).
+  // 타입 자체는 남겨 두어야 기존 저장 데이터·보드 상태가 깨지지 않는다.
   shuffle: {
     name: "셔플",
     icon: "🔀",
     description: "매칭 시 주변 3x3 블록 색상을 섞습니다",
-    baseChance: 0.02, // 0.03 -> 0.02
-    minLevel: 8,
+    baseChance: 0, // 등장 중지 (§3.4)
+    minLevel: 999,
     color: "#a29bfe",
   },
   colorShift: {
     name: "색변환",
     icon: "🎨",
     description: "주변 블록을 같은 색으로 변환",
-    baseChance: 0.025, // 0.04 -> 0.025
-    minLevel: 7,
+    baseChance: 0, // 등장 중지 (§3.4)
+    minLevel: 999,
     color: "#fd79a8",
   },
 };
