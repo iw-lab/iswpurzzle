@@ -2,14 +2,21 @@
  * 난이도 곡선 — 리마스터 재설계(계획서 §2.2).
  *
  * 원칙: 레벨 = 속도축, 색상 = 복잡도축, 조각 크기 = 조작축.
- * 세 축을 분리하고 각자 완만하게 상승시킨다.
- * 레벨업 기준을 "점수"에서 "누적 클리어 블록 수"로 옮겨 점수 인플레와 절연했다.
+ * 세 축을 분리하고, **두 축이 같은 레벨에서 동시에 오르지 않도록** 배치한다.
+ * 봇 시뮬(scripts/simulate-difficulty.mjs)에서 축이 겹칠 때마다 생존율이
+ * 급락하는 것이 확인됐다 — 그래서 전환점을 아래처럼 어긋나게 뒀다:
+ *
+ *   L3  조각 2      L5  색 5
+ *   L10 조각 3      L12 가비지 시작    L14 색 6
+ *   L18 조각 4      L20 색 7
+ *
+ * 레벨업 기준은 "점수"가 아니라 "누적 클리어 블록 수"다 — 연쇄 점수 인플레와 절연.
  */
 import type { BlockColor } from "../types";
 
 /** 레벨 L → L+1 에 필요한 누적 클리어 블록 수. */
 export function getBlocksForLevel(level: number): number {
-  return 40 + 12 * level;
+  return 28 + 9 * level;
 }
 
 /** 누적 클리어 블록 수 → 도달 레벨. */
@@ -52,7 +59,7 @@ const COLOR_POOL: BlockColor[] = [
 
 export function getColorCountForLevel(level: number): number {
   if (level >= 20) return 7;
-  if (level >= 12) return 6;
+  if (level >= 14) return 6;
   if (level >= 5) return 5;
   return 4;
 }
@@ -63,13 +70,13 @@ export function getColorsForLevel(level: number): BlockColor[] {
 
 /** 동시 낙하 블록 수. 4를 넘으면 8칸 보드에서 조작 재미가 스트레스로 바뀐다. */
 export function getFallingBlockCount(level: number): number {
-  if (level >= 15) return 4;
-  if (level >= 8) return 3;
+  if (level >= 18) return 4;
+  if (level >= 10) return 3;
   if (level >= 3) return 2;
   return 1;
 }
 
-export const GARBAGE_START_LEVEL = 8;
+export const GARBAGE_START_LEVEL = 12;
 
 /** 가비지 줄 투입 간격(초). */
 export function getGarbageInterval(level: number): number {
