@@ -14,19 +14,40 @@ import {
   getDoc,
 } from 'firebase/firestore';
 
-// Firebase 설정 (gugudan-e4c77 프로젝트)
+/**
+ * Firebase 설정.
+ *
+ * ⚠️ 웹 API 키는 클라이언트에 공개되는 식별자이지 비밀값이 아니다.
+ * 실제 접근 제어는 firestore.rules가 한다(저장소 루트 참조).
+ * 그럼에도 프로젝트를 환경변수로 분리해 두는 이유는, 이전에 무관한
+ * 프로젝트(gugudan)의 Firebase를 재사용하고 있었기 때문이다 — 데이터가
+ * 섞이고 규칙을 따로 걸 수 없었다.
+ *
+ * .env(.env.example 참고)에 VITE_FIREBASE_* 를 채우면 그 프로젝트를 쓰고,
+ * 비어 있으면 리더보드는 로컬 전용으로 동작한다(게임은 정상 플레이 가능).
+ */
 const firebaseConfig = {
-  apiKey: "AIzaSyBKsN2qQ7oc3l5MrNXpWtHnxLlMqM3PFSA",
-  authDomain: "gugudan-e4c77.firebaseapp.com",
-  projectId: "gugudan-e4c77",
-  storageBucket: "gugudan-e4c77.firebasestorage.app",
-  messagingSenderId: "798815663534",
-  appId: "1:798815663534:web:9e4aacdbd8acfc36c6fc67"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-// Firebase 초기화
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+/** 설정이 갖춰졌을 때만 Firebase를 초기화한다. */
+export const isRemoteLeaderboardEnabled = Boolean(
+  firebaseConfig.apiKey && firebaseConfig.projectId,
+);
+
+const app = isRemoteLeaderboardEnabled ? initializeApp(firebaseConfig) : null;
+const db = app ? getFirestore(app) : null;
+
+/**
+ * 제출 점수 상한 — 클라이언트에서 임의 점수를 밀어넣는 것을 1차로 거른다.
+ * 최종 방어선은 firestore.rules이고, 여기는 사고 방지용 가드다.
+ */
+const MAX_PLAUSIBLE_SCORE = 50_000_000;
 
 // 로컬 랭킹 저장소 키
 const LOCAL_RANKINGS_KEY = 'chromafall_local_rankings';
@@ -117,6 +138,18 @@ export async function submitScore(entry: Omit<RankingEntry, 'id' | 'createdAt'>)
   };
   saveToLocalRankings(localEntry);
 
+  // 명백히 불가능한 값은 제출하지 않는다
+  if (
+    !Number.isFinite(entry.score) ||
+    entry.score < 0 ||
+    entry.score > MAX_PLAUSIBLE_SCORE
+  ) {
+    console.warn('비정상 점수 — 원격 제출을 생략합니다:', entry.score);
+    return localEntry.id || null;
+  }
+
+  if (!db) return localEntry.id || null;
+
   // Firebase에도 저장 시도
   try {
     const docRef = await addDoc(collection(db, 'rankings'), {
@@ -138,6 +171,8 @@ export async function getTopRankings(
 ): Promise<RankingEntry[]> {
   // 로컬 랭킹 먼저 가져오기
   const localRankings = getLocalRankings(gameMode);
+
+  if (!db) return localRankings.slice(0, count);
 
   try {
     let q;
@@ -245,6 +280,7 @@ export async function getTopRankings(
 
 // 내 최고 기록 가져오기
 export async function getMyBestScore(playerId: string, gameMode: string = 'classic'): Promise<RankingEntry | null> {
+  if (!db) return null;
   try {
     const rankingsRef = collection(db, 'rankings');
     const q = query(
@@ -292,6 +328,7 @@ export async function savePlayerProfile(playerId: string, data: {
   totalScore: number;
   highScore: number;
 }): Promise<boolean> {
+  if (!db) return false;
   try {
     await setDoc(doc(db, 'players', playerId), {
       ...data,
@@ -311,6 +348,7 @@ export async function getPlayerProfile(playerId: string): Promise<{
   totalScore: number;
   highScore: number;
 } | null> {
+  if (!db) return null;
   try {
     const docSnap = await getDoc(doc(db, 'players', playerId));
     if (docSnap.exists()) {

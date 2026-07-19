@@ -564,12 +564,26 @@ export const useUserStore = create<UserStore>()(
           newStreak = 1;
         }
 
+        // 연속 참여 보상 — 리텐션 루프의 척추(§3.3-11).
+        // 3일: 코인, 7일: 젬, 14일 이후 7일마다: 젬 대량
+        const { currency } = get();
+        let bonusCoins = 0;
+        let bonusGems = 0;
+        if (newStreak === 3) bonusCoins = 300;
+        else if (newStreak === 7) bonusGems = 30;
+        else if (newStreak >= 14 && newStreak % 7 === 0) bonusGems = 50;
+
         set({
           streakInfo: {
             currentStreak: newStreak,
             longestStreak: Math.max(streakInfo.longestStreak, newStreak),
             lastPlayDate: today,
             todayPlayed: true,
+          },
+          currency: {
+            ...currency,
+            coins: currency.coins + bonusCoins,
+            gems: currency.gems + bonusGems,
           },
         });
       },

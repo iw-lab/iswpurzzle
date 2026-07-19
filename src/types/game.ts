@@ -356,4 +356,5 @@ export interface GameSettings {
   colorBlindMode: boolean;
   language: 'ko' | 'en' | 'ja';
   performanceMode: 'high' | 'medium' | 'low' | 'auto';
+  hasSeenTutorial?: boolean;  // 첫 실행 온보딩 완료 여부
 }

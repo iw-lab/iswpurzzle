@@ -1,0 +1,64 @@
+rules_version = '2';
+
+// ChromaFall 리더보드 보안 규칙.
+//
+// 배경: 이전에는 규칙 파일 자체가 저장소에 없었고, 익명 클라이언트가
+// addDoc으로 임의의 점수를 무제한 제출할 수 있었다(계획서 #25).
+//
+// 여기서 막는 것: 스키마 위반, 비현실적 점수, 문서 위변조, 삭제.
+// 여기서 못 막는 것: "그럴듯한 범위 안의 조작된 점수".
+//   → 그건 클라이언트를 신뢰하는 구조의 한계이며, 근본 해결은
+//     Cloud Function 경유 제출 + App Check다. 다음 단계 과제.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /rankings/{entryId} {
+      // 리더보드는 공개 읽기
+      allow read: if true;
+
+      allow create: if isValidRanking(request.resource.data);
+
+      // 제출된 기록은 수정·삭제 불가 (히스토리 위변조 차단)
+      allow update, delete: if false;
+    }
+
+    match /players/{playerId} {
+      allow read: if true;
+      allow write: if isValidProfile(request.resource.data);
+    }
+
+    // 명시되지 않은 모든 경로는 차단
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+function isValidRanking(data) {
+  return data.keys().hasOnly(
+           ['playerId', 'playerName', 'score', 'level', 'gameMode',
+            'maxCombo', 'maxChain', 'playTime', 'createdAt']
+         )
+    && data.playerId is string
+    && data.playerId.size() > 0 && data.playerId.size() <= 64
+    && data.playerName is string
+    && data.playerName.size() > 0 && data.playerName.size() <= 20
+    && data.score is int
+    && data.score >= 0 && data.score <= 50000000
+    && data.level is int
+    && data.level >= 1 && data.level <= 30
+    && data.gameMode in ['classic', 'puzzle', 'zen', 'daily', 'survival', 'challenge']
+    && data.createdAt == request.time;
+}
+
+function isValidProfile(data) {
+  return data.keys().hasOnly(
+           ['name', 'totalGames', 'totalScore', 'highScore', 'updatedAt']
+         )
+    && data.name is string && data.name.size() <= 20
+    && data.totalGames is int && data.totalGames >= 0
+    && data.totalScore is int && data.totalScore >= 0
+    && data.highScore is int
+    && data.highScore >= 0 && data.highScore <= 50000000;
+}

@@ -10,7 +10,7 @@ import { useGameStore } from "./stores/gameStore";
 import { useUserStore } from "./stores/userStore";
 import { useAudio, useControls } from "./hooks";
 import { GameMode, ThemeColors } from "./types";
-import { GAME_MODE_CONFIG, getDropSpeed, getModeConfig, getModeTimeLimit } from "./constants";
+import { getDropSpeed, getModeConfig, getModeTimeLimit } from "./constants";
 import { THEMES } from "./constants/shopItems";
 
 // Game Components
@@ -27,6 +27,7 @@ import {
   PauseMenu,
   SettingsModal,
   PuzzleClearScreen,
+  TutorialOverlay,
 } from "./components/UI";
 // Menu Components
 import { MainMenu, DailyRewardPopup, ShopScreen } from "./components/Menu";
@@ -61,6 +62,7 @@ function App() {
   const [showLuckyWheel, setShowLuckyWheel] = useState(false);
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [showFeverStart, setShowFeverStart] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
   const prevFeverModeRef = useRef(false);
 
   // selector 구독 — 50ms 게임 루프의 모든 set()마다 앱 전체가 리렌더되던
@@ -85,7 +87,7 @@ function App() {
     nextPuzzleLevel,
     nextChallengeLevel,
   } = useGameStore.getState();
-  const { settings, updateStreak, equippedThemeId } = useUserStore();
+  const { settings, updateStreak, updateSettings, equippedThemeId } = useUserStore();
 
   // 현재 테마 가져오기
   const currentTheme = useMemo((): ThemeColors => {
@@ -204,6 +206,8 @@ function App() {
   const handleStartGame = useCallback(
     (mode: GameMode) => {
       playSound("buttonClick");
+      // 첫 실행이면 60초 온보딩을 먼저 보여준다 (§3.2-7)
+      if (!settings.hasSeenTutorial) setShowTutorial(true);
       // 모바일에서 전체화면 모드 시도
       if ("ontouchstart" in window || navigator.maxTouchPoints > 0) {
         requestFullscreen();
@@ -211,7 +215,7 @@ function App() {
       startGame(mode);
       setScreen("game");
     },
-    [startGame, playSound, requestFullscreen],
+    [startGame, playSound, requestFullscreen, settings.hasSeenTutorial],
   );
   const handleMainMenu = useCallback(() => {
     playSound("buttonClick");
@@ -523,6 +527,14 @@ function App() {
         )}
         {showSettings && (
           <SettingsModal onClose={() => setShowSettings(false)} />
+        )}
+        {showTutorial && (
+          <TutorialOverlay
+            onComplete={() => {
+              setShowTutorial(false);
+              updateSettings({ hasSeenTutorial: true });
+            }}
+          />
         )}
       </AnimatePresence>
     </div>
