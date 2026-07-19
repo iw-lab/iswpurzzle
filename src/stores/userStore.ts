@@ -7,12 +7,11 @@ import {
   ThemeItem,
   DailyReward,
   StreakInfo,
-  LeaderboardEntry,
 } from '../types';
 import { CurrencyState, MonetizationConfig, WheelState, PurchaseHistory } from '../types/monetization';
 import { initializeAchievements } from '../constants/achievements';
 import { BLOCK_SKINS, THEMES, DAILY_REWARDS } from '../constants/shopItems';
-import { getLevelFromTotalXP, getXPProgress, getRankTier, calculateGameXP, TITLES } from '../constants/ranks';
+import { getLevelFromTotalXP, getXPProgress, calculateGameXP, TITLES } from '../constants/ranks';
 
 // 플레이어 상세 통계
 export interface PlayerStats {
@@ -225,7 +224,7 @@ export const useUserStore = create<UserStore>()(
       ownedThemes: THEMES.filter((t) => t.owned),
       equippedSkinId: 'classic',
       equippedThemeId: 'dark',
-      dailyRewards: DAILY_REWARDS.map((r, i) => ({ ...r, claimed: false })),
+      dailyRewards: DAILY_REWARDS.map((r) => ({ ...r, claimed: false })),
       lastDailyRewardClaim: '',
       dailyRewardDay: 0,
       streakInfo: defaultStreakInfo,
@@ -270,7 +269,7 @@ export const useUserStore = create<UserStore>()(
         };
 
         // 모드별 특수 처리
-        if (result.mode === 'timeAttack') {
+        if (result.mode === 'daily') {
           newStats.speedScore = Math.max(newStats.speedScore, result.score);
         } else if (result.mode === 'puzzle') {
           newStats.puzzleLevel = Math.max(newStats.puzzleLevel, result.level);
@@ -523,7 +522,7 @@ export const useUserStore = create<UserStore>()(
       },
 
       claimDailyReward: () => {
-        const { dailyRewardDay, dailyRewards, lastDailyRewardClaim } = get();
+        const { dailyRewardDay, lastDailyRewardClaim } = get();
         const today = new Date().toDateString();
 
         if (lastDailyRewardClaim === today) return null;

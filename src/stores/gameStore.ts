@@ -19,7 +19,6 @@ import type {
 import {
   BOARD_CONFIG,
   getColorsForLevel,
-  getLevelThreshold,
   GRAVITY_VECTORS,
   getSpecialBlockChance,
   determineSpecialBlockType,
@@ -27,29 +26,99 @@ import {
   generatePuzzleObjectives,
   PUZZLE_CONFIG,
   FEVER_CONFIG,
-  TIMING_CONFIG,
   DIFFICULTY_CONFIG,
   getFallingBlockCount,
   getGarbageInterval,
   getRandomShape,
-  rotateShape,
+  getModeTimeLimit,
 } from "../constants";
 import {
   generateDailyMissions,
   generateWeeklyMissions,
 } from "../constants/missions";
+import { computeDropDistance, createEmptyBoard } from "../engine/board";
+import {
+  getBlocksForLevel,
+  getGarbageRows,
+  MAX_LEVEL,
+} from "../engine/difficulty";
+import {
+  getDailySeed,
+  pick,
+  random,
+  randomInt,
+  seededRandom,
+  setRandomSource,
+} from "../engine/rng";
+import { currentDailyKey, currentWeeklyKey } from "../constants/missions";
+import { useUserStore } from "./userStore";
 
-// 빈 보드 생성
-function createEmptyBoard(): GameBoard {
-  return Array(BOARD_CONFIG.ROWS)
-    .fill(null)
-    .map(() => Array(BOARD_CONFIG.COLUMNS).fill(null));
+// ────────────────────────────────────────────────────────────
+// 세션 epoch — 모든 지연 실행(setTimeout)은 발화 시점의 epoch가
+// 현재 세션과 일치할 때만 효력을 갖는다. 재시작 연타 시 구 라운드의
+// 타이머가 새 게임을 오염시키는 문제(계획서 #7 #23 #26)의 구조적 해법.
+// ────────────────────────────────────────────────────────────
+let sessionEpoch = 0;
+const pendingTimers = new Set<number>();
+
+function clearPendingTimers(): void {
+  pendingTimers.forEach((id) => clearTimeout(id));
+  pendingTimers.clear();
+}
+
+/** 현재 세션에 묶인 지연 실행. 세션이 바뀌면 콜백은 폐기된다. */
+function scheduleForSession(fn: () => void, delay: number): void {
+  const epochAtSchedule = sessionEpoch;
+  const id = window.setTimeout(() => {
+    pendingTimers.delete(id);
+    if (epochAtSchedule !== sessionEpoch) return;
+    fn();
+  }, delay);
+  pendingTimers.add(id);
+}
+
+/** 새 세션 시작 — 진행 중인 모든 지연 실행을 무효화한다. */
+function beginSession(): number {
+  sessionEpoch++;
+  clearPendingTimers();
+  return sessionEpoch;
+}
+
+/**
+ * 압사 직전 구제 — 중력 반대편(블록이 쌓이는 쪽) 4줄/칸을 비운다.
+ * 항상 상단만 지우면 중력이 up일 때 즉시 재-게임오버 루프에 빠진다.
+ */
+function clearReliefArea(
+  board: GameBoard,
+  gravityDirection: GravityDirection,
+): GameBoard {
+  const DEPTH = 4;
+  const newBoard = board.map((row) => [...row]);
+
+  if (gravityDirection === "down") {
+    for (let y = 0; y < DEPTH; y++) newBoard[y] = Array(BOARD_CONFIG.COLUMNS).fill(null);
+  } else if (gravityDirection === "up") {
+    for (let y = BOARD_CONFIG.ROWS - DEPTH; y < BOARD_CONFIG.ROWS; y++) {
+      newBoard[y] = Array(BOARD_CONFIG.COLUMNS).fill(null);
+    }
+  } else if (gravityDirection === "left") {
+    for (let y = 0; y < BOARD_CONFIG.ROWS; y++) {
+      for (let x = BOARD_CONFIG.COLUMNS - DEPTH; x < BOARD_CONFIG.COLUMNS; x++) {
+        newBoard[y][x] = null;
+      }
+    }
+  } else {
+    for (let y = 0; y < BOARD_CONFIG.ROWS; y++) {
+      for (let x = 0; x < DEPTH; x++) newBoard[y][x] = null;
+    }
+  }
+
+  return newBoard;
 }
 
 // 랜덤 블록 색상 생성
 function getRandomBlockColor(level: number): BlockColor {
-  const colors = getColorsForLevel(level);
-  return colors[Math.floor(Math.random() * colors.length)];
+  return pick(getColorsForLevel(level));
 }
 
 // 특수 블록 타입 결정 (후반부 특수 블록 빈도 감소)
@@ -60,7 +129,7 @@ function getSpecialType(level: number, blocksPlaced: number): SpecialBlockType {
   }
 
   const chance = getSpecialBlockChance(level);
-  if (Math.random() < chance) {
+  if (random() < chance) {
     return determineSpecialBlockType(level);
   }
   return "normal";
@@ -101,10 +170,33 @@ const initialStatistics: GameStatistics = {
 const initialMissionProgress: MissionProgress = {
   dailyMissions: generateDailyMissions(),
   weeklyMissions: generateWeeklyMissions(),
+  dailyKey: currentDailyKey(),
+  weeklyKey: currentWeeklyKey(),
 };
 
-// 스폰 중복 방지 플래그
-let isSpawning = false;
+/**
+ * 날짜 경계에서 미션을 재생성한다. 키가 없거나(구버전 persist)
+ * 오늘/이번 주와 다르면 해당 묶음만 새로 만든다.
+ */
+function refreshMissionsForToday(progress: MissionProgress): MissionProgress {
+  const dailyKey = currentDailyKey();
+  const weeklyKey = currentWeeklyKey();
+  if (progress.dailyKey === dailyKey && progress.weeklyKey === weeklyKey) {
+    return progress;
+  }
+  return {
+    dailyMissions:
+      progress.dailyKey === dailyKey
+        ? progress.dailyMissions
+        : generateDailyMissions(),
+    weeklyMissions:
+      progress.weeklyKey === weeklyKey
+        ? progress.weeklyMissions
+        : generateWeeklyMissions(),
+    dailyKey,
+    weeklyKey,
+  };
+}
 
 // 초기 게임 상태
 const initialGameState: GameState = {
@@ -148,6 +240,11 @@ const initialGameState: GameState = {
   puzzleCompleted: false,
   currentShapeOffsets: [],
   basePosition: { x: 0, y: 0 },
+  feverStartTime: 0,
+  sessionEpoch: 0,
+  blocksCleared: 0,
+  dailySeed: null,
+  lastGameHighScore: 0,
 };
 
 interface GameStore extends GameState {
@@ -174,7 +271,7 @@ interface GameStore extends GameState {
 
   // 파워업
   addPowerUp: (type: PowerUpType, count?: number) => void;
-  usePowerUp: (type: PowerUpType) => void;
+  consumePowerUp: (type: PowerUpType) => void;
   activatePowerUp: (powerUp: PowerUp) => void;
   deactivatePowerUp: () => void;
 
@@ -186,12 +283,17 @@ interface GameStore extends GameState {
   incrementChain: () => void;
   resetChain: () => void;
   checkLevelUp: () => void;
+  addClearedBlocks: (count: number) => void;
 
   // 새로운 기능들
   addFeverGauge: (amount: number) => void;
   activateFeverMode: () => void;
   deactivateFeverMode: () => void;
-  updateLevelObjective: (type: string, value: number) => void;
+  updateLevelObjective: (
+    type: string,
+    value: number,
+    color?: BlockColor,
+  ) => void;
   setDangerLevel: (level: number) => void;
   decrementBlocksUntilSpecial: () => void;
 
@@ -230,9 +332,16 @@ export const useGameStore = create<GameStore>()(
       blocksPlaced: 0,
 
       startGame: (mode = "classic") => {
-        isSpawning = false; // 스폰 플래그 초기화
+        const epoch = beginSession();
         const level = 1;
-        const puzzleLevel = mode === "puzzle" ? 1 : 1;
+        const puzzleLevel = 1;
+
+        // 데일리 챌린지: 날짜 시드를 난수 소스에 주입해 전원이 같은 판을 받는다.
+        const dailySeed = mode === "daily" ? getDailySeed() : null;
+        setRandomSource(dailySeed !== null ? seededRandom(dailySeed) : null);
+
+        // 미션은 날짜 경계에서만 재생성 (판마다 초기화하지 않는다)
+        const missionProgress = refreshMissionsForToday(get().missionProgress);
 
         // 퍼즐 모드는 블록 1개씩만 떨어짐
         const blockCount = mode === "puzzle" ? 1 : getFallingBlockCount(level);
@@ -289,9 +398,16 @@ export const useGameStore = create<GameStore>()(
           movesRemaining,
           puzzleLevel,
           puzzleCompleted: false,
+          feverStartTime: 0,
+          sessionEpoch: epoch,
+          blocksCleared: 0,
+          dailySeed,
+          // 신기록 판정용 — endGame이 highScore를 갱신하기 전 값을 여기 보관한다.
+          lastGameHighScore: get().statistics.highScore,
+          missionProgress,
         });
 
-        setTimeout(() => get().spawnBlock(), 100);
+        scheduleForSession(() => get().spawnBlock(), 100);
       },
 
       pauseGame: () => {
@@ -307,22 +423,56 @@ export const useGameStore = create<GameStore>()(
       },
 
       endGame: () => {
-        const { score, statistics, combo, chainCount, gameMode } = get();
+        const {
+          score,
+          statistics,
+          combo,
+          chainCount,
+          gameMode,
+          gameTime,
+          level,
+          gravityDirection,
+        } = get();
 
-        // Zen 모드는 게임오버가 없음 - 상단 4줄만 클리어하고 계속
+        // Zen 모드는 게임오버가 없음 - 중력 반대편(=쌓이는 쪽) 4줄을 비우고 계속
         if (gameMode === "zen") {
           const { board } = get();
-          const newBoard = board.map((row, y) => {
-            if (y < 4) return Array(BOARD_CONFIG.COLUMNS).fill(null);
-            return row;
-          });
-          set({ board: newBoard });
-          setTimeout(() => get().spawnBlock(), 100);
+          const newBoard = clearReliefArea(board, gravityDirection);
+          set({ board: newBoard, currentBlock: null, currentBlocks: [] });
+          scheduleForSession(() => get().spawnBlock(), 100);
           return;
         }
 
+        clearPendingTimers();
+        setRandomSource(null); // 시드 모드 종료
+
+        // 유저 진행도(XP·코인·랭크·칭호) 동기화 —
+        // processGameResult가 정의만 되고 호출되지 않아 끊겨 있던 라인(#12).
+        const user = useUserStore.getState();
+        user.processGameResult({
+          score,
+          combo,
+          chain: chainCount,
+          level,
+          mode: gameMode,
+        });
+        user.updateAchievement("score_10k", score);
+        user.updateAchievement("score_100k", score);
+        user.updateAchievement("games_10", 1);
+        user.updateAchievement("games_100", 1);
+
+        get().updateMissionProgress("games_played", 1);
+        get().updateMissionProgress("score", score);
+        get().updateMissionProgress("total_score", score);
+        get().updateMissionProgress("mode_played", 1);
+        get().updateMissionProgress("max_combo", combo);
+        get().updateMissionProgress("max_chain", chainCount);
+        get().updateMissionProgress("max_level", level);
+
         set({
           gameStatus: "gameover",
+          currentBlock: null,
+          currentBlocks: [],
           statistics: {
             ...statistics,
             totalGamesPlayed: statistics.totalGamesPlayed + 1,
@@ -330,17 +480,21 @@ export const useGameStore = create<GameStore>()(
             highScore: Math.max(statistics.highScore, score),
             maxCombo: Math.max(statistics.maxCombo, combo),
             maxChain: Math.max(statistics.maxChain, chainCount),
+            totalPlayTime: statistics.totalPlayTime + gameTime,
+            levelsCompleted: statistics.levelsCompleted + Math.max(0, level - 1),
           },
         });
       },
 
       resetGame: () => {
-        isSpawning = false; // 스폰 플래그 초기화
+        beginSession();
+        setRandomSource(null);
         set({
           ...initialGameState,
           statistics: get().statistics,
           powerUps: get().powerUps,
           missionProgress: get().missionProgress,
+          sessionEpoch,
         });
       },
 
@@ -360,25 +514,17 @@ export const useGameStore = create<GameStore>()(
         if (currentBlocks.length > 0) return;
         if (gameStatus !== "playing") return;
 
-        // 스폰 중복 방지
-        if (isSpawning) return;
-        isSpawning = true;
-
-        try {
+        {
           const blockCount = getFallingBlockCount(level);
 
           // nextBlocks가 부족하면 추가 생성
-          let currentNextBlocks = [...nextBlocks];
-          let currentNextSpecialTypes = [...nextSpecialTypes];
+          const currentNextBlocks = [...nextBlocks];
+          const currentNextSpecialTypes = [...nextSpecialTypes];
           while (currentNextBlocks.length < 10) {
             currentNextBlocks.push(getRandomBlockColor(level));
             currentNextSpecialTypes.push(
               getSpecialType(level, blocksPlaced + currentNextBlocks.length),
             );
-          }
-
-          if (currentNextBlocks.length < 1) {
-            return;
           }
 
           // 블록 모양 선택
@@ -417,32 +563,38 @@ export const useGameStore = create<GameStore>()(
 
           // 모양에 따라 블록 생성
           // 각 블록마다 다른 색상! (같은 색이면 바로 터져서 너무 쉬움)
+          // 실제로 생성된 개수만 큐에서 소비한다 — 일부 칸이 막혀도
+          // 예약된 특수블록·색이 통째로 유실되지 않도록(#19).
           const newBlocks: FallingBlock[] = [];
+          let consumed = 0;
+          let specialConsumed = false;
 
           for (let i = 0; i < offsets.length; i++) {
             const [dx, dy] = offsets[i];
-            const color = currentNextBlocks[i] || currentNextBlocks[0]; // 각 블록마다 다른 색
-            const specialType =
-              i === 0 ? currentNextSpecialTypes[0] || "normal" : "normal";
-
             const startX = baseX + dx;
             const startY = baseY + dy;
 
             // 범위 체크
             if (startX < 0 || startX >= BOARD_CONFIG.COLUMNS) continue;
             if (startY < 0 || startY >= BOARD_CONFIG.ROWS) continue;
+            if (board[startY][startX] !== null) continue;
 
-            // 해당 위치에 블록이 없으면 추가
-            if (board[startY][startX] === null) {
-              newBlocks.push({
-                id: uuidv4(),
-                color,
-                x: startX,
-                y: startY,
-                targetY: startY,
-                specialType,
-              });
-            }
+            const color = currentNextBlocks[consumed] ?? currentNextBlocks[0];
+            // 특수블록은 조각당 1개 — 첫 번째로 실제 생성되는 칸에 부여한다.
+            const specialType = specialConsumed
+              ? "normal"
+              : (currentNextSpecialTypes[0] ?? "normal");
+            if (!specialConsumed) specialConsumed = true;
+
+            newBlocks.push({
+              id: uuidv4(),
+              color,
+              x: startX,
+              y: startY,
+              targetY: startY,
+              specialType,
+            });
+            consumed++;
           }
 
           // 게임오버 체크 - 모든 시작 위치가 막힘
@@ -464,11 +616,11 @@ export const useGameStore = create<GameStore>()(
             }
           }
 
-          // 새 블록 색상들 생성 (블록 개수만큼 소비)
-          const newNextBlocks = [...currentNextBlocks.slice(blockCount)];
-          const newNextSpecialTypes = [
-            ...currentNextSpecialTypes.slice(blockCount),
-          ];
+          // 실제 소비량만큼만 큐를 당긴다 (특수블록 예약 보존)
+          const newNextBlocks = currentNextBlocks.slice(consumed);
+          const newNextSpecialTypes = specialConsumed
+            ? currentNextSpecialTypes.slice(1)
+            : currentNextSpecialTypes;
 
           set({
             currentBlock: newBlocks[0] || null,
@@ -476,14 +628,11 @@ export const useGameStore = create<GameStore>()(
             nextBlocks: newNextBlocks,
             nextSpecialTypes: newNextSpecialTypes,
             canHold: true,
-            blocksPlaced: blocksPlaced + blockCount,
+            blocksPlaced: blocksPlaced + consumed,
             fallingBlockCount: blockCount,
             currentShapeOffsets: offsets as [number, number][],
             basePosition: { x: baseX, y: baseY },
           });
-        } finally {
-          // 스폰 완료 플래그 해제 (항상 실행됨)
-          isSpawning = false;
         }
       },
 
@@ -638,9 +787,6 @@ export const useGameStore = create<GameStore>()(
 
         // 먼저 모든 블록이 이동 가능한지 확인
         let anyBlocked = false;
-        const currentPositions = new Set(
-          currentBlocks.map((b) => `${b.x},${b.y}`),
-        );
 
         for (const block of currentBlocks) {
           const newX = block.x + dx;
@@ -689,59 +835,20 @@ export const useGameStore = create<GameStore>()(
 
         const { dx, dy } = GRAVITY_VECTORS[gravityDirection];
 
-        // 각 블록이 개별적으로 떨어질 수 있는 최대 거리 계산 (분리 낙하!)
-        // 이미 배치된 블록들의 위치를 추적
-        const placedPositions = new Set<string>();
-        const newBoard = board.map((row) => [...row]);
+        // 조각 모양을 유지한 채 통째로 낙하한다.
+        // 고스트(getGhostPosition)와 동일한 computeDropDistance를 쓰므로
+        // "보이는 대로 떨어진다"가 보장된다(#14).
+        const distance = computeDropDistance(
+          board,
+          currentBlocks,
+          gravityDirection,
+        );
 
-        // 블록들을 낙하 방향 기준으로 정렬 (아래/오른쪽에 있는 블록 먼저 처리)
-        const sortedBlocks = [...currentBlocks].sort((a, b) => {
-          if (gravityDirection === "down") return b.y - a.y; // 아래쪽 먼저
-          if (gravityDirection === "up") return a.y - b.y; // 위쪽 먼저
-          if (gravityDirection === "right") return b.x - a.x; // 오른쪽 먼저
-          return a.x - b.x; // 왼쪽 먼저
-        });
-
-        const droppedBlocks: FallingBlock[] = [];
-
-        for (const block of sortedBlocks) {
-          let newX = block.x;
-          let newY = block.y;
-
-          // 각 블록이 개별적으로 최대한 떨어짐
-          while (true) {
-            const nextX = newX + dx;
-            const nextY = newY + dy;
-
-            // 범위 체크
-            if (nextX < 0 || nextX >= BOARD_CONFIG.COLUMNS) break;
-            if (nextY < 0 || nextY >= BOARD_CONFIG.ROWS) break;
-
-            // 기존 보드 블록과 충돌 체크
-            if (newBoard[nextY]?.[nextX] !== null) break;
-
-            // 이미 배치된 다른 낙하 블록과 충돌 체크
-            if (placedPositions.has(`${nextX},${nextY}`)) break;
-
-            newX = nextX;
-            newY = nextY;
-          }
-
-          // 이 블록의 최종 위치 기록
-          placedPositions.add(`${newX},${newY}`);
-          droppedBlocks.push({ ...block, x: newX, y: newY });
-
-          // 보드에 임시로 블록 배치 (다음 블록 충돌 계산용)
-          newBoard[newY][newX] = {
-            id: block.id || uuidv4(),
-            color: block.color,
-            x: newX,
-            y: newY,
-            specialType: block.specialType,
-            frozenCount: block.specialType === "frozen" ? 2 : undefined,
-            createdAt: Date.now(),
-          };
-        }
+        const droppedBlocks = currentBlocks.map((block) => ({
+          ...block,
+          x: block.x + dx * distance,
+          y: block.y + dy * distance,
+        }));
 
         set({
           currentBlock: droppedBlocks[0] || null,
@@ -753,42 +860,50 @@ export const useGameStore = create<GameStore>()(
 
       doHoldBlock: () => {
         const {
-          currentBlock,
+          currentBlocks,
           holdBlock: currentHold,
           holdSpecialType: currentHoldSpecial,
           canHold,
+          nextBlocks,
+          nextSpecialTypes,
         } = get();
-        if (!currentBlock || !canHold) return;
+        if (currentBlocks.length === 0 || !canHold) return;
 
-        if (currentHold && currentHoldSpecial !== null) {
+        // 조작·렌더의 원천은 currentBlocks 배열이다.
+        // 여기를 비우지 않으면 홀드해도 원래 조각이 계속 낙하한다(#1).
+        const head = currentBlocks[0];
+
+        if (currentHold) {
+          // 보관된 색을 다음 스폰의 맨 앞에 꽂고, 현재 조각을 보관함으로.
           set({
-            holdBlock: currentBlock.color,
-            holdSpecialType: currentBlock.specialType,
-            currentBlock: {
-              color: currentHold,
-              x: Math.floor(BOARD_CONFIG.COLUMNS / 2),
-              y: 0,
-              targetY: 0,
-              specialType: currentHoldSpecial,
-            },
+            holdBlock: head.color,
+            holdSpecialType: head.specialType,
+            currentBlock: null,
+            currentBlocks: [],
+            nextBlocks: [currentHold, ...nextBlocks],
+            nextSpecialTypes: [currentHoldSpecial ?? "normal", ...nextSpecialTypes],
             canHold: false,
           });
         } else {
           set({
-            holdBlock: currentBlock.color,
-            holdSpecialType: currentBlock.specialType,
+            holdBlock: head.color,
+            holdSpecialType: head.specialType,
             currentBlock: null,
+            currentBlocks: [],
             canHold: false,
           });
-          get().spawnBlock();
         }
+
+        get().spawnBlock();
+        // spawnBlock은 canHold를 true로 되돌리므로, 홀드 1회 제한을 다시 건다.
+        set({ canHold: false });
       },
 
       placeBlock: () => {
         const { currentBlocks, board, garbagePending, gameMode } = get();
         if (currentBlocks.length === 0) return;
 
-        let newBoard = board.map((row) => [...row]);
+        const newBoard = board.map((row) => [...row]);
 
         // 모든 낙하 블록을 보드에 배치
         for (const fallingBlock of currentBlocks) {
@@ -824,7 +939,9 @@ export const useGameStore = create<GameStore>()(
 
         set({ board: newBoard, currentBlock: null, currentBlocks: [] });
 
-        // 퍼즐 모드: 이동 횟수 감소
+        // 퍼즐 모드: 이동 횟수 감소.
+        // 클리어 판정은 융합/연쇄가 모두 정산된 뒤에 해야 한다 —
+        // 마지막 수로 목표를 달성해도 그 전에 게임오버되던 문제(#5).
         if (gameMode === "puzzle") {
           get().decrementMoves();
         }
@@ -832,7 +949,7 @@ export const useGameStore = create<GameStore>()(
         // 대기 중인 쓰레기 블록 추가 (퍼즐 모드에서는 쓰레기 블록 없음)
         if (garbagePending > 0 && gameMode !== "puzzle") {
           // 약간의 딜레이 후 쓰레기 블록 추가 (시각적 효과를 위해)
-          setTimeout(() => {
+          scheduleForSession(() => {
             get().addGarbageRows(get().garbagePending);
           }, 100);
         }
@@ -874,7 +991,7 @@ export const useGameStore = create<GameStore>()(
         }
       },
 
-      usePowerUp: (type) => {
+      consumePowerUp: (type) => {
         const { powerUps } = get();
         const powerUpIndex = powerUps.findIndex(
           (p) => p.type === type && p.count > 0,
@@ -912,11 +1029,9 @@ export const useGameStore = create<GameStore>()(
       },
 
       addScore: (points) => {
-        const { score, activePowerUp, isFeverMode } = get();
-        let multiplier = activePowerUp?.type === "scoreMultiplier" ? 2 : 1;
-        if (isFeverMode) multiplier *= 3;
-        set({ score: score + points * multiplier });
-        get().checkLevelUp();
+        // ⚠️ 배율은 calculateScore(engine/scoring)에서 이미 적용되었다.
+        // 여기서 다시 곱하면 피버가 ×9가 된다(#2). 순수 가산만 한다.
+        set({ score: get().score + points });
       },
 
       incrementCombo: () => {
@@ -949,21 +1064,37 @@ export const useGameStore = create<GameStore>()(
         set({ chainCount: 0 });
       },
 
+      /**
+       * 레벨업 판정 — 기준은 "누적 클리어 블록 수"다(계획서 §2.2).
+       * 점수는 연쇄^2.2로 폭증하므로 레벨 기준으로 쓰면 난이도가 폭주한다.
+       * 챌린지/퍼즐은 목표 달성으로만 레벨이 오르므로 여기서 건드리지 않는다(#3).
+       */
       checkLevelUp: () => {
-        const { score, level, gameMode } = get();
-        const threshold = getLevelThreshold(level);
+        const { level, blocksCleared, gameMode } = get();
+        if (gameMode === "challenge" || gameMode === "puzzle") return;
+        if (gameMode === "survival") return; // 서바이벌은 시간 기반 단독(#17)
+        if (level >= MAX_LEVEL) return;
 
-        if (score >= threshold) {
-          const newLevel = level + 1;
-          const objectives =
-            gameMode === "challenge"
-              ? generateLevelObjectives(newLevel)
-              : get().levelObjectives;
-          set({
-            level: newLevel,
-            levelObjectives: objectives,
-          });
+        let newLevel = level;
+        let consumed = 0;
+        while (
+          newLevel < MAX_LEVEL &&
+          blocksCleared - consumed >= getBlocksForLevel(newLevel)
+        ) {
+          consumed += getBlocksForLevel(newLevel);
+          newLevel++;
         }
+
+        if (newLevel !== level) {
+          set({ level: newLevel });
+          get().updateMissionProgress("level_reached", newLevel - level);
+        }
+      },
+
+      /** 클리어된 블록 수 누적 — 레벨업의 유일한 입력. */
+      addClearedBlocks: (count) => {
+        set({ blocksCleared: get().blocksCleared + count });
+        get().checkLevelUp();
       },
 
       addFeverGauge: (amount) => {
@@ -983,17 +1114,24 @@ export const useGameStore = create<GameStore>()(
           isFeverMode: true,
           feverGauge: FEVER_CONFIG.MAX_GAUGE,
           feverStartTime: Date.now(),
-        } as any);
+        });
       },
 
       deactivateFeverMode: () => {
-        set({ isFeverMode: false, feverGauge: 0 });
+        set({ isFeverMode: false, feverGauge: 0, feverStartTime: 0 });
       },
 
-      updateLevelObjective: (type, value) => {
+      /**
+       * 목표 진행 갱신. color 인자를 받아 clearColor 목표도 갱신 가능하다.
+       * 예전에는 score/clearBlocks/chains 3종만 호출돼 clearSpecial·clearStone·
+       * clearColor 목표가 영구 미달성이었다(#4).
+       */
+      updateLevelObjective: (type, value, color) => {
         const { levelObjectives } = get();
         const newObjectives = levelObjectives.map((obj) => {
           if (obj.type === type && !obj.completed) {
+            // 색 지정 목표는 색이 일치할 때만 진행
+            if (obj.color && color && obj.color !== color) return obj;
             const newCurrent = obj.current + value;
             return {
               ...obj,
@@ -1024,7 +1162,7 @@ export const useGameStore = create<GameStore>()(
         if (blocksUntilSpecial > 0) {
           set({ blocksUntilSpecial: blocksUntilSpecial - 1 });
         } else {
-          set({ blocksUntilSpecial: 10 + Math.floor(Math.random() * 5) });
+          set({ blocksUntilSpecial: 10 + randomInt(5) });
         }
       },
 
@@ -1038,6 +1176,17 @@ export const useGameStore = create<GameStore>()(
 
           const { board, level } = get();
           const colors = getColorsForLevel(level);
+
+          // 밀어올릴 때 최상단 줄에 블록이 있으면 그 블록들은 갈 곳이 없다.
+          // 예전에는 조용히 버려서 게임오버 판정 자체가 증발했다(#9).
+          // 이제는 밀어올리기 전에 게임오버로 확정한다.
+          const topRowOccupied = board[0].some((cell) => cell !== null);
+          if (topRowOccupied) {
+            set({ garbagePending: 0 });
+            get().endGame();
+            return;
+          }
+
           const newBoard: GameBoard = Array(BOARD_CONFIG.ROWS)
             .fill(null)
             .map(() => Array(BOARD_CONFIG.COLUMNS).fill(null));
@@ -1053,7 +1202,7 @@ export const useGameStore = create<GameStore>()(
           }
 
           // 맨 아래에 쓰레기 블록 한 줄 추가 (빈칸 1개)
-          const gapX = Math.floor(Math.random() * BOARD_CONFIG.COLUMNS);
+          const gapX = randomInt(BOARD_CONFIG.COLUMNS);
           const bottomY = BOARD_CONFIG.ROWS - 1;
 
           for (let x = 0; x < BOARD_CONFIG.COLUMNS; x++) {
@@ -1062,10 +1211,10 @@ export const useGameStore = create<GameStore>()(
             } else {
               newBoard[bottomY][x] = {
                 id: uuidv4(),
-                color: colors[Math.floor(Math.random() * colors.length)],
+                color: pick(colors),
                 x,
                 y: bottomY,
-                specialType: Math.random() < 0.1 ? "stone" : "normal",
+                specialType: random() < 0.1 ? "stone" : "normal",
                 createdAt: Date.now(),
               };
             }
@@ -1088,7 +1237,7 @@ export const useGameStore = create<GameStore>()(
 
           // 다음 줄 추가 (300ms 딜레이)
           if (remaining > 1) {
-            setTimeout(() => addSingleRow(remaining - 1), 300);
+            scheduleForSession(() => addSingleRow(remaining - 1), 300);
           } else {
             set({ garbagePending: 0 });
           }
@@ -1106,10 +1255,7 @@ export const useGameStore = create<GameStore>()(
 
         if (newTimer >= interval) {
           // 쓰레기 블록 추가 예약
-          const rows = Math.min(
-            DIFFICULTY_CONFIG.GARBAGE_ROWS_PER_INTERVAL + Math.floor(level / 5),
-            DIFFICULTY_CONFIG.GARBAGE_MAX_ROWS,
-          );
+          const rows = getGarbageRows(level);
           set({ garbageTimer: 0, garbagePending: garbagePending + rows });
         } else {
           set({ garbageTimer: newTimer });
@@ -1125,9 +1271,14 @@ export const useGameStore = create<GameStore>()(
 
       updateMissionProgress: (type, value) => {
         const { missionProgress } = get();
+        // max_* / level_reached 계열은 누적이 아니라 최고치 갱신이다.
+        const isPeak = type.startsWith("max_") || type === "level_reached";
+        const nextValue = (current: number) =>
+          isPeak ? Math.max(current, value) : current + value;
+
         const newDailyMissions = missionProgress.dailyMissions.map((m) => {
           if (m.type === type && !m.completed) {
-            const newCurrent = m.current + value;
+            const newCurrent = nextValue(m.current);
             return {
               ...m,
               current: newCurrent,
@@ -1139,7 +1290,7 @@ export const useGameStore = create<GameStore>()(
 
         const newWeeklyMissions = missionProgress.weeklyMissions.map((m) => {
           if (m.type === type && !m.completed) {
-            const newCurrent = m.current + value;
+            const newCurrent = nextValue(m.current);
             return {
               ...m,
               current: newCurrent,
@@ -1151,6 +1302,7 @@ export const useGameStore = create<GameStore>()(
 
         set({
           missionProgress: {
+            ...missionProgress,
             dailyMissions: newDailyMissions,
             weeklyMissions: newWeeklyMissions,
           },
@@ -1179,8 +1331,8 @@ export const useGameStore = create<GameStore>()(
 
         // 피버 모드 지속시간 체크 (8초)
         if (isFeverMode) {
-          const feverStartTime = (get() as any).feverStartTime || Date.now();
-          if (Date.now() - feverStartTime > FEVER_CONFIG.FEVER_DURATION) {
+          const startedAt = get().feverStartTime || Date.now();
+          if (Date.now() - startedAt > FEVER_CONFIG.FEVER_DURATION) {
             get().deactivateFeverMode();
           }
         }
@@ -1197,29 +1349,43 @@ export const useGameStore = create<GameStore>()(
           get().incrementGarbageTimer();
         }
 
-        // Survival 모드: 시간에 따라 레벨 자동 증가 (더 빠른 속도)
+        // Survival 모드: 시간 기반 레벨업 단독 (점수 기반은 checkLevelUp에서 차단)
         if (gameMode === "survival") {
-          // 10초마다 레벨업
-          if (gameTime > 0 && gameTime % 10 === 0 && level < 50) {
+          if (gameTime > 0 && gameTime % 10 === 0 && level < MAX_LEVEL) {
             set({ level: level + 1 });
           }
         }
+
+        // 서바이벌 목표(생존 시간) 갱신
+        get().updateLevelObjective("surviveTime", 1);
 
         set({ gameTime: gameTime + 1 });
       },
 
       continueGame: () => {
-        const { continues, board } = get();
+        const { continues, board, gravityDirection, gameMode } = get();
 
-        const newBoard = board.map((row, y) => {
-          if (y < 4) return Array(BOARD_CONFIG.COLUMNS).fill(null);
-          return row;
-        });
+        // 시간제 모드는 gameTime을 되돌려주지 않으면 이어하기 즉시 재종료된다(#8).
+        const timeLimit = getModeTimeLimit(gameMode);
+        const CONTINUE_BONUS_SECONDS = 30;
+        const restoredTime =
+          timeLimit !== null
+            ? Math.max(0, timeLimit - CONTINUE_BONUS_SECONDS)
+            : get().gameTime;
 
         set({
-          board: newBoard,
+          board: clearReliefArea(board, gravityDirection),
           gameStatus: "playing",
           continues: continues + 1,
+          currentBlock: null,
+          currentBlocks: [],
+          gameTime: restoredTime,
+          garbageTimer: 0,
+          garbagePending: 0,
+          dangerLevel: 0,
+          comboTimer: 0,
+          combo: 0,
+          chainCount: 0,
         });
 
         get().spawnBlock();
@@ -1230,13 +1396,10 @@ export const useGameStore = create<GameStore>()(
         const { movesRemaining, gameMode } = get();
         if (gameMode !== "puzzle") return;
 
-        const newMoves = movesRemaining - 1;
-        set({ movesRemaining: newMoves });
-
-        // 이동 횟수가 0이 되면 목표 달성 여부 체크
-        if (newMoves <= 0) {
-          get().checkPuzzleComplete();
-        }
+        // 카운트만 줄인다. 마지막 수의 융합 결과가 반영되기 전에
+        // 게임오버를 확정하면 안 되므로, 판정은 연쇄 종료 후
+        // useGameLogic이 checkPuzzleComplete를 호출해 수행한다(#5).
+        set({ movesRemaining: movesRemaining - 1 });
       },
 
       // 퍼즐 모드: 다음 레벨로 진행
@@ -1263,7 +1426,7 @@ export const useGameStore = create<GameStore>()(
           chainCount: 0,
         });
 
-        setTimeout(() => get().spawnBlock(), 100);
+        scheduleForSession(() => get().spawnBlock(), 100);
       },
 
       // 챌린지 모드: 다음 레벨로 진행
@@ -1292,7 +1455,7 @@ export const useGameStore = create<GameStore>()(
           isFeverMode: false,
         });
 
-        setTimeout(() => get().spawnBlock(), 100);
+        scheduleForSession(() => get().spawnBlock(), 100);
       },
 
       // 퍼즐 모드: 클리어 체크

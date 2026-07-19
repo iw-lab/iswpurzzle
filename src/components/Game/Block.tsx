@@ -183,7 +183,7 @@ export const Block = memo(function Block({
     }
   };
 
-  const getAnimationTransition = (): any => {
+  const getAnimationTransition = (): Record<string, unknown> => {
     const base = {
       scale: { duration: isFusing ? 0.3 : 0.2 },
       rotate: { duration: 3, repeat: Infinity, ease: "linear" as const },

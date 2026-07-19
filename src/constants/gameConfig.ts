@@ -4,6 +4,9 @@ import {
   SpecialBlockType,
   LevelObjective,
 } from "../types";
+import * as difficulty from "../engine/difficulty";
+import { random, pick } from "../engine/rng";
+import { calculateScore as engineCalculateScore } from "../engine/scoring";
 
 // 게임 보드 설정
 export const BOARD_CONFIG = {
@@ -148,8 +151,8 @@ export const SPECIAL_BLOCK_CONFIG: Record<
 // 게임 타이밍 설정
 export const TIMING_CONFIG = {
   BASE_DROP_SPEED: 1000, // 레벨 1 낙하 속도 (ms) - 느리게 시작
-  SPEED_DECREASE_PER_LEVEL: 20, // 레벨당 속도 감소 - 완만하게
-  MIN_DROP_SPEED: 200, // 최소 낙하 속도 - 너무 빠르지 않게
+  SPEED_DECREASE_PER_LEVEL: 35, // 레벨당 속도 감소 (엔진 곡선과 동일)
+  MIN_DROP_SPEED: 350, // 최소 낙하 속도 (엔진 곡선과 동일)
   LOCK_DELAY: 400, // 잠금 딜레이
   DAS_DELAY: 120,
   ARR_RATE: 30,
@@ -186,7 +189,7 @@ export const FUSION_CONFIG = {
 };
 
 // 레벨에 따른 융합 최소 블록 수 계산 (항상 4개로 고정)
-export function getMinBlocksToFuse(_level: number): number {
+export function getMinBlocksToFuse(): number {
   return FUSION_CONFIG.MIN_BLOCKS_TO_FUSE;
 }
 
@@ -211,12 +214,12 @@ export const DIFFICULTY_CONFIG = {
   DANGER_THRESHOLD_2: 3,
   DANGER_THRESHOLD_3: 2,
   // 레벨별 필요 클리어 블록 수
-  BLOCKS_PER_LEVEL: 50,
+  BLOCKS_PER_LEVEL: 52, // = getBlocksForLevel(1) — 엔진 곡선 기준값
   // 다중 블록 낙하 설정 (현재 사용 안 함 - getFallingBlockCount 함수로 대체)
   MULTI_BLOCK_START_LEVEL: 2, // 2개 블록 시작 레벨 (레벨 2부터)
   TRIPLE_BLOCK_START_LEVEL: 8, // 3개 블록 시작 레벨
   // 쓰레기 블록 설정
-  GARBAGE_START_LEVEL: 10, // 쓰레기 블록 시작 레벨 (레벨 10부터)
+  GARBAGE_START_LEVEL: difficulty.GARBAGE_START_LEVEL, // 엔진 곡선과 동기화 (L8)
   GARBAGE_ROWS_PER_INTERVAL: 1, // 기본 추가 줄 수
   GARBAGE_MAX_ROWS: 2, // 최대 쓰레기 줄 수 (한번에 최대 2줄)
   // 레벨별 쓰레기 간격 감소
@@ -224,17 +227,8 @@ export const DIFFICULTY_CONFIG = {
   GARBAGE_MIN_INTERVAL: 20, // 최소 쓰레기 간격 (초)
 };
 
-// 레벨별 동시 낙하 블록 수 계산
-export function getFallingBlockCount(level: number): number {
-  if (level >= 40) return 8; // 레벨 40부터 8개
-  if (level >= 35) return 7; // 레벨 35부터 7개
-  if (level >= 30) return 6; // 레벨 30부터 6개
-  if (level >= 25) return 5; // 레벨 25부터 5개
-  if (level >= 20) return 4; // 레벨 20부터 4개
-  if (level >= 10) return 3; // 레벨 10부터 3개
-  if (level >= 2) return 2; // 레벨 2부터 2개
-  return 1; // 레벨 1만 1개
-}
+// 레벨별 동시 낙하 블록 수 계산 (엔진 난이도 곡선에 위임 — 상한 4)
+export const getFallingBlockCount = difficulty.getFallingBlockCount;
 
 // 블록 모양 정의 (상대 좌표)
 // [dx, dy] 형태로 기준점(0,0)으로부터의 오프셋
@@ -387,323 +381,19 @@ export const SHAPES_4: BlockShape[] = [
 ];
 
 // 5개 블록 모양들
-export const SHAPES_5: BlockShape[] = [
-  {
-    offsets: [
-      [0, 0],
-      [1, 0],
-      [2, 0],
-      [3, 0],
-      [4, 0],
-    ],
-    name: "line-h5",
-  }, // 가로 일자 5
-  {
-    offsets: [
-      [0, 0],
-      [1, 0],
-      [2, 0],
-      [0, 1],
-      [0, 2],
-    ],
-    name: "L-big",
-  }, // 큰 L
-  {
-    offsets: [
-      [0, 0],
-      [1, 0],
-      [2, 0],
-      [1, 1],
-      [1, 2],
-    ],
-    name: "T-long",
-  }, // 긴 T
-  {
-    offsets: [
-      [1, 0],
-      [0, 1],
-      [1, 1],
-      [2, 1],
-      [1, 2],
-    ],
-    name: "cross",
-  }, // 십자가
-  {
-    offsets: [
-      [0, 0],
-      [1, 0],
-      [1, 1],
-      [2, 1],
-      [3, 1],
-    ],
-    name: "snake",
-  }, // 뱀
-  {
-    offsets: [
-      [0, 0],
-      [0, 1],
-      [1, 1],
-      [1, 2],
-      [2, 2],
-    ],
-    name: "stairs",
-  }, // 계단
-  {
-    offsets: [
-      [0, 0],
-      [1, 0],
-      [0, 1],
-      [1, 1],
-      [2, 1],
-    ],
-    name: "P-shape",
-  }, // P 모양
-  {
-    offsets: [
-      [0, 0],
-      [2, 0],
-      [0, 1],
-      [1, 1],
-      [2, 1],
-    ],
-    name: "U-shape",
-  }, // U 모양
-];
-
-// 6개 블록 모양들
-export const SHAPES_6: BlockShape[] = [
-  {
-    offsets: [
-      [0, 0],
-      [1, 0],
-      [2, 0],
-      [0, 1],
-      [1, 1],
-      [2, 1],
-    ],
-    name: "rect-2x3",
-  }, // 2x3 직사각형
-  {
-    offsets: [
-      [0, 0],
-      [1, 0],
-      [2, 0],
-      [3, 0],
-      [4, 0],
-      [5, 0],
-    ],
-    name: "line-h6",
-  }, // 가로 일자 6
-  {
-    offsets: [
-      [1, 0],
-      [2, 0],
-      [0, 1],
-      [1, 1],
-      [2, 1],
-      [1, 2],
-    ],
-    name: "tree",
-  }, // 나무
-  {
-    offsets: [
-      [0, 0],
-      [1, 0],
-      [2, 0],
-      [0, 1],
-      [0, 2],
-      [0, 3],
-    ],
-    name: "L-huge",
-  }, // 거대 L
-  {
-    offsets: [
-      [0, 0],
-      [1, 0],
-      [0, 1],
-      [1, 1],
-      [0, 2],
-      [1, 2],
-    ],
-    name: "tower",
-  }, // 타워
-  {
-    offsets: [
-      [1, 0],
-      [0, 1],
-      [1, 1],
-      [2, 1],
-      [0, 2],
-      [2, 2],
-    ],
-    name: "H-shape",
-  }, // H 모양
-];
-
-// 7개 블록 모양들
-export const SHAPES_7: BlockShape[] = [
-  {
-    offsets: [
-      [0, 0],
-      [1, 0],
-      [2, 0],
-      [3, 0],
-      [4, 0],
-      [5, 0],
-      [6, 0],
-    ],
-    name: "line-h7",
-  },
-  {
-    offsets: [
-      [1, 0],
-      [0, 1],
-      [1, 1],
-      [2, 1],
-      [0, 2],
-      [1, 2],
-      [2, 2],
-    ],
-    name: "diamond",
-  }, // 다이아몬드
-  {
-    offsets: [
-      [0, 0],
-      [1, 0],
-      [2, 0],
-      [0, 1],
-      [1, 1],
-      [2, 1],
-      [1, 2],
-    ],
-    name: "arrow-big",
-  },
-  {
-    offsets: [
-      [0, 0],
-      [2, 0],
-      [0, 1],
-      [1, 1],
-      [2, 1],
-      [0, 2],
-      [2, 2],
-    ],
-    name: "window",
-  }, // 창문
-  {
-    offsets: [
-      [1, 0],
-      [0, 1],
-      [1, 1],
-      [2, 1],
-      [3, 1],
-      [1, 2],
-      [1, 3],
-    ],
-    name: "anchor",
-  }, // 닻
-];
-
-// 8개 블록 모양들
-export const SHAPES_8: BlockShape[] = [
-  {
-    offsets: [
-      [0, 0],
-      [1, 0],
-      [2, 0],
-      [3, 0],
-      [0, 1],
-      [1, 1],
-      [2, 1],
-      [3, 1],
-    ],
-    name: "rect-2x4",
-  },
-  {
-    offsets: [
-      [1, 0],
-      [2, 0],
-      [0, 1],
-      [1, 1],
-      [2, 1],
-      [3, 1],
-      [1, 2],
-      [2, 2],
-    ],
-    name: "bone",
-  }, // 뼈다귀
-  {
-    offsets: [
-      [0, 0],
-      [1, 0],
-      [2, 0],
-      [0, 1],
-      [2, 1],
-      [0, 2],
-      [1, 2],
-      [2, 2],
-    ],
-    name: "frame",
-  }, // 프레임
-  {
-    offsets: [
-      [1, 0],
-      [0, 1],
-      [1, 1],
-      [2, 1],
-      [0, 2],
-      [1, 2],
-      [2, 2],
-      [1, 3],
-    ],
-    name: "big-cross",
-  },
-  {
-    offsets: [
-      [0, 0],
-      [1, 0],
-      [0, 1],
-      [1, 1],
-      [2, 1],
-      [3, 1],
-      [2, 2],
-      [3, 2],
-    ],
-    name: "zigzag-big",
-  },
-];
-
-// 랜덤 블록 모양 선택
 export function getRandomShape(blockCount: number): BlockShape {
-  let shapes: BlockShape[];
+  // 조각 크기 상한 4 (계획서 §2.2 — 8칸 보드에서 5칸 이상 조각은 조작 불능)
+  const shapes: BlockShape[] | null =
+    blockCount === 2
+      ? SHAPES_2
+      : blockCount === 3
+        ? SHAPES_3
+        : blockCount >= 4
+          ? SHAPES_4
+          : null;
 
-  switch (blockCount) {
-    case 2:
-      shapes = SHAPES_2;
-      break;
-    case 3:
-      shapes = SHAPES_3;
-      break;
-    case 4:
-      shapes = SHAPES_4;
-      break;
-    case 5:
-      shapes = SHAPES_5;
-      break;
-    case 6:
-      shapes = SHAPES_6;
-      break;
-    case 7:
-      shapes = SHAPES_7;
-      break;
-    case 8:
-      shapes = SHAPES_8;
-      break;
-    default:
-      return { offsets: [[0, 0]], name: "single" };
-  }
-
-  return shapes[Math.floor(Math.random() * shapes.length)];
+  if (!shapes) return { offsets: [[0, 0]], name: "single" };
+  return pick(shapes);
 }
 
 // 블록 회전 함수 (시계 방향 90도)
@@ -730,13 +420,7 @@ export function rotateShape(offsets: [number, number][]): [number, number][] {
 }
 
 // 레벨별 쓰레기 블록 간격 계산
-export function getGarbageInterval(level: number): number {
-  const interval =
-    TIMING_CONFIG.GARBAGE_INTERVAL -
-    (level - DIFFICULTY_CONFIG.GARBAGE_START_LEVEL) *
-      DIFFICULTY_CONFIG.GARBAGE_INTERVAL_DECREASE;
-  return Math.max(interval, DIFFICULTY_CONFIG.GARBAGE_MIN_INTERVAL);
-}
+export const getGarbageInterval = difficulty.getGarbageInterval;
 
 // 레벨별 목표 생성
 export function generateLevelObjectives(level: number): LevelObjective[] {
@@ -962,14 +646,8 @@ export const GAME_MODE_CONFIG = {
     hasTimeLimit: false,
     hasLevelLimit: false,
   },
-  timeAttack: {
-    name: "타임어택",
-    description: "2분 안에 최고 점수를!",
-    icon: "⏰",
-    hasTimeLimit: true,
-    timeLimit: 120,
-    hasLevelLimit: false,
-  },
+  // 타임어택은 데일리(시드 고정 3분)와 역할이 겹쳐 제거했다(계획서 §2.2).
+  // GameMode 타입에는 남겨 두어 기존 저장 기록이 깨지지 않게 한다.
   puzzle: {
     name: "퍼즐",
     description: "제한된 수로 목표 달성",
@@ -988,7 +666,7 @@ export const GAME_MODE_CONFIG = {
   },
   daily: {
     name: "일일 챌린지",
-    description: "매일 새로운 도전! 3분!",
+    description: "매일 같은 판, 3분 승부!",
     icon: "📅",
     hasTimeLimit: true,
     timeLimit: 180,
@@ -1013,26 +691,36 @@ export const GAME_MODE_CONFIG = {
   },
 };
 
-// 일일 챌린지용 시드 생성 (날짜 기반)
-export function getDailySeed(): number {
-  const today = new Date();
-  const dateStr = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
-  let hash = 0;
-  for (let i = 0; i < dateStr.length; i++) {
-    const char = dateStr.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash = hash & hash; // 32bit integer 변환
-  }
-  return Math.abs(hash);
+export interface ModeConfig {
+  name: string;
+  description: string;
+  icon: string;
+  hasTimeLimit?: boolean;
+  timeLimit?: number;
+  hasLevelLimit?: boolean;
+  movesLimit?: number;
+  noGameOver?: boolean;
+  isDaily?: boolean;
+  speedIncrease?: boolean;
+  hasObjectives?: boolean;
 }
 
-// 시드 기반 랜덤 생성기 (일일 챌린지용)
-export function seededRandom(seed: number): () => number {
-  return function () {
-    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-    return seed / 0x7fffffff;
-  };
+/**
+ * 모드 설정 조회. GameMode 타입에는 남아 있지만 설정에서 제거된 모드
+ * (예: 폐지된 timeAttack)를 안전하게 다루기 위한 단일 진입점이다.
+ */
+export function getModeConfig(mode: string): ModeConfig | undefined {
+  return (GAME_MODE_CONFIG as Record<string, ModeConfig>)[mode];
 }
+
+/** 모드의 제한 시간(초). 시간제가 아니면 null. */
+export function getModeTimeLimit(mode: string): number | null {
+  const cfg = getModeConfig(mode);
+  return cfg?.hasTimeLimit ? (cfg.timeLimit ?? null) : null;
+}
+
+// 일일 챌린지 시드 — 엔진 rng에 위임
+export { getDailySeed, seededRandom } from "../engine/rng";
 
 // 터치 컨트롤 설정
 export const TOUCH_CONFIG = {
@@ -1054,27 +742,10 @@ export const HAPTIC_PATTERNS = {
 };
 
 // 레벨별 색상 수 가져오기
-export function getColorsForLevel(level: number): BlockColor[] {
-  const thresholds = Object.keys(BLOCK_COLORS)
-    .map(Number)
-    .sort((a, b) => b - a);
-
-  for (const threshold of thresholds) {
-    if (level >= threshold) {
-      return BLOCK_COLORS[threshold];
-    }
-  }
-
-  return BLOCK_COLORS[1];
-}
+export const getColorsForLevel = difficulty.getColorsForLevel;
 
 // 낙하 속도 계산
-export function getDropSpeed(level: number): number {
-  const speed =
-    TIMING_CONFIG.BASE_DROP_SPEED -
-    (level - 1) * TIMING_CONFIG.SPEED_DECREASE_PER_LEVEL;
-  return Math.max(speed, TIMING_CONFIG.MIN_DROP_SPEED);
-}
+export const getDropSpeed = difficulty.getDropSpeed;
 
 // 레벨업 임계값 계산
 export function getLevelThreshold(level: number): number {
@@ -1102,79 +773,15 @@ export function determineSpecialBlockType(level: number): SpecialBlockType {
   if (availableTypes.length === 0) return "normal";
 
   const totalChance = availableTypes.reduce((sum, t) => sum + t.chance, 0);
-  let random = Math.random() * totalChance;
+  let roll = random() * totalChance;
 
   for (const { type, chance } of availableTypes) {
-    random -= chance;
-    if (random <= 0) return type;
+    roll -= chance;
+    if (roll <= 0) return type;
   }
 
   return availableTypes[0].type;
 }
 
-// 점수 계산
-export function calculateScore(params: {
-  blocksCleared: number;
-  chainCount: number;
-  comboCount: number;
-  level: number;
-  powerUpMultiplier: number;
-  perfectClear: boolean;
-  isFeverMode?: boolean;
-  specialBlocksCleared?: number;
-}): number {
-  const {
-    blocksCleared,
-    chainCount,
-    comboCount,
-    level,
-    powerUpMultiplier,
-    perfectClear,
-    isFeverMode = false,
-    specialBlocksCleared = 0,
-  } = params;
-
-  // 기본 점수
-  let baseScore = blocksCleared * SCORE_CONFIG.BASE_POINTS_PER_BLOCK * level;
-
-  // 연쇄 보너스 (기하급수적)
-  const chainBonus =
-    chainCount > 1
-      ? Math.pow(chainCount, 2.5) * SCORE_CONFIG.CHAIN_BONUS_MULTIPLIER
-      : 0;
-
-  // 콤보 보너스 (누적)
-  const comboBonus =
-    comboCount * SCORE_CONFIG.COMBO_BONUS * (1 + comboCount * 0.1);
-
-  // 대량 융합 보너스
-  const massBonus =
-    blocksCleared >= SCORE_CONFIG.MASS_FUSION_THRESHOLD
-      ? blocksCleared *
-        SCORE_CONFIG.MASS_FUSION_BONUS_PER_BLOCK *
-        Math.floor(blocksCleared / SCORE_CONFIG.MASS_FUSION_THRESHOLD)
-      : 0;
-
-  // 특수 블록 보너스
-  const specialBonus =
-    specialBlocksCleared * SCORE_CONFIG.SPECIAL_BLOCK_BONUS * level;
-
-  // 퍼펙트 클리어 보너스
-  const perfectBonus = perfectClear
-    ? SCORE_CONFIG.PERFECT_CLEAR_BONUS * level
-    : 0;
-
-  // 피버 모드 배율
-  const feverMultiplier = isFeverMode ? SCORE_CONFIG.FEVER_MULTIPLIER : 1;
-
-  return Math.floor(
-    (baseScore +
-      chainBonus +
-      comboBonus +
-      massBonus +
-      specialBonus +
-      perfectBonus) *
-      powerUpMultiplier *
-      feverMultiplier,
-  );
-}
+// 점수 계산 — 엔진의 단일 적용 지점에 위임 (배율 이중 적용 방지)
+export const calculateScore = engineCalculateScore;

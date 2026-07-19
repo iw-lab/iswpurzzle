@@ -1,4 +1,4 @@
-import React, { useRef, useMemo, useEffect } from 'react';
+import React, { useRef, useMemo, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../stores/gameStore';
 import { useUserStore } from '../../stores/userStore';
@@ -15,20 +15,19 @@ export function GameBoard({ cellSize: propCellSize }: GameBoardProps) {
   const { triggerHaptic } = useTouchGestures(containerRef);
   const { playSound, startBGM, stopBGM } = useAudio();
 
-  const {
-    board,
-    currentBlock,
-    currentBlocks,
-    gameStatus,
-    level,
-    gravityDirection,
-    isPowerUpSelecting,
-    garbagePending,
-    garbageTimer,
-  } = useGameStore();
+  // selector 구독 — 필드별로 나눠 구독해 무관한 set()에 리렌더되지 않게 한다(#22).
+  const board = useGameStore((s) => s.board);
+  const currentBlock = useGameStore((s) => s.currentBlock);
+  const currentBlocks = useGameStore((s) => s.currentBlocks);
+  const gameStatus = useGameStore((s) => s.gameStatus);
+  const level = useGameStore((s) => s.level);
+  const gravityDirection = useGameStore((s) => s.gravityDirection);
+  const isPowerUpSelecting = useGameStore((s) => s.isPowerUpSelecting);
+  const garbagePending = useGameStore((s) => s.garbagePending);
+  const dangerLevel = useGameStore((s) => s.dangerLevel);
 
   const { settings } = useUserStore();
-  const { isProcessingFusion, fusionEffects, chainEffects, specialEffects, getGhostPosition } = useGameLogic();
+  const { fusionEffects, chainEffects, specialEffects, getGhostPosition } = useGameLogic();
 
   // 셀 크기 동적 계산 (모바일 대응 강화)
   const cellSize = useMemo(() => {
@@ -63,20 +62,39 @@ export function GameBoard({ cellSize: propCellSize }: GameBoardProps) {
     }
   }, [fusionEffects, playSound, triggerHaptic]);
 
+  // 연쇄마다 음정을 반음계로 올린다 — 연쇄 중독성의 검증된 공식(§3.1-1)
   useEffect(() => {
     if (chainEffects > 1) {
-      playSound('chain');
+      playSound('chain', { pitch: Math.min(2, 1 + (chainEffects - 1) * 0.06) });
       triggerHaptic('heavy');
     }
   }, [chainEffects, playSound, triggerHaptic]);
 
+  // 착지 타격감 — 조각이 놓이는 순간 보드를 짧게 흔든다(§3.1-2)
+  const prevFallingRef = useRef(0);
+  const [shake, setShake] = useState(false);
+  useEffect(() => {
+    const had = prevFallingRef.current;
+    prevFallingRef.current = currentBlocks.length;
+    if (had > 0 && currentBlocks.length === 0) {
+      const on = requestAnimationFrame(() => setShake(true));
+      const off = window.setTimeout(() => setShake(false), 90);
+      return () => {
+        cancelAnimationFrame(on);
+        clearTimeout(off);
+      };
+    }
+  }, [currentBlocks.length]);
+
   return (
     <div className="relative p-1 rounded-xl bg-gradient-to-b from-gray-800 to-gray-900 shadow-2xl border border-white/10">
       {/* 게임 보드 컨테이너 */}
-      <div
+      <motion.div
         ref={containerRef}
         className="relative overflow-hidden rounded-lg bg-[#0a0a15] select-none touch-none"
         style={{ width: boardWidth, height: boardHeight }}
+        animate={shake ? { x: [0, -3, 3, -2, 0], y: [0, 2, -2, 1, 0] } : { x: 0, y: 0 }}
+        transition={{ duration: 0.09 }}
       >
         {/* 그리드 배경 (더 세련된 라인) */}
         <div className="absolute inset-0 opacity-20 pointer-events-none">
@@ -96,25 +114,33 @@ export function GameBoard({ cellSize: propCellSize }: GameBoardProps) {
             className="absolute top-0 left-0 right-0 pointer-events-none transition-opacity duration-500"
             style={{
               height: cellSize * 3,
-              background: 'linear-gradient(to bottom, rgba(255, 50, 50, 0.15) 0%, transparent 100%)',
-              borderBottom: '1px dashed rgba(255, 50, 50, 0.3)'
+              background: `linear-gradient(to bottom, rgba(255, 50, 50, ${0.1 + dangerLevel * 0.12}) 0%, transparent 100%)`,
+              borderBottom: '1px dashed rgba(255, 50, 50, 0.3)',
+              opacity: dangerLevel > 0 ? 1 : 0.5,
             }}
           />
         )}
 
-        {/* 고스트 블록 (가장 뒤) */}
-        {ghostPosition && currentBlock && ghostPosition.y !== currentBlock.y && (
-          <div
-            className="absolute pointer-events-none transition-all duration-75"
-            style={{
-              left: ghostPosition.x * cellSize + 1,
-              top: ghostPosition.y * cellSize + 1,
-              zIndex: 0
-            }}
-          >
-            <Block color={currentBlock.color} size={cellSize} isGhost />
-          </div>
-        )}
+        {/* 고스트 — 조각 전체 모양을 실제 착지 위치에 그린다.
+            첫 블록 1칸만 표시하면 예측과 착지가 어긋난다(#14). */}
+        {ghostPosition && ghostPosition.distance > 0 &&
+          ghostPosition.cells.map((cell, i) => (
+            <div
+              key={`ghost-${i}`}
+              className="absolute pointer-events-none transition-all duration-75"
+              style={{
+                left: cell.x * cellSize + 1,
+                top: cell.y * cellSize + 1,
+                zIndex: 0,
+              }}
+            >
+              <Block
+                color={currentBlocks[i]?.color ?? currentBlocks[0].color}
+                size={cellSize}
+                isGhost
+              />
+            </div>
+          ))}
 
         {/* 배치된 블록들 */}
         <AnimatePresence>
@@ -295,7 +321,7 @@ export function GameBoard({ cellSize: propCellSize }: GameBoardProps) {
             <h2 className="text-3xl font-bold text-white tracking-widest" style={{ fontFamily: 'var(--font-display)' }}>PAUSED</h2>
           </div>
         )}
-      </div>
+      </motion.div>
     </div>
   );
 }

@@ -112,6 +112,8 @@ export interface GameStatistics {
 export interface MissionProgress {
   dailyMissions: DailyMission[];
   weeklyMissions: WeeklyMission[];
+  dailyKey?: string;   // YYYY-MM-DD — 불일치 시 일일 미션 재생성
+  weeklyKey?: string;  // YYYY-Www — 불일치 시 주간 미션 재생성
 }
 
 // 일일 미션
@@ -174,6 +176,7 @@ export interface GameState {
   levelObjectives: LevelObjective[];
   feverGauge: number;        // 피버 게이지 (0-100)
   isFeverMode: boolean;      // 피버 모드 활성화
+  feverStartTime: number;    // 피버 시작 시각 (ms epoch, 0 = 비활성)
   comboTimer: number;        // 콤보 타이머 (초)
   dangerLevel: number;       // 위험 레벨 (0-3)
   specialBlockChance: number; // 특수 블록 등장 확률
@@ -189,6 +192,11 @@ export interface GameState {
   // 블록 회전 관련
   currentShapeOffsets: [number, number][];  // 현재 블록 모양 오프셋
   basePosition: { x: number; y: number };   // 블록 그룹의 기준 위치
+  // 세션/난이도 관련
+  sessionEpoch: number;       // 게임 세션 토큰 (async 취소용)
+  blocksCleared: number;      // 이번 판 누적 클리어 블록 수 (레벨업 기준)
+  dailySeed: number | null;   // 데일리 챌린지 시드 (null = 비시드 모드)
+  lastGameHighScore: number;  // 이번 판 시작 시점의 최고 점수 (신기록 판정용)
 }
 
 // 점수 계산 파라미터

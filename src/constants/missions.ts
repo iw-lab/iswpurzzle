@@ -26,9 +26,47 @@ export const WEEKLY_MISSION_TEMPLATES = [
   { id: 'gravity_all', type: 'gravity_directions', target: 4, desc: '모든 중력 방향 사용', reward: { xp: 150, gems: 50 } },
 ];
 
-// 랜덤 일일 미션 생성 (5개)
+// 날짜 키 — 미션 리셋 경계의 단일 진실
+export function currentDailyKey(date: Date = new Date()): string {
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${m}-${d}`;
+}
+
+// ISO 주차 기준 주간 키
+export function currentWeeklyKey(date: Date = new Date()): string {
+  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const dayNum = (target.getDay() + 6) % 7; // 월=0
+  target.setDate(target.getDate() - dayNum + 3); // 해당 주의 목요일
+  const firstThursday = new Date(target.getFullYear(), 0, 4);
+  const week =
+    1 +
+    Math.round(
+      (target.getTime() - firstThursday.getTime()) / 604800000 -
+        ((firstThursday.getDay() + 6) % 7) / 7,
+    );
+  return `${target.getFullYear()}-W${String(week).padStart(2, '0')}`;
+}
+
+// 문자열 키 → 결정적 셔플 시드 (같은 날 = 같은 미션 세트)
+function keyedShuffle<T>(items: T[], key: string): T[] {
+  let seed = 0;
+  for (let i = 0; i < key.length; i++) seed = (seed * 31 + key.charCodeAt(i)) & 0x7fffffff;
+  const rand = () => {
+    seed = (Math.imul(seed, 1103515245) + 12345) & 0x7fffffff;
+    return seed / 0x7fffffff;
+  };
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+// 일일 미션 생성 (5개) — 날짜 기준 결정적
 export function generateDailyMissions(): DailyMission[] {
-  const shuffled = [...DAILY_MISSION_TEMPLATES].sort(() => Math.random() - 0.5);
+  const shuffled = keyedShuffle(DAILY_MISSION_TEMPLATES, currentDailyKey());
   return shuffled.slice(0, 5).map(template => ({
     id: template.id,
     type: template.type,
@@ -41,7 +79,7 @@ export function generateDailyMissions(): DailyMission[] {
 
 // 랜덤 주간 미션 생성 (3개)
 export function generateWeeklyMissions(): WeeklyMission[] {
-  const shuffled = [...WEEKLY_MISSION_TEMPLATES].sort(() => Math.random() - 0.5);
+  const shuffled = keyedShuffle(WEEKLY_MISSION_TEMPLATES, currentWeeklyKey());
   return shuffled.slice(0, 3).map(template => ({
     id: template.id,
     type: template.type,

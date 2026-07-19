@@ -38,7 +38,11 @@ class AudioEngine {
 
   private init() {
     try {
-      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const Ctx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext })
+          .webkitAudioContext;
+      this.audioContext = new Ctx();
       this.masterGain = this.audioContext.createGain();
       this.musicGain = this.audioContext.createGain();
       this.sfxGain = this.audioContext.createGain();
@@ -55,7 +59,7 @@ class AudioEngine {
       this.sfxGain.connect(compressor);
       compressor.connect(this.masterGain);
       this.masterGain.connect(this.audioContext.destination);
-    } catch (e) {
+    } catch {
       console.warn('Web Audio API not supported');
     }
   }
@@ -151,8 +155,10 @@ class AudioEngine {
   }
 
   // 효과음 재생 - Premium Enhanced
-  playSoundEffect(effect: SoundEffect) {
+  // pitch: 1.0 기준 배음비. 연쇄가 깊어질수록 음이 올라가 "쌓이는 느낌"을 만든다.
+  playSoundEffect(effect: SoundEffect, pitch: number = 1) {
     if (!this.audioContext) return;
+    const p = Math.max(0.5, Math.min(2.5, pitch));
 
     switch (effect) {
       case 'blockLand':
@@ -195,7 +201,7 @@ class AudioEngine {
         setTimeout(() => this.playTone(60, 0.15, 'sine', 0.1), 150);
         break;
 
-      case 'fusion':
+      case 'fusion': {
         // 마법같은 크리스탈 융합 (✨ 반짝)
         const fusionNotes = [523, 659, 784, 988, 1175]; // C5, E5, G5, B5, D6
         fusionNotes.forEach((freq, i) => {
@@ -215,10 +221,11 @@ class AudioEngine {
           }
         }, 200);
         break;
+      }
 
-      case 'chain':
-        // 상승하는 아르페지오 연쇄
-        const chainBase = 349; // F4
+      case 'chain': {
+        // 상승하는 아르페지오 연쇄 (연쇄 깊이에 따라 전체 음정이 상승)
+        const chainBase = 349 * p; // F4 기준
         for (let i = 0; i < 8; i++) {
           setTimeout(() => {
             const freq = chainBase * Math.pow(1.12, i);
@@ -231,6 +238,7 @@ class AudioEngine {
         // 최종 심벌 느낌
         setTimeout(() => this.playTone(3000, 0.2, 'sine', 0.06), 500);
         break;
+      }
 
       case 'combo':
         // 점점 고조되는 팡파레
@@ -246,7 +254,7 @@ class AudioEngine {
         }, 250);
         break;
 
-      case 'levelUp':
+      case 'levelUp': {
         // 장엄한 승리 팡파레
         const fanfare = [
           { notes: [523, 659, 784], delay: 0, dur: 0.2 },
@@ -271,6 +279,7 @@ class AudioEngine {
         this.playTone(80, 0.3, 'sine', 0.2);
         setTimeout(() => this.playTone(60, 0.4, 'sine', 0.15), 550);
         break;
+      }
 
       case 'powerUpGet':
         // 마법 파워업 획득!
@@ -306,7 +315,7 @@ class AudioEngine {
         }, 400);
         break;
 
-      case 'gameOver':
+      case 'gameOver': {
         // 감성적인 피아노 멜로디
         const sadMelody = [
           { freq: 523, dur: 0.35 },  // C5
@@ -331,8 +340,9 @@ class AudioEngine {
           this.playTone(330, 1.5, 'sine', 0.06);
         }, delay);
         break;
+      }
 
-      case 'highScore':
+      case 'highScore': {
         // 신기록! 화려한 축하 팡파레
         const victoryNotes = [523, 587, 659, 784, 880, 988, 1047, 1175, 1319, 1568];
         victoryNotes.forEach((freq, i) => {
@@ -355,6 +365,7 @@ class AudioEngine {
           this.playChord([1568, 1976, 2349], 0.5, 'sine', 0.2);
         }, 1700);
         break;
+      }
 
       case 'achievement':
         // 업적 달성 표창식 징글
@@ -645,7 +656,9 @@ class AudioEngine {
     this.currentOscillators.forEach(osc => {
       try {
         osc.stop();
-      } catch (e) { }
+      } catch {
+        // 이미 정지된 오실레이터 — 무시
+      }
     });
     this.currentOscillators = [];
   }
@@ -693,6 +706,8 @@ export function useAudio() {
       window.removeEventListener('click', handleInteraction);
       window.removeEventListener('touchstart', handleInteraction);
     };
+    // 마운트 시 1회만 구독한다 (오디오 컨텍스트 초기화 트리거)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 설정 변경 시 볼륨 업데이트
@@ -704,9 +719,9 @@ export function useAudio() {
   }, [settings.soundEnabled, settings.musicEnabled, settings.soundVolume, settings.musicVolume]);
 
   const playSound = useCallback(
-    (effect: SoundEffect) => {
+    (effect: SoundEffect, options?: { pitch?: number }) => {
       if (settings.soundEnabled && engineRef.current) {
-        engineRef.current.playSoundEffect(effect);
+        engineRef.current.playSoundEffect(effect, options?.pitch ?? 1);
       }
     },
     [settings.soundEnabled]

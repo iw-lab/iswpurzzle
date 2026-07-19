@@ -2,16 +2,15 @@ import React, { useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../stores/gameStore';
 import { useAudio } from '../../hooks/useAudio';
-import { POWERUP_CONFIG, BOARD_CONFIG, getColorsForLevel } from '../../constants';
-import { PowerUpType, Block, BlockColor } from '../../types';
-import { v4 as uuidv4 } from 'uuid';
+import { POWERUP_CONFIG, BOARD_CONFIG } from '../../constants';
+import { PowerUpType, BlockColor } from '../../types';
 
 export function PowerUpBar() {
-  const { powerUps, gameStatus, usePowerUp, toggleGravitySelection, activatePowerUp, board, updateBoard, level, addScore } = useGameStore();
+  const { powerUps, gameStatus, consumePowerUp, toggleGravitySelection, activatePowerUp, board, updateBoard, addScore } = useGameStore();
   const { playSound } = useAudio();
 
   // 컬러 폭탄: 가장 많은 색상 블록 제거
-  const useColorBomb = useCallback(() => {
+  const applyColorBomb = useCallback(() => {
     const colorCounts: Record<string, number> = {};
     for (let y = 0; y < BOARD_CONFIG.ROWS; y++) {
       for (let x = 0; x < BOARD_CONFIG.COLUMNS; x++) {
@@ -33,17 +32,15 @@ export function PowerUpBar() {
     if (!maxColor) return;
 
     // 해당 색상 블록 제거
-    const newBoard = board.map((row, y) =>
-      row.map((block, x) =>
-        block && block.color === maxColor ? null : block
-      )
+    const newBoard = board.map((row) =>
+      row.map((block) => (block && block.color === maxColor ? null : block)),
     );
     updateBoard(newBoard);
     addScore(maxCount * 50);
   }, [board, updateBoard, addScore]);
 
   // 가로줄 클리어
-  const useRowClear = useCallback(() => {
+  const applyRowClear = useCallback(() => {
     // 블록이 가장 많은 줄 찾기
     let maxRowIdx = -1;
     let maxBlocks = 0;
@@ -67,7 +64,7 @@ export function PowerUpBar() {
   }, [board, updateBoard, addScore]);
 
   // 세로줄 클리어
-  const useColumnClear = useCallback(() => {
+  const applyColumnClear = useCallback(() => {
     // 블록이 가장 많은 열 찾기
     let maxColIdx = -1;
     let maxBlocks = 0;
@@ -91,7 +88,7 @@ export function PowerUpBar() {
   }, [board, updateBoard, addScore]);
 
   // 무지개 블록: 다음 블록을 rainbow로 변환
-  const useRainbowBlock = useCallback(() => {
+  const applyRainbowBlock = useCallback(() => {
     const state = useGameStore.getState();
     if (state.currentBlocks.length > 0) {
       const updatedBlocks = state.currentBlocks.map((block, i) =>
@@ -122,37 +119,37 @@ export function PowerUpBar() {
     // 중력 변환은 선택 UI를 표시
     if (type === 'gravityShift') {
       toggleGravitySelection(true);
-      usePowerUp(type);
+      consumePowerUp(type);
       return;
     }
 
     // 즉시 효과 파워업
     if (type === 'colorBomb') {
-      useColorBomb();
-      usePowerUp(type);
+      applyColorBomb();
+      consumePowerUp(type);
       return;
     }
 
     if (type === 'rowClear') {
-      useRowClear();
-      usePowerUp(type);
+      applyRowClear();
+      consumePowerUp(type);
       return;
     }
 
     if (type === 'columnClear') {
-      useColumnClear();
-      usePowerUp(type);
+      applyColumnClear();
+      consumePowerUp(type);
       return;
     }
 
     if (type === 'rainbowBlock') {
-      useRainbowBlock();
-      usePowerUp(type);
+      applyRainbowBlock();
+      consumePowerUp(type);
       return;
     }
 
     // 기타 파워업 처리
-    usePowerUp(type);
+    consumePowerUp(type);
 
     // 지속 효과가 있는 파워업은 활성화
     if (type === 'timeSlow' || type === 'scoreMultiplier' || type === 'freeze') {

@@ -19,7 +19,6 @@ export function useTouchGestures(containerRef: React.RefObject<HTMLElement | nul
     softDrop,
     hardDrop,
     doHoldBlock,
-    pauseGame,
     isPowerUpSelecting,
     setGravityDirection,
   } = useGameStore();
@@ -77,7 +76,7 @@ export function useTouchGestures(containerRef: React.RefObject<HTMLElement | nul
       if (gameStatus !== 'playing') return;
 
       const touch = e.touches[0];
-      const { startX, startY, isDragging } = touchStateRef.current;
+      const { startX, startY } = touchStateRef.current;
 
       const deltaX = touch.clientX - startX;
       const deltaY = touch.clientY - startY;

@@ -8,9 +8,9 @@ import React, {
 import { AnimatePresence, motion } from "framer-motion";
 import { useGameStore } from "./stores/gameStore";
 import { useUserStore } from "./stores/userStore";
-import { useAudio } from "./hooks";
+import { useAudio, useControls } from "./hooks";
 import { GameMode, ThemeColors } from "./types";
-import { BOARD_CONFIG, GAME_MODE_CONFIG, getDropSpeed } from "./constants";
+import { GAME_MODE_CONFIG, getDropSpeed, getModeConfig, getModeTimeLimit } from "./constants";
 import { THEMES } from "./constants/shopItems";
 
 // Game Components
@@ -61,12 +61,20 @@ function App() {
   const [showLuckyWheel, setShowLuckyWheel] = useState(false);
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [showFeverStart, setShowFeverStart] = useState(false);
-  const [dangerLevel, setDangerLevel] = useState(0);
   const prevFeverModeRef = useRef(false);
 
-  const gameStore = useGameStore();
+  // selector 구독 — 50ms 게임 루프의 모든 set()마다 앱 전체가 리렌더되던
+  // 문제를 막는다(#22). 액션은 참조가 안정적이므로 한 번만 뽑는다.
+  const gameStatus = useGameStore((s) => s.gameStatus);
+  const score = useGameStore((s) => s.score);
+  const combo = useGameStore((s) => s.combo);
+  const chainCount = useGameStore((s) => s.chainCount);
+  const level = useGameStore((s) => s.level);
+  const isFeverMode = useGameStore((s) => s.isFeverMode);
+  const gameTime = useGameStore((s) => s.gameTime);
+  const gameMode = useGameStore((s) => s.gameMode);
+  const dangerLevel = useGameStore((s) => s.dangerLevel);
   const {
-    gameStatus,
     startGame,
     pauseGame,
     resumeGame,
@@ -76,16 +84,7 @@ function App() {
     endGame,
     nextPuzzleLevel,
     nextChallengeLevel,
-    score,
-    combo,
-    chainCount,
-    level,
-    board,
-    isFeverMode,
-    feverGauge,
-    gameTime,
-    gameMode,
-  } = gameStore;
+  } = useGameStore.getState();
   const { settings, updateStreak, equippedThemeId } = useUserStore();
 
   // 현재 테마 가져오기
@@ -125,6 +124,8 @@ function App() {
     document.body.style.backgroundColor = currentTheme.background;
   }, [currentTheme]);
   const { playSound, stopBGM } = useAudio();
+  // 키보드 입력 단일 계층 (DAS/ARR) — 데드코드였던 useControls를 정식 배선(#15)
+  useControls();
   const prevLevelRef = useRef(level);
 
   // 스트릭 업데이트
@@ -135,9 +136,14 @@ function App() {
   // 레벨업 감지
   useEffect(() => {
     if (level > prevLevelRef.current && gameStatus === "playing") {
-      setShowLevelUp(true);
+      const show = requestAnimationFrame(() => setShowLevelUp(true));
       playSound("levelUp");
-      setTimeout(() => setShowLevelUp(false), 2000);
+      const hide = window.setTimeout(() => setShowLevelUp(false), 2000);
+      prevLevelRef.current = level;
+      return () => {
+        cancelAnimationFrame(show);
+        clearTimeout(hide);
+      };
     }
     prevLevelRef.current = level;
   }, [level, gameStatus, playSound]);
@@ -145,29 +151,17 @@ function App() {
   // 피버 모드 시작 감지
   useEffect(() => {
     if (isFeverMode && !prevFeverModeRef.current && gameStatus === "playing") {
-      setShowFeverStart(true);
+      const show = requestAnimationFrame(() => setShowFeverStart(true));
       playSound("combo");
-      setTimeout(() => setShowFeverStart(false), 2000);
+      const hide = window.setTimeout(() => setShowFeverStart(false), 2000);
+      prevFeverModeRef.current = isFeverMode;
+      return () => {
+        cancelAnimationFrame(show);
+        clearTimeout(hide);
+      };
     }
     prevFeverModeRef.current = isFeverMode;
   }, [isFeverMode, gameStatus, playSound]);
-
-  // 위험 레벨 체크
-  useEffect(() => {
-    if (gameStatus !== "playing") {
-      setDangerLevel(0);
-      return;
-    }
-    let topBlocks = 0;
-    for (let y = 0; y < 4; y++) {
-      for (let x = 0; x < BOARD_CONFIG.COLUMNS; x++) {
-        if (board[y]?.[x] !== null) topBlocks++;
-      }
-    }
-    if (topBlocks >= BOARD_CONFIG.COLUMNS * 2) setDangerLevel(2);
-    else if (topBlocks >= BOARD_CONFIG.COLUMNS) setDangerLevel(1);
-    else setDangerLevel(0);
-  }, [board, gameStatus]);
 
   // 게임 시간 타이머
   useEffect(() => {
@@ -179,30 +173,30 @@ function App() {
     };
   }, [gameStatus, incrementGameTime]);
 
-  // 타임어택 모드 시간 체크
+  // 시간제 모드(데일리) 제한 시간
+  const modeTimeLimit = useMemo(
+    () => getModeTimeLimit(gameMode),
+    [gameMode],
+  );
+
   useEffect(() => {
     if (gameStatus !== "playing") return;
-
-    const modeConfig = GAME_MODE_CONFIG[gameMode] as {
-      hasTimeLimit?: boolean;
-      timeLimit?: number;
-    };
-    if (modeConfig?.hasTimeLimit && modeConfig.timeLimit) {
-      if (gameTime >= modeConfig.timeLimit) {
-        endGame();
-      }
-    }
-  }, [gameStatus, gameMode, gameTime, endGame]);
+    if (modeTimeLimit !== null && gameTime >= modeTimeLimit) endGame();
+  }, [gameStatus, modeTimeLimit, gameTime, endGame]);
 
   // 모바일 전체화면 요청
   const requestFullscreen = useCallback(() => {
     const elem = document.documentElement;
+    const vendor = elem as HTMLElement & {
+      webkitRequestFullscreen?: () => void;
+      msRequestFullscreen?: () => void;
+    };
     if (elem.requestFullscreen) {
       elem.requestFullscreen().catch(() => {});
-    } else if ((elem as any).webkitRequestFullscreen) {
-      (elem as any).webkitRequestFullscreen();
-    } else if ((elem as any).msRequestFullscreen) {
-      (elem as any).msRequestFullscreen();
+    } else if (vendor.webkitRequestFullscreen) {
+      vendor.webkitRequestFullscreen();
+    } else if (vendor.msRequestFullscreen) {
+      vendor.msRequestFullscreen();
     }
   }, []);
 
@@ -254,10 +248,7 @@ function App() {
             playSound("buttonClick");
             setScreen("leaderboard");
           }}
-          onOpenBattlePass={() => {
-            playSound("buttonClick");
-            alert("Coming Soon!");
-          }}
+          onOpenBattlePass={undefined}
           onOpenDailyReward={() => {
             playSound("buttonClick");
             setShowDailyReward(true);
@@ -373,10 +364,10 @@ function App() {
         <div className="flex flex-col items-center">
           <div className="flex items-center gap-2">
             <span className="text-lg">
-              {GAME_MODE_CONFIG[gameMode]?.icon || "🎮"}
+              {getModeConfig(gameMode)?.icon || "🎮"}
             </span>
             <span className="text-xs text-gray-400 font-bold tracking-wider uppercase">
-              {GAME_MODE_CONFIG[gameMode]?.name || gameMode}
+              {getModeConfig(gameMode)?.name || gameMode}
             </span>
           </div>
           <div className="flex items-center gap-3 mt-0.5">
@@ -394,21 +385,20 @@ function App() {
                 </div>
               </div>
             )}
-            {(gameMode === "timeAttack" || gameMode === "daily") && (
+            {modeTimeLimit !== null && (
               <div className="text-center">
                 <div className="text-[9px] text-red-400 font-bold">TIME</div>
                 <div
                   className={`text-sm font-black font-mono leading-none ${
                     gameTime >=
-                    ((GAME_MODE_CONFIG[gameMode] as any)?.timeLimit || 120) - 30
+                    (modeTimeLimit ?? 180) - 30
                       ? "text-red-400 animate-pulse"
                       : "text-white"
                   }`}
                 >
                   {Math.max(
                     0,
-                    ((GAME_MODE_CONFIG[gameMode] as any)?.timeLimit || 120) -
-                      gameTime,
+                    (modeTimeLimit ?? 180) - gameTime,
                   )}
                   s
                 </div>

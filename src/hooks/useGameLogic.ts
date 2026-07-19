@@ -3,11 +3,10 @@ import { useGameStore } from "../stores/gameStore";
 import { useUserStore } from "../stores/userStore";
 import {
   Block,
-  BlockColor,
   GameBoard,
   FusionResult,
-  SpecialBlockType,
   SpecialEffect,
+  BlockColor,
 } from "../types";
 import {
   BOARD_CONFIG,
@@ -17,130 +16,17 @@ import {
   getDropSpeed,
   GRAVITY_VECTORS,
   getColorsForLevel,
+  FEVER_CONFIG,
 } from "../constants";
-
-// 융합 가능한 블록 그룹 찾기 - 항상 4개 이상이면 터짐
-function findFusionGroups(board: GameBoard): Block[][] {
-  const MIN_BLOCKS = 4;
-  const groups: Block[][] = [];
-  const globalVisited = new Set<string>();
-
-  for (let startY = 0; startY < BOARD_CONFIG.ROWS; startY++) {
-    for (let startX = 0; startX < BOARD_CONFIG.COLUMNS; startX++) {
-      const startKey = `${startX},${startY}`;
-      if (globalVisited.has(startKey)) continue;
-
-      const startBlock = board[startY]?.[startX];
-      if (!startBlock) continue;
-      if (startBlock.specialType === "stone") continue;
-      if (startBlock.color === "rainbow") continue;
-
-      const targetColor = startBlock.color;
-
-      // BFS로 연결된 같은 색 블록 찾기
-      const connected: Block[] = [];
-      const localVisited = new Set<string>();
-      const queue: [number, number][] = [[startX, startY]];
-
-      while (queue.length > 0) {
-        const [cx, cy] = queue.shift()!;
-        const cellKey = `${cx},${cy}`;
-
-        if (localVisited.has(cellKey)) continue;
-        if (cx < 0 || cx >= BOARD_CONFIG.COLUMNS) continue;
-        if (cy < 0 || cy >= BOARD_CONFIG.ROWS) continue;
-
-        const block = board[cy]?.[cx];
-        if (!block) continue;
-        if (block.specialType === "stone") continue;
-
-        const isMatch =
-          block.color === targetColor || block.color === "rainbow";
-        if (!isMatch) continue;
-
-        localVisited.add(cellKey);
-        connected.push({ ...block, x: cx, y: cy });
-
-        // 상하좌우 탐색
-        queue.push([cx - 1, cy]);
-        queue.push([cx + 1, cy]);
-        queue.push([cx, cy - 1]);
-        queue.push([cx, cy + 1]);
-      }
-
-      if (connected.length >= MIN_BLOCKS) {
-        groups.push(connected);
-        localVisited.forEach((k) => globalVisited.add(k));
-      }
-    }
-  }
-
-  return groups;
-}
-
-// 블록 제거 및 낙하 처리
-function applyGravity(
-  board: GameBoard,
-  gravityDirection: "down" | "up" | "left" | "right",
-): GameBoard {
-  const newBoard: GameBoard = Array(BOARD_CONFIG.ROWS)
-    .fill(null)
-    .map(() => Array(BOARD_CONFIG.COLUMNS).fill(null));
-
-  if (gravityDirection === "down") {
-    for (let x = 0; x < BOARD_CONFIG.COLUMNS; x++) {
-      let writeY = BOARD_CONFIG.ROWS - 1;
-      for (let y = BOARD_CONFIG.ROWS - 1; y >= 0; y--) {
-        if (board[y][x]) {
-          newBoard[writeY][x] = { ...board[y][x]!, x: x, y: writeY };
-          writeY--;
-        }
-      }
-    }
-  } else if (gravityDirection === "up") {
-    for (let x = 0; x < BOARD_CONFIG.COLUMNS; x++) {
-      let writeY = 0;
-      for (let y = 0; y < BOARD_CONFIG.ROWS; y++) {
-        if (board[y][x]) {
-          newBoard[writeY][x] = { ...board[y][x]!, x: x, y: writeY };
-          writeY++;
-        }
-      }
-    }
-  } else if (gravityDirection === "left") {
-    for (let y = 0; y < BOARD_CONFIG.ROWS; y++) {
-      let writeX = 0;
-      for (let x = 0; x < BOARD_CONFIG.COLUMNS; x++) {
-        if (board[y][x]) {
-          newBoard[y][writeX] = { ...board[y][x]!, x: writeX, y: y };
-          writeX++;
-        }
-      }
-    }
-  } else if (gravityDirection === "right") {
-    for (let y = 0; y < BOARD_CONFIG.ROWS; y++) {
-      let writeX = BOARD_CONFIG.COLUMNS - 1;
-      for (let x = BOARD_CONFIG.COLUMNS - 1; x >= 0; x--) {
-        if (board[y][x]) {
-          newBoard[y][writeX] = { ...board[y][x]!, x: writeX, y: y };
-          writeX--;
-        }
-      }
-    }
-  }
-
-  return newBoard;
-}
-
-// 보드가 비어있는지 확인
-function isBoardEmpty(board: GameBoard): boolean {
-  for (let y = 0; y < BOARD_CONFIG.ROWS; y++) {
-    for (let x = 0; x < BOARD_CONFIG.COLUMNS; x++) {
-      if (board[y][x]) return false;
-    }
-  }
-  return true;
-}
+import {
+  applyGravity,
+  computeDangerLevel,
+  computeDropDistance,
+  findFusionGroups,
+  isBoardEmpty,
+} from "../engine/board";
+import { getZenDropSpeed } from "../engine/difficulty";
+import { pick } from "../engine/rng";
 
 // 특수 블록 효과 처리
 function processSpecialBlockEffects(
@@ -322,8 +208,7 @@ function processSpecialBlockEffects(
                 targetBlock.specialType !== "stone" &&
                 targetBlock.specialType !== "frozen"
               ) {
-                const randomColor =
-                  colors[Math.floor(Math.random() * colors.length)];
+                const randomColor = pick(colors);
                 newBoard[ny][nx] = { ...targetBlock, color: randomColor };
                 affectedBlocks.push({ x: nx, y: ny });
               }
@@ -421,27 +306,15 @@ function processFrozenBlocks(
 }
 
 export function useGameLogic() {
-  const {
-    board,
-    currentBlock,
-    currentBlocks,
-    gameStatus,
-    level,
-    gravityDirection,
-    activePowerUp,
-    updateBoard,
-    addScore,
-    incrementCombo,
-    resetCombo,
-    incrementChain,
-    resetChain,
-    spawnBlock,
-    softDrop,
-    updateStatistics,
-    updateMissionProgress,
-    updateLevelObjective,
-    gameMode,
-  } = useGameStore();
+  // selector 구독 — 렌더에 실제로 쓰이는 값만 구독한다(#22).
+  // 액션은 useGameStore.getState()로 호출하므로 구독할 필요가 없다.
+  const board = useGameStore((s) => s.board);
+  const currentBlocks = useGameStore((s) => s.currentBlocks);
+  const gameStatus = useGameStore((s) => s.gameStatus);
+  const level = useGameStore((s) => s.level);
+  const gravityDirection = useGameStore((s) => s.gravityDirection);
+  const activePowerUp = useGameStore((s) => s.activePowerUp);
+  const gameMode = useGameStore((s) => s.gameMode);
 
   const { updateAchievement, addBattlePassXP } = useUserStore();
 
@@ -456,18 +329,25 @@ export function useGameLogic() {
   const comboTimeoutRef = useRef<number | null>(null);
   const lastDropTimeRef = useRef<number>(0);
   const processingRef = useRef<boolean>(false);
+  const lockStartRef = useRef<number | null>(null);
 
-  // 낙하 속도 계산
+  // 낙하 속도 계산 (젠 모드는 상한 고정 — "편안함"이 모드 정체성)
+  const baseDropSpeed =
+    gameMode === "zen" ? Math.max(getZenDropSpeed(), getDropSpeed(level)) : getDropSpeed(level);
   const dropSpeed =
-    activePowerUp?.type === "timeSlow"
-      ? getDropSpeed(level) * 2
-      : getDropSpeed(level);
+    activePowerUp?.type === "timeSlow" ? baseDropSpeed * 2 : baseDropSpeed;
 
   // 단일 융합 처리 (순수 함수 - 보드를 인자로 받아서 처리 후 새 보드 반환)
   const processSingleFusion = useCallback(
     async (
       currentBoard: GameBoard,
-    ): Promise<{ result: FusionResult | null; newBoard: GameBoard }> => {
+    ): Promise<{
+      result: FusionResult | null;
+      newBoard: GameBoard;
+      perfectClear?: boolean;
+      specialCleared?: number;
+      stonesCleared?: number;
+    }> => {
       const groups = findFusionGroups(currentBoard);
 
       if (groups.length === 0) {
@@ -583,11 +463,12 @@ export function useGameLogic() {
         specialBlocksCleared,
       });
 
-      // 피버 게이지 추가
-      const addFeverGauge = useGameStore.getState().addFeverGauge;
-      if (addFeverGauge) {
-        addFeverGauge(totalCleared * 3 + (state.chainCount + 1) * 10);
-      }
+      // 피버 게이지 — 블록분만 여기서 지급한다.
+      // 연쇄·콤보분은 incrementChain/incrementCombo가 담당하므로
+      // 여기서 함께 주면 이중 지급이 된다(#21).
+      useGameStore
+        .getState()
+        .addFeverGauge(totalCleared * FEVER_CONFIG.GAUGE_PER_BLOCK);
 
       // 애니메이션 대기
       await new Promise((resolve) =>
@@ -622,44 +503,65 @@ export function useGameLogic() {
           specialEffects: allSpecialEffects,
         },
         newBoard: gravityAppliedBoard,
+        perfectClear: isPerfectClear,
+        specialCleared: specialBlocksCleared,
+        stonesCleared: stoneResult.destroyedStones.length,
       };
     },
     [level],
   );
 
-  // 연쇄 반응 전체 처리 - 스토어에서 직접 읽기, 완료 후 게임 루프가 다음 액션 결정
+  // 연쇄 반응 전체 처리 — 세션 epoch로 취소 가능.
+  // await 사이에 게임오버·재시작이 일어나면 즉시 중단해야
+  // 이전 라운드가 새 보드·점수를 오염시키지 않는다(#7).
   const doChainReaction = useCallback(async () => {
     if (processingRef.current) return;
 
     processingRef.current = true;
     setIsProcessingFusion(true);
 
+    const epoch = useGameStore.getState().sessionEpoch;
+    /** 세션이 바뀌었거나 플레이 중이 아니면 폐기 */
+    const isStale = () => {
+      const st = useGameStore.getState();
+      return st.sessionEpoch !== epoch || st.gameStatus !== "playing";
+    };
+
     try {
       let totalScore = 0;
       let totalCleared = 0;
       let currentChain = 0;
+      let sawPerfectClear = false;
+      let specialCleared = 0;
+      let stonesCleared = 0;
+      const colorTally = new Map<BlockColor, number>();
 
       let workingBoard = useGameStore.getState().board;
-
-      // 스토어 함수는 안정적 참조이므로 직접 호출 가능
-      const store = useGameStore.getState();
-      store.resetChain();
+      useGameStore.getState().resetChain();
 
       let loopCount = 0;
       const maxLoops = 100;
 
       while (loopCount < maxLoops) {
         loopCount++;
-        const { result, newBoard } = await processSingleFusion(workingBoard);
+        if (isStale()) return;
 
-        if (!result) break;
+        const step = await processSingleFusion(workingBoard);
+        if (isStale()) return;
+        if (!step.result) break;
 
-        workingBoard = newBoard;
+        workingBoard = step.newBoard;
         useGameStore.getState().updateBoard(workingBoard);
 
         currentChain++;
-        totalScore += result.score;
-        totalCleared += result.clearedBlocks.length;
+        totalScore += step.result.score;
+        totalCleared += step.result.clearedBlocks.length;
+        sawPerfectClear = sawPerfectClear || Boolean(step.perfectClear);
+        specialCleared += step.specialCleared ?? 0;
+        stonesCleared += step.stonesCleared ?? 0;
+        for (const b of step.result.clearedBlocks) {
+          colorTally.set(b.color, (colorTally.get(b.color) ?? 0) + 1);
+        }
 
         useGameStore.getState().incrementChain();
         setChainEffects(currentChain);
@@ -669,27 +571,31 @@ export function useGameLogic() {
         );
       }
 
-      if (totalScore > 0) {
-        useGameStore.getState().addScore(totalScore);
-        useGameStore.getState().incrementCombo();
+      if (isStale()) return;
 
-        // 통계 업데이트
+      if (totalScore > 0) {
+        const store = useGameStore.getState();
+        store.addScore(totalScore);
+        store.incrementCombo();
+        // 레벨업의 유일한 입력 — 점수가 아니라 클리어 블록 수
+        store.addClearedBlocks(totalCleared);
+
+        // 통계 (perfectClears·specialBlocksUsed 갱신 경로 복구 — #12)
         const stats = useGameStore.getState().statistics;
-        useGameStore.getState().updateStatistics({
+        store.updateStatistics({
           totalBlocksCleared: stats.totalBlocksCleared + totalCleared,
           totalFusions: stats.totalFusions + 1,
           maxChain: Math.max(stats.maxChain, currentChain),
+          perfectClears: stats.perfectClears + (sawPerfectClear ? 1 : 0),
+          specialBlocksUsed: stats.specialBlocksUsed + specialCleared,
         });
 
-        // 미션 업데이트
-        useGameStore
-          .getState()
-          .updateMissionProgress("blocks_fused", totalCleared);
-        if (currentChain >= 5) {
-          useGameStore.getState().updateMissionProgress("chain", 1);
-        }
+        // 미션
+        store.updateMissionProgress("blocks_fused", totalCleared);
+        if (currentChain >= 5) store.updateMissionProgress("chain", 1);
+        if (sawPerfectClear) store.updateMissionProgress("perfect_clear", 1);
 
-        // 퍼즐/챌린지 모드 목표 업데이트
+        // 퍼즐/챌린지 목표 — 이제 6종 전부 갱신된다(#4)
         const currentState = useGameStore.getState();
         if (
           currentState.gameMode === "puzzle" ||
@@ -697,6 +603,16 @@ export function useGameLogic() {
         ) {
           currentState.updateLevelObjective("score", totalScore);
           currentState.updateLevelObjective("clearBlocks", totalCleared);
+          if (specialCleared > 0) {
+            currentState.updateLevelObjective("clearSpecial", specialCleared);
+          }
+          if (stonesCleared > 0) {
+            currentState.updateLevelObjective("clearStone", stonesCleared);
+          }
+          for (const [color, count] of colorTally) {
+            currentState.updateLevelObjective("clearColor", count, color);
+          }
+          currentState.updateLevelObjective("combo", 1);
 
           if (currentChain > 0) {
             const chainObj = currentState.levelObjectives.find(
@@ -709,15 +625,9 @@ export function useGameLogic() {
               );
             }
           }
-
-          if (currentState.gameMode === "puzzle") {
-            setTimeout(() => {
-              useGameStore.getState().checkPuzzleComplete();
-            }, 100);
-          }
         }
 
-        // 업적 업데이트
+        // 업적
         updateAchievement("chain_5", currentChain);
         updateAchievement("chain_10", currentChain);
         updateAchievement("chain_15", currentChain);
@@ -727,12 +637,17 @@ export function useGameLogic() {
         addBattlePassXP(Math.floor(totalScore / 100));
 
         // 콤보 타임아웃
-        if (comboTimeoutRef.current) {
-          clearTimeout(comboTimeoutRef.current);
-        }
+        if (comboTimeoutRef.current) clearTimeout(comboTimeoutRef.current);
         comboTimeoutRef.current = window.setTimeout(() => {
+          if (useGameStore.getState().sessionEpoch !== epoch) return;
           useGameStore.getState().resetCombo();
         }, TIMING_CONFIG.COMBO_TIMEOUT);
+      }
+
+      // 퍼즐 클리어 판정은 연쇄가 완전히 정산된 지금 수행한다(#5)
+      const finalState = useGameStore.getState();
+      if (finalState.gameMode === "puzzle" && !isStale()) {
+        finalState.checkPuzzleComplete();
       }
     } catch (error) {
       console.error("[ChainReaction] ERROR:", error);
@@ -774,14 +689,45 @@ export function useGameLogic() {
       // 게임 중이 아니면 스킵
       if (state.gameStatus !== "playing") return;
 
+      // freeze 파워업: 낙하 자체를 정지시킨다 (표시만 있고 미구현이던 항목 #16)
+      if (state.activePowerUp?.type === "freeze") {
+        lastDropTimeRef.current = now;
+        return;
+      }
+
+      // 위험도 갱신 (심장박동 연출·비네트의 입력)
+      const danger = computeDangerLevel(state.board, state.gravityDirection);
+      if (danger !== state.dangerLevel) state.setDangerLevel(danger);
+
       // 1) 블록이 떨어지고 있으면 → 낙하 처리
       if (state.currentBlocks.length > 0) {
+        // 락 딜레이: 착지 상태라도 LOCK_DELAY 동안은 미세조정을 허용한다.
+        // 상수만 있고 구현이 없던 항목 — 조작감 체감 최대 개선 지점(§3.1-5).
+        const landed = computeDropDistance(
+          state.board,
+          state.currentBlocks,
+          state.gravityDirection,
+        ) === 0;
+
+        if (landed) {
+          if (lockStartRef.current === null) lockStartRef.current = now;
+          if (now - lockStartRef.current >= TIMING_CONFIG.LOCK_DELAY) {
+            lockStartRef.current = null;
+            state.placeBlock();
+            lastDropTimeRef.current = now;
+          }
+          return;
+        }
+
+        lockStartRef.current = null;
         if (now - lastDropTimeRef.current >= dropSpeed) {
           state.softDrop();
           lastDropTimeRef.current = now;
         }
         return;
       }
+
+      lockStartRef.current = null;
 
       // 2) 블록이 없음 → 보드에서 융합 가능한 그룹 체크
       const groups = findFusionGroups(state.board);
@@ -817,39 +763,22 @@ export function useGameLogic() {
     };
   }, []);
 
-  // 고스트 블록 위치 계산
+  // 고스트 블록 위치 계산 — hardDrop과 동일한 computeDropDistance를 사용한다.
+  // 이 둘이 갈라지면 "보이는 대로 떨어진다"는 낙하 퍼즐의 제1 계약이 깨진다(#14).
   const getGhostPosition = useCallback(() => {
     if (currentBlocks.length === 0) return null;
 
     const { dx, dy } = GRAVITY_VECTORS[gravityDirection];
+    const distance = computeDropDistance(board, currentBlocks, gravityDirection);
 
-    let maxDropDistance = Infinity;
-
-    for (const block of currentBlocks) {
-      let distance = 0;
-      let testX = block.x;
-      let testY = block.y;
-
-      while (true) {
-        const nextX = testX + dx;
-        const nextY = testY + dy;
-
-        if (nextX < 0 || nextX >= BOARD_CONFIG.COLUMNS) break;
-        if (nextY < 0 || nextY >= BOARD_CONFIG.ROWS) break;
-        if (board[nextY]?.[nextX] !== null) break;
-
-        distance++;
-        testX = nextX;
-        testY = nextY;
-      }
-
-      maxDropDistance = Math.min(maxDropDistance, distance);
-    }
-
-    const firstBlock = currentBlocks[0];
     return {
-      x: firstBlock.x + dx * maxDropDistance,
-      y: firstBlock.y + dy * maxDropDistance,
+      x: currentBlocks[0].x + dx * distance,
+      y: currentBlocks[0].y + dy * distance,
+      distance,
+      cells: currentBlocks.map((b) => ({
+        x: b.x + dx * distance,
+        y: b.y + dy * distance,
+      })),
     };
   }, [currentBlocks, board, gravityDirection]);
 

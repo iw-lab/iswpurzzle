@@ -1,5 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { seededRandom } from '../../engine/rng';
+
+// 배경 장식 — 모듈 로드 시 1회 고정 생성.
+// 렌더 중 Math.random을 호출하면 매 렌더마다 값이 바뀌어 애니메이션이 튀고,
+// React의 렌더 순수성 규칙도 위반한다.
+const backgroundBlobs = (() => {
+  const rand = seededRandom(20260719);
+  return Array.from({ length: 15 }, () => ({
+    size: rand() * 100 + 50,
+    left: rand() * 100,
+    top: rand() * 100,
+    drift: rand() * 50 - 25,
+    duration: rand() * 10 + 10,
+  }));
+})();
 import { useUserStore } from '../../stores/userStore';
 import { useAudio } from '../../hooks/useAudio';
 import { GAME_MODE_CONFIG } from '../../constants';
@@ -10,7 +25,7 @@ interface MainMenuProps {
   onOpenShop: () => void;
   onOpenSettings: () => void;
   onOpenLeaderboard: () => void;
-  onOpenBattlePass: () => void;
+  onOpenBattlePass?: () => void;  // 미구현 시 버튼 자체를 숨긴다
   onOpenDailyReward: () => void;
 }
 
@@ -41,26 +56,26 @@ export function MainMenu({
       {/* 배경 장식 애니메이션 */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-900/20 via-[#050510] to-[#050510]" />
-        {[...Array(15)].map((_, i) => (
+        {backgroundBlobs.map((blob, i) => (
           <motion.div
             key={i}
             className="absolute rounded-full blur-xl"
             style={{
               background: ['#ff4757', '#3742fa', '#2ed573', '#ffa502'][i % 4],
-              width: Math.random() * 100 + 50,
-              height: Math.random() * 100 + 50,
+              width: blob.size,
+              height: blob.size,
               opacity: 0.1,
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
+              left: `${blob.left}%`,
+              top: `${blob.top}%`,
             }}
             animate={{
               y: [0, -100],
-              x: [0, Math.random() * 50 - 25],
+              x: [0, blob.drift],
               scale: [1, 1.2, 1],
               opacity: [0.1, 0.2, 0.1],
             }}
             transition={{
-              duration: Math.random() * 10 + 10,
+              duration: blob.duration,
               repeat: Infinity,
               ease: "easeInOut"
             }}
@@ -239,7 +254,9 @@ export function MainMenu({
           <div className="grid grid-cols-3 gap-4">
             <MenuButton icon="🛒" label="상점" onClick={() => handleClick(onOpenShop)} color="from-pink-500/20 to-rose-500/20" />
             <MenuButton icon="🏆" label="랭킹" onClick={() => handleClick(onOpenLeaderboard)} color="from-amber-500/20 to-yellow-500/20" />
-            <MenuButton icon="🎫" label="패스" onClick={() => handleClick(onOpenBattlePass)} color="from-emerald-500/20 to-green-500/20" />
+            {onOpenBattlePass && (
+              <MenuButton icon="🎫" label="패스" onClick={() => handleClick(onOpenBattlePass)} color="from-emerald-500/20 to-green-500/20" />
+            )}
           </div>
         </motion.div>
       </div>

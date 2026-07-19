@@ -1,17 +1,17 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../stores/gameStore';
-import { GRAVITY_ICONS, FEVER_CONFIG, BLOCK_COLOR_MAP, GAME_MODE_CONFIG, getDropSpeed } from '../../constants';
+import { GRAVITY_ICONS, FEVER_CONFIG, BLOCK_COLOR_MAP, getModeConfig, getDropSpeed } from '../../constants';
 import type { BlockColor } from '../../types';
 
 export function ScoreBoard() {
   const { score, level, combo, chainCount, gravityDirection, gameTime, activePowerUp, statistics, feverGauge, isFeverMode, gameMode, movesRemaining, puzzleLevel, levelObjectives } = useGameStore();
   const isPuzzleMode = gameMode === 'puzzle';
-  const isTimeAttack = gameMode === 'timeAttack' || gameMode === 'daily';
+  const isTimeAttack = Boolean(getModeConfig(gameMode)?.hasTimeLimit);
   const isSurvival = gameMode === 'survival';
   const isZen = gameMode === 'zen';
 
-  const modeConfig = GAME_MODE_CONFIG[gameMode] as { timeLimit?: number; hasTimeLimit?: boolean };
+  const modeConfig = getModeConfig(gameMode);
   const timeLimit = modeConfig?.timeLimit || 120;
   const remainingTime = Math.max(0, timeLimit - gameTime);
 

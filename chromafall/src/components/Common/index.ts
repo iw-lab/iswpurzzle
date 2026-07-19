@@ -1,2 +1,0 @@
-// Common components placeholder
-export {};

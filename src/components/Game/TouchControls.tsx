@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useEffect } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useGameStore } from '../../stores/gameStore';
 import { useAudio } from '../../hooks/useAudio';
@@ -13,6 +13,7 @@ const TOUCH_DEBOUNCE = 150;
 export function TouchControls({ visible = true }: TouchControlsProps) {
   const { playSound } = useAudio();
   const moveIntervalRef = useRef<number | null>(null);
+  const moveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastActionTimeRef = useRef<Record<string, number>>({});
 
   // 디바운스된 액션 실행
@@ -30,108 +31,8 @@ export function TouchControls({ visible = true }: TouchControlsProps) {
   }, []);
 
   // 키보드 이벤트 핸들링
-  useEffect(() => {
-    const pressedKeys = new Set<string>();
-    let repeatTimerRef: number | null = null;
-    let repeatDirectionRef: 'left' | 'right' | null = null;
-    let dasTimerRef: number | null = null;
-
-    const clearAllTimers = () => {
-      if (repeatTimerRef) clearInterval(repeatTimerRef);
-      if (dasTimerRef) clearTimeout(dasTimerRef);
-      repeatTimerRef = null;
-      dasTimerRef = null;
-      repeatDirectionRef = null;
-    };
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (pressedKeys.has(e.code)) { e.preventDefault(); return; }
-      pressedKeys.add(e.code);
-      const state = useGameStore.getState();
-
-      if (e.code === 'Escape' || e.code === 'KeyP') {
-        if (state.gameStatus === 'playing') state.pauseGame();
-        else if (state.gameStatus === 'paused') state.resumeGame();
-        return;
-      }
-
-      if (state.gameStatus !== 'playing') return;
-
-      if (state.isPowerUpSelecting) {
-        if (e.code === 'ArrowUp') state.setGravityDirection('up');
-        else if (e.code === 'ArrowDown') state.setGravityDirection('down');
-        else if (e.code === 'ArrowLeft') state.setGravityDirection('left');
-        else if (e.code === 'ArrowRight') state.setGravityDirection('right');
-        return;
-      }
-
-      if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
-        e.preventDefault();
-        clearAllTimers();
-        state.moveBlock('left');
-        repeatDirectionRef = 'left';
-        dasTimerRef = window.setTimeout(() => {
-          if (repeatDirectionRef === 'left') {
-            repeatTimerRef = window.setInterval(() => useGameStore.getState().moveBlock('left'), 50);
-          }
-        }, 250);
-        return;
-      }
-
-      if (e.code === 'ArrowRight' || e.code === 'KeyD') {
-        e.preventDefault();
-        clearAllTimers();
-        state.moveBlock('right');
-        repeatDirectionRef = 'right';
-        dasTimerRef = window.setTimeout(() => {
-          if (repeatDirectionRef === 'right') {
-            repeatTimerRef = window.setInterval(() => {
-              useGameStore.getState().moveBlock('right');
-            }, 50);
-          }
-        }, 250);
-        return;
-      }
-
-      if (e.code === 'ArrowDown' || e.code === 'KeyS') {
-        e.preventDefault();
-        state.softDrop();
-        return;
-      }
-
-      // 블록 회전 (↑ 또는 W 키)
-      if (e.code === 'ArrowUp' || e.code === 'KeyW') {
-        e.preventDefault();
-        state.rotateBlock();
-        return;
-      }
-
-      // 하드 드롭 (Space 키)
-      if (e.code === 'Space') {
-        e.preventDefault();
-        state.hardDrop();
-        return;
-      }
-    };
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      pressedKeys.delete(e.code);
-      if ((e.code === 'ArrowLeft' || e.code === 'KeyA') && repeatDirectionRef === 'left') clearAllTimers();
-      if ((e.code === 'ArrowRight' || e.code === 'KeyD') && repeatDirectionRef === 'right') clearAllTimers();
-    };
-
-    const handleBlur = () => { pressedKeys.clear(); clearAllTimers(); };
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-    window.addEventListener('blur', handleBlur);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-      window.removeEventListener('blur', handleBlur);
-      clearAllTimers();
-    };
-  }, []);
+  // 키보드 입력은 useControls(DAS/ARR 구현)가 단일 계층으로 담당한다.
+  // 여기서 중복 구현하면 controlType 설정에 따라 키보드가 통째로 사라진다(#15).
 
   const handleHardDrop = useCallback(() => {
     executeWithDebounce('hardDrop', () => {
@@ -161,7 +62,7 @@ export function TouchControls({ visible = true }: TouchControlsProps) {
 
     // 기존 인터벌 정리
     if (moveIntervalRef.current) clearInterval(moveIntervalRef.current);
-    if ((moveIntervalRef as any).timeout) clearTimeout((moveIntervalRef as any).timeout);
+    if (moveTimeoutRef.current) clearTimeout(moveTimeoutRef.current);
 
     // 길게 누르면 반복 이동 (첫 반복까지 300ms 대기)
     const startRepeat = setTimeout(() => {
@@ -171,14 +72,14 @@ export function TouchControls({ visible = true }: TouchControlsProps) {
     }, 300); // 첫 반복까지 대기 시간 증가
 
     // stopMoving에서 정리할 수 있도록 저장
-    (moveIntervalRef as any).timeout = startRepeat;
+    moveTimeoutRef.current = startRepeat;
   }, [playSound]);
 
   const stopMoving = useCallback(() => {
     // 타임아웃 정리
-    if ((moveIntervalRef as any).timeout) {
-      clearTimeout((moveIntervalRef as any).timeout);
-      (moveIntervalRef as any).timeout = null;
+    if (moveTimeoutRef.current) {
+      clearTimeout(moveTimeoutRef.current);
+      moveTimeoutRef.current = null;
     }
     // 인터벌 정리
     if (moveIntervalRef.current) {

@@ -46,6 +46,13 @@ export function useControls() {
       // 게임 중이 아니면 무시
       if (state.gameStatus !== 'playing') return;
 
+      // C/Shift: 홀드
+      if (code === 'KeyC' || code === 'ShiftLeft' || code === 'ShiftRight') {
+        e.preventDefault();
+        state.doHoldBlock();
+        return;
+      }
+
       // 파워업 선택 모드
       if (state.isPowerUpSelecting) {
         if (code === 'ArrowUp') state.setGravityDirection('up');
@@ -172,6 +179,10 @@ export function useControls() {
     rotate: () => {
       const state = useGameStore.getState();
       if (state.gameStatus === 'playing') state.rotateBlock();
+    },
+    hold: () => {
+      const state = useGameStore.getState();
+      if (state.gameStatus === 'playing') state.doHoldBlock();
     },
   };
 }

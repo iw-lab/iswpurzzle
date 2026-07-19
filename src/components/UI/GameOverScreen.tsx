@@ -10,7 +10,7 @@ import {
   getPlayerName,
   setPlayerName,
 } from "../../services/firebase";
-import { GAME_MODE_CONFIG } from "../../constants";
+import { getModeConfig } from "../../constants";
 
 interface GameOverScreenProps {
   onRestart: () => void;
@@ -30,8 +30,8 @@ export function GameOverScreen({
     chainCount,
     gameTime,
     continues,
-    statistics,
     gameMode,
+    lastGameHighScore,
   } = useGameStore();
   const { addPersonalBest } = useUserStore();
   const { playSound } = useAudio();
@@ -43,7 +43,10 @@ export function GameOverScreen({
   const [tempName, setTempName] = useState(playerName);
   const [showRanking, setShowRanking] = useState(false);
 
-  const isHighScore = score > statistics.highScore - score;
+  // endGame이 statistics.highScore를 먼저 갱신하므로 그 값과 비교하면 항상 false다.
+  // 판 시작 시점에 캡처해 둔 lastGameHighScore와 비교한다(#6).
+  const isHighScore = score > 0 && score > lastGameHighScore;
+  const scoreDelta = score - lastGameHighScore;
   const canContinue = continues < 3;
 
   const formatTime = (seconds: number) => {
@@ -101,11 +104,13 @@ export function GameOverScreen({
       }, 500);
     }
 
-    addPersonalBest("classic", score);
+    addPersonalBest(gameMode, score);
 
     if (score > 0 && playerName !== "Player") {
       handleSubmitScore();
     }
+    // 마운트 시 1회만 정산한다 (게임오버 화면이 뜬 순간의 결과가 확정치)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const getGrade = () => {
@@ -152,10 +157,10 @@ export function GameOverScreen({
     };
   };
 
-  const { grade, color: gradeColor, text: gradeText, glow } = getGrade();
+  const { grade, color: gradeColor, glow } = getGrade();
 
   const modeTitle =
-    gameMode === "timeAttack"
+    gameMode === "daily"
       ? "TIME UP!"
       : gameMode === "survival"
         ? "DEFEATED!"
@@ -195,10 +200,10 @@ export function GameOverScreen({
               transition={{ delay: 0.25 }}
             >
               <span className="text-lg">
-                {GAME_MODE_CONFIG[gameMode]?.icon || "🎮"}
+                {getModeConfig(gameMode)?.icon || "🎮"}
               </span>
               <span className="text-xs text-gray-400 font-semibold tracking-widest uppercase">
-                {GAME_MODE_CONFIG[gameMode]?.name || gameMode}
+                {getModeConfig(gameMode)?.name || gameMode}
               </span>
             </motion.div>
 
@@ -266,16 +271,19 @@ export function GameOverScreen({
                 생존 시간: {Math.floor(gameTime / 60)}분 {gameTime % 60}초
               </p>
             )}
-            {gameMode === "timeAttack" && (
-              <p className="text-cyan-400/80 text-xs mt-3">
-                2분 안에 {formatScore(score)}점을 기록했습니다!
-              </p>
-            )}
             {gameMode === "daily" && (
               <p className="text-purple-400/80 text-xs mt-3">
-                오늘의 챌린지 완료!
+                오늘의 챌린지 완료! 전원 같은 판에서의 기록입니다.
               </p>
             )}
+            {/* 자기 경쟁 루프 — 이전 기록 대비 증감을 항상 보여준다 */}
+            <p className="text-xs mt-2 text-gray-400">
+              {isHighScore
+                ? `🏆 개인 신기록! 이전 기록보다 +${formatScore(scoreDelta)}점`
+                : lastGameHighScore > 0
+                  ? `개인 최고 ${formatScore(lastGameHighScore)}점까지 ${formatScore(-scoreDelta)}점`
+                  : ""}
+            </p>
           </motion.div>
 
           {/* 통계 그리드 */}

@@ -175,7 +175,6 @@ export async function getTopRankings(
     // 일간/주간 필터링
     let filteredRankings = firebaseRankings;
     if (type === 'daily' || type === 'weekly') {
-      const now = new Date();
       const cutoff = new Date();
       if (type === 'daily') {
         cutoff.setHours(0, 0, 0, 0);

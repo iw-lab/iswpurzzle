@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { useUserStore } from '../../stores/userStore';
 import { useAudio } from '../../hooks/useAudio';
@@ -64,7 +64,6 @@ export function DailyRewardPopup({ onClose }: DailyRewardPopupProps) {
             const day = index + 1;
             const isPast = day < (dailyRewardDay || 0) + 1;
             const isToday = day === (dailyRewardDay || 0) + 1;
-            const isFuture = day > (dailyRewardDay || 0) + 1;
 
             return (
               <motion.div
