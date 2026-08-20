@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
+import { useGameStore } from "../../stores/gameStore";
 import { motion, AnimatePresence } from "framer-motion";
 
 /**
@@ -15,13 +16,28 @@ interface Step {
   hint?: string;
 }
 
-const STEPS: Step[] = [
-  {
+/**
+ * 첫 스텝만 모드에 따라 갈린다.
+ * 수학 모드는 매칭 기준이 '색'이 아니라 '값'인데, 예전에는 수학 모드에서도
+ * "같은 색 4개"라고 가르쳐서 규칙을 정반대로 설명하고 있었다(2026-08-20 실측).
+ */
+const FIRST_STEP: Record<"color" | "math", Step> = {
+  color: {
     icon: "🟦🟦🟦🟦",
     title: "같은 색 4개를 붙이면 터진다",
     body: "가로·세로로 이어진 같은 색 블록이 4개 이상 모이면 사라집니다. 대각선은 이어지지 않아요.",
     hint: "딱 4개면 충분합니다 — 크게 모을 필요 없어요.",
   },
+  math: {
+    icon: "½ = 0.5 = 50%",
+    title: "같은 '값' 4개를 붙이면 터진다",
+    body: "겉모습이 달라도 값이 같으면 한 덩어리입니다. 1/2 · 2/4 · 0.5 · 50% 는 전부 같은 값이라 나란히 붙이면 터져요.",
+    hint: "색은 힌트일 뿐 — 설정에서 색 힌트를 끄면 숫자만 보고 맞춰야 합니다.",
+  },
+};
+
+const STEPS: Step[] = [
+  FIRST_STEP.color,
   {
     icon: "⛓️",
     title: "터진 자리로 무너지면 연쇄",
@@ -47,9 +63,14 @@ interface TutorialOverlayProps {
 }
 
 export function TutorialOverlay({ onComplete }: TutorialOverlayProps) {
+  const gameMode = useGameStore((s) => s.gameMode);
   const [index, setIndex] = useState(0);
-  const step = STEPS[index];
-  const isLast = index === STEPS.length - 1;
+  const steps = useMemo(() => {
+    const rest = STEPS.slice(1);
+    return [gameMode === "math" ? FIRST_STEP.math : FIRST_STEP.color, ...rest];
+  }, [gameMode]);
+  const step = steps[index];
+  const isLast = index === steps.length - 1;
 
   return (
     <motion.div
@@ -65,7 +86,7 @@ export function TutorialOverlay({ onComplete }: TutorialOverlayProps) {
       >
         {/* 진행 표시 */}
         <div className="flex gap-1.5 mb-6">
-          {STEPS.map((_, i) => (
+          {steps.map((_, i) => (
             <div
               key={i}
               className={`h-1 flex-1 rounded-full transition-colors duration-300 ${

@@ -7,7 +7,7 @@ interface HelpModalProps {
 
 const SPECIAL_BLOCKS = [
   { icon: '💣', name: '폭탄', desc: '매칭 시 주변 3x3 영역을 폭발시켜 블록 제거', color: 'from-red-500 to-orange-500' },
-  { icon: '⚡', name: '번개', desc: '매칭 시 같은 색의 모든 블록을 한번에 제거', color: 'from-yellow-400 to-yellow-600' },
+  { icon: '⚡', name: '번개', desc: '매칭 시 같은 색(수학 모드는 같은 값)의 모든 블록을 한번에 제거', color: 'from-yellow-400 to-yellow-600' },
   { icon: '✚', name: '십자가', desc: '매칭 시 가로 한 줄 + 세로 한 줄 제거', color: 'from-green-400 to-green-600' },
   { icon: '❄️', name: '얼음', desc: '2번 매칭해야 제거됨 (단단한 블록)', color: 'from-cyan-300 to-blue-500' },
   { icon: '🪨', name: '돌', desc: '매칭 불가! 인접한 블록 제거 시 함께 파괴', color: 'from-gray-400 to-gray-600' },
@@ -26,7 +26,8 @@ const CONTROLS = [
 ];
 
 const TIPS = [
-  '💡 4개 이상의 같은 색 블록을 연결하면 융합(제거)됩니다',
+  // 수학 모드는 매칭 기준이 색이 아니라 값이다 — 두 모드 모두 맞는 문구로 적는다.
+  '💡 4개 이상의 같은 색 블록을 연결하면 융합(제거)됩니다 (수학 모드에서는 "같은 값")',
   '💡 연쇄 반응을 일으키면 콤보 점수가 크게 올라갑니다',
   '💡 하드드롭(Space)시 블록이 장애물에 걸리면 분리되어 떨어집니다',
   '💡 홀드 기능으로 블록을 보관했다가 필요할 때 사용하세요',
