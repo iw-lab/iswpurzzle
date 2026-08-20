@@ -640,12 +640,29 @@ export const GRAVITY_ICONS: Record<GravityDirection, string> = {
 // 다음 블록 미리보기 수
 export const NEXT_PREVIEW_COUNT = 5;
 
+/**
+ * next 큐가 이 길이 밑으로 내려가면 조각 단위 청크로 보충한다.
+ * 미리보기 5칸 + 조각 최대 3칸을 동시에 감당하려면 8 이상이어야 한다.
+ */
+export const NEXT_QUEUE_MIN = 12;
+
 // 게임 모드 설정
 export const GAME_MODE_CONFIG = {
   classic: {
     name: "클래식",
     description: "끝없이 도전하세요!",
     icon: "🎮",
+    hasTimeLimit: false,
+    hasLevelLimit: false,
+  },
+  /**
+   * 수학 모드 — 융합 조건이 '같은 색'이 아니라 '같은 값'이다.
+   * 1/2 · 0.5 · 50% 가 한 덩어리로 터진다(constants/mathContent.ts 참조).
+   */
+  math: {
+    name: "수학",
+    description: "같은 값끼리 터뜨려요 (분수·소수·백분율)",
+    icon: "🔢",
     hasTimeLimit: false,
     hasLevelLimit: false,
   },

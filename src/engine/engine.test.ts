@@ -14,6 +14,9 @@ import {
   getColorCountForLevel,
   getDropSpeed,
   getFallingBlockCount,
+  buildPieceColors,
+  PIECE_COLOR_LIMIT,
+  getColorsForLevel,
   getGarbageInterval,
   getLevelForClearedBlocks,
   MAX_LEVEL,
@@ -261,9 +264,9 @@ describe("난이도 곡선", () => {
     }
   });
 
-  it("동시 낙하 블록은 4개를 넘지 않는다 — 8칸 보드 조작 한계", () => {
+  it("동시 낙하 블록은 3개를 넘지 않는다 — 조각 4는 보드가 융합보다 빨리 찬다", () => {
     for (let lv = 1; lv <= MAX_LEVEL + 20; lv++) {
-      expect(getFallingBlockCount(lv)).toBeLessThanOrEqual(4);
+      expect(getFallingBlockCount(lv)).toBeLessThanOrEqual(3);
       expect(getFallingBlockCount(lv)).toBeGreaterThanOrEqual(1);
     }
   });
@@ -278,13 +281,48 @@ describe("난이도 곡선", () => {
     }
   });
 
-  it("초반 4색으로 시작해 최대 7색까지만 늘어난다", () => {
+  it("초반 4색으로 시작해 최대 6색까지만 늘어난다", () => {
     expect(getColorCountForLevel(1)).toBe(4);
     expect(getColorCountForLevel(4)).toBe(4);
     expect(getColorCountForLevel(5)).toBe(5);
-    expect(getColorCountForLevel(14)).toBe(6);
-    expect(getColorCountForLevel(20)).toBe(7);
-    expect(getColorCountForLevel(99)).toBe(7);
+    expect(getColorCountForLevel(14)).toBe(5);
+    expect(getColorCountForLevel(20)).toBe(6);
+    expect(getColorCountForLevel(99)).toBe(6);
+  });
+
+  // ── 조각 색 배분 (블록이 안 터지던 근본 원인의 회귀 방지) ──
+  it("한 조각의 서로 다른 색은 PIECE_COLOR_LIMIT를 넘지 않는다", () => {
+    const rand = seededRandom(12345);
+    for (let lv = 1; lv <= MAX_LEVEL; lv++) {
+      for (let trial = 0; trial < 200; trial++) {
+        const count = getFallingBlockCount(lv);
+        const colors = buildPieceColors(lv, count, rand);
+        expect(colors).toHaveLength(count);
+        expect(new Set(colors).size).toBeLessThanOrEqual(PIECE_COLOR_LIMIT);
+      }
+    }
+  });
+
+  it("조각 색은 그 레벨의 팔레트 안에서만 나온다", () => {
+    const rand = seededRandom(777);
+    for (let lv = 1; lv <= MAX_LEVEL; lv++) {
+      const palette = new Set(getColorsForLevel(lv));
+      for (let trial = 0; trial < 100; trial++) {
+        for (const c of buildPieceColors(lv, getFallingBlockCount(lv), rand)) {
+          expect(palette.has(c)).toBe(true);
+        }
+      }
+    }
+  });
+
+  it("조각이 통째로 한 색이 되지는 않는다 — 자가 매칭 붕괴 방지", () => {
+    // 조각 크기 2 이상이고 팔레트가 2색 이상이면, 200회 중 최소 한 번은 2색 조각이 나와야 한다.
+    const rand = seededRandom(4242);
+    let sawTwoColor = false;
+    for (let trial = 0; trial < 200; trial++) {
+      if (new Set(buildPieceColors(12, 3, rand)).size === 2) sawTwoColor = true;
+    }
+    expect(sawTwoColor).toBe(true);
   });
 
   it("두 난이도 축이 같은 레벨에서 동시에 오르지 않는다", () => {
@@ -472,5 +510,34 @@ describe("미션 날짜 키", () => {
     expect(currentWeeklyKey(new Date(2026, 6, 26))).not.toBe(
       currentWeeklyKey(new Date(2026, 6, 27)),
     );
+  });
+});
+
+describe("무지개 블록", () => {
+  it("무지개끼리만 4개 인접해도 융합된다 — 보드에 박제되지 않는다", () => {
+    const board = createEmptyBoard();
+    for (let x = 0; x < 4; x++) {
+      board[15][x] = {
+        id: `r${x}`,
+        color: "rainbow",
+        x,
+        y: 15,
+        specialType: "normal",
+      };
+    }
+    const groups = findFusionGroups(board);
+    expect(groups).toHaveLength(1);
+    expect(groups[0]).toHaveLength(4);
+  });
+
+  it("무지개는 여전히 다른 색의 와일드카드로 동작한다", () => {
+    const board = createEmptyBoard();
+    const colors = ["red", "red", "rainbow", "red"] as const;
+    colors.forEach((color, x) => {
+      board[15][x] = { id: `b${x}`, color, x, y: 15, specialType: "normal" };
+    });
+    const groups = findFusionGroups(board);
+    expect(groups).toHaveLength(1);
+    expect(groups[0]).toHaveLength(4);
   });
 });

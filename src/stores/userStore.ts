@@ -7,6 +7,7 @@ import {
   ThemeItem,
   DailyReward,
   StreakInfo,
+  Reward,
 } from '../types';
 import { CurrencyState, MonetizationConfig, WheelState, PurchaseHistory } from '../types/monetization';
 import { initializeAchievements } from '../constants/achievements';
@@ -34,6 +35,7 @@ export interface PlayerStats {
 const defaultSettings: GameSettings = {
   soundEnabled: true,
   musicEnabled: true,
+  mathColorHint: true,
   soundVolume: 0.7,
   musicVolume: 0.5,
   hapticEnabled: true,
@@ -175,7 +177,7 @@ interface UserStore {
 
   // 업적 관련
   updateAchievement: (id: string, progress: number) => void;
-  claimAchievement: (id: string) => void;
+  claimAchievement: (id: string) => Reward | null;
 
   // 아이템 관련
   purchaseSkin: (skinId: string) => boolean;
@@ -448,7 +450,11 @@ export const useUserStore = create<UserStore>()(
             a.id === id ? { ...a, claimed: true } : a
           );
           set({ achievements: newAchievements });
+          // 코인·젬은 위에서 지급했다. 파워업·XP 항목은 호출부가
+          // grantReward(reward, { skipCurrency: true })로 마저 지급한다.
+          return achievement.reward;
         }
+        return null;
       },
 
       purchaseSkin: (skinId) => {

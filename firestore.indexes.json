@@ -1,0 +1,14 @@
+{
+  "indexes": [
+    {
+      "//": "LeaderboardScreen의 기본 쿼리: where(gameMode ==) + orderBy(score desc). 이 인덱스가 없으면 기록이 쌓이는 순간 쿼리가 실패한다.",
+      "collectionGroup": "rankings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "gameMode", "order": "ASCENDING" },
+        { "fieldPath": "score", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

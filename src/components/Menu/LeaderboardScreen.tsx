@@ -9,10 +9,16 @@ import {
   RankingEntry,
   RankingType,
 } from '../../services/firebase';
+import { GAME_MODE_CONFIG } from '../../constants';
 
 interface LeaderboardScreenProps {
   onClose: () => void;
 }
+
+/** 랭킹을 매기는 모드. 젠(게임오버 없음)·챌린지는 점수 경쟁 대상이 아니다. */
+const RANKED_MODES = (['classic', 'survival', 'daily', 'puzzle'] as const).filter(
+  (m) => m in GAME_MODE_CONFIG,
+);
 
 export function LeaderboardScreen({ onClose }: LeaderboardScreenProps) {
   const [rankings, setRankings] = useState<RankingEntry[]>([]);
@@ -199,7 +205,10 @@ export function LeaderboardScreen({ onClose }: LeaderboardScreenProps) {
 
         {/* 모드 필터 */}
         <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
-          {['classic', 'timeAttack', 'survival', 'puzzle'].map((mode) => (
+          {/* 탭은 실제로 플레이 가능한 모드에서 파생한다.
+              예전에는 ['classic','timeAttack','survival','puzzle']을 하드코딩해서,
+              폐지된 timeAttack 탭이 영원히 "기록 없음"으로 남아 있었다. */}
+          {RANKED_MODES.map((mode) => (
             <button
               key={mode}
               onClick={() => setGameMode(mode)}
@@ -209,9 +218,7 @@ export function LeaderboardScreen({ onClose }: LeaderboardScreenProps) {
                   : 'bg-white/10 text-gray-400'
               }`}
             >
-              {mode === 'classic' ? '클래식' :
-               mode === 'timeAttack' ? '타임어택' :
-               mode === 'survival' ? '서바이벌' : '퍼즐'}
+              {GAME_MODE_CONFIG[mode]?.name ?? mode}
             </button>
           ))}
         </div>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUserStore } from '../../stores/userStore';
 import { useAudio } from '../../hooks/useAudio';
+import { FEATURES } from '../../constants/features';
 import { BLOCK_SKINS, THEMES, GEM_PACKAGES, RARITY_COLORS, RARITY_NAMES, SKIN_STYLES } from '../../constants/shopItems';
 
 interface ShopScreenProps {
@@ -9,6 +10,11 @@ interface ShopScreenProps {
 }
 
 type ShopTab = 'skins' | 'themes' | 'gems';
+
+/** 노출할 상점 탭. 젬(결제) 탭은 SDK 연동 전까지 감춘다 — features.ts 참조. */
+const SHOP_TABS: ShopTab[] = FEATURES.iap
+  ? ['skins', 'themes', 'gems']
+  : ['skins', 'themes'];
 
 export function ShopScreen({ onClose }: ShopScreenProps) {
   const { currency, ownedSkins, ownedThemes, equippedSkinId, equippedThemeId, purchaseSkin, purchaseTheme, equipSkin, equipTheme } =
@@ -71,7 +77,7 @@ export function ShopScreen({ onClose }: ShopScreenProps) {
 
       {/* 탭 */}
       <div className="flex bg-game-panel/50">
-        {(['skins', 'themes', 'gems'] as ShopTab[]).map((tab) => (
+        {SHOP_TABS.map((tab) => (
           <button
             key={tab}
             className={`flex-1 py-3 font-bold transition-colors ${
@@ -394,7 +400,7 @@ export function ShopScreen({ onClose }: ShopScreenProps) {
           )}
 
           {/* 젬 탭 */}
-          {activeTab === 'gems' && (
+          {FEATURES.iap && activeTab === 'gems' && (
             <motion.div
               key="gems"
               className="space-y-3"

@@ -1,4 +1,5 @@
 import { DailyMission, WeeklyMission, Reward } from '../types';
+import { FEATURES } from './features';
 
 // 일일 미션 템플릿
 export const DAILY_MISSION_TEMPLATES = [
@@ -66,13 +67,19 @@ function keyedShuffle<T>(items: T[], key: string): T[] {
 
 // 일일 미션 생성 (5개) — 날짜 기준 결정적
 export function generateDailyMissions(): DailyMission[] {
-  const shuffled = keyedShuffle(DAILY_MISSION_TEMPLATES, currentDailyKey());
+  // 광고 SDK가 없으면 '광고 시청' 미션은 영원히 완료할 수 없다 — 후보에서 뺀다.
+  const pool = DAILY_MISSION_TEMPLATES.filter(
+    (t) => FEATURES.rewardedAds || t.type !== 'ad_watched',
+  );
+  const shuffled = keyedShuffle(pool, currentDailyKey());
   return shuffled.slice(0, 5).map(template => ({
     id: template.id,
     type: template.type,
     target: template.target,
     current: 0,
     completed: false,
+    claimed: false,
+    desc: template.desc,
     reward: template.reward as Reward,
   }));
 }
@@ -86,6 +93,8 @@ export function generateWeeklyMissions(): WeeklyMission[] {
     target: template.target,
     current: 0,
     completed: false,
+    claimed: false,
+    desc: template.desc,
     reward: template.reward as Reward,
   }));
 }

@@ -12,6 +12,7 @@ import {
   doc,
   setDoc,
   getDoc,
+  serverTimestamp,
 } from 'firebase/firestore';
 
 /**
@@ -41,7 +42,24 @@ export const isRemoteLeaderboardEnabled = Boolean(
 );
 
 const app = isRemoteLeaderboardEnabled ? initializeApp(firebaseConfig) : null;
-const db = app ? getFirestore(app) : null;
+
+/**
+ * 전용 Firestore 데이터베이스 id.
+ *
+ * ⚠️ 왜 (default)가 아닌가: 이 게임은 다른 앱(구구단)이 이미 쓰고 있는
+ * Firebase 프로젝트를 공유한다 — 계정 프로젝트 할당량(20개)이 꽉 차서
+ * 새 프로젝트를 만들 수 없었다. 대신 같은 프로젝트 안에 이름 있는
+ * 데이터베이스 'chromafall'을 따로 만들어 **데이터도 보안 규칙도 완전히
+ * 분리**했다(firebase.json이 이 DB에만 규칙을 배포한다).
+ * 여기를 비우면 (default)로 붙어 남의 앱 데이터와 섞인다.
+ */
+const FIRESTORE_DB_ID = import.meta.env.VITE_FIREBASE_DB || undefined;
+
+const db = app
+  ? FIRESTORE_DB_ID
+    ? getFirestore(app, FIRESTORE_DB_ID)
+    : getFirestore(app)
+  : null;
 
 /**
  * 제출 점수 상한 — 클라이언트에서 임의 점수를 밀어넣는 것을 1차로 거른다.
@@ -154,7 +172,12 @@ export async function submitScore(entry: Omit<RankingEntry, 'id' | 'createdAt'>)
   try {
     const docRef = await addDoc(collection(db, 'rankings'), {
       ...entry,
-      createdAt: Timestamp.now(),
+      // ⚠️ 반드시 serverTimestamp()여야 한다.
+      // firestore.rules가 `data.createdAt == request.time`을 요구하는데,
+      // Timestamp.now()는 **클라이언트 시계**라 서버 시각과 같을 리가 없다.
+      // 예전에는 이 한 줄 때문에 원격 제출이 100% 규칙 거부됐고,
+      // catch가 조용히 삼켜서 "랭킹에 기록이 안 쌓인다"로만 보였다.
+      createdAt: serverTimestamp(),
     });
     return docRef.id;
   } catch (error) {
@@ -332,7 +355,7 @@ export async function savePlayerProfile(playerId: string, data: {
   try {
     await setDoc(doc(db, 'players', playerId), {
       ...data,
-      updatedAt: Timestamp.now(),
+      updatedAt: serverTimestamp(),
     }, { merge: true });
     return true;
   } catch (error) {

@@ -27,7 +27,7 @@ export function GameBoard({ cellSize: propCellSize }: GameBoardProps) {
   const dangerLevel = useGameStore((s) => s.dangerLevel);
 
   const { settings } = useUserStore();
-  const { fusionEffects, chainEffects, specialEffects, getGhostPosition } = useGameLogic();
+  const { fusionEffects, chainEffects, specialEffects, mathFeedback, getGhostPosition } = useGameLogic();
 
   // 셀 크기 동적 계산 (모바일 대응 강화)
   const cellSize = useMemo(() => {
@@ -168,6 +168,7 @@ export function GameBoard({ cellSize: propCellSize }: GameBoardProps) {
                     isFusing={isFusing}
                     specialType={block.specialType}
                     frozenCount={block.frozenCount}
+                    label={block.label}
                   />
                 </motion.div>
               );
@@ -195,9 +196,27 @@ export function GameBoard({ cellSize: propCellSize }: GameBoardProps) {
                 color={block.color}
                 size={cellSize}
                 specialType={block.specialType}
+                label={block.label}
               />
             </motion.div>
           ))}
+        </AnimatePresence>
+
+        {/* 수학 모드 동치 피드백 */}
+        <AnimatePresence>
+          {mathFeedback && (
+            <motion.div
+              key={mathFeedback}
+              className="absolute top-2 left-0 right-0 flex justify-center pointer-events-none z-30"
+              initial={{ opacity: 0, y: -8, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -8 }}
+            >
+              <span className="px-3 py-1.5 rounded-full bg-black/75 backdrop-blur-sm border border-cyan-400/50 text-cyan-200 text-sm font-black tracking-wide">
+                {mathFeedback}
+              </span>
+            </motion.div>
+          )}
         </AnimatePresence>
 
         {/* 쓰레기 블록 경고 */}

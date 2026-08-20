@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../stores/gameStore';
 import { useAudio } from '../../hooks/useAudio';
 import { POWERUP_CONFIG, BOARD_CONFIG } from '../../constants';
+import { matchKeyOf } from '../../engine/board';
 import { PowerUpType, BlockColor } from '../../types';
 
 export function PowerUpBar() {
@@ -11,29 +12,29 @@ export function PowerUpBar() {
 
   // 컬러 폭탄: 가장 많은 색상 블록 제거
   const applyColorBomb = useCallback(() => {
-    const colorCounts: Record<string, number> = {};
+    // 수학 모드에서는 '색'이 아니라 동치류가 매칭 단위다 — matchKeyOf로 센다.
+    const keyCounts: Record<string, number> = {};
     for (let y = 0; y < BOARD_CONFIG.ROWS; y++) {
       for (let x = 0; x < BOARD_CONFIG.COLUMNS; x++) {
         const block = board[y][x];
         if (block && block.specialType !== 'stone') {
-          colorCounts[block.color] = (colorCounts[block.color] || 0) + 1;
+          const k = matchKeyOf(block);
+          keyCounts[k] = (keyCounts[k] || 0) + 1;
         }
       }
     }
-    // 가장 많은 색상 찾기
-    let maxColor: BlockColor | null = null;
+    let maxKey: string | null = null;
     let maxCount = 0;
-    for (const [color, count] of Object.entries(colorCounts)) {
+    for (const [key, count] of Object.entries(keyCounts)) {
       if (count > maxCount) {
         maxCount = count;
-        maxColor = color as BlockColor;
+        maxKey = key;
       }
     }
-    if (!maxColor) return;
+    if (!maxKey) return;
 
-    // 해당 색상 블록 제거
     const newBoard = board.map((row) =>
-      row.map((block) => (block && block.color === maxColor ? null : block)),
+      row.map((block) => (block && matchKeyOf(block) === maxKey ? null : block)),
     );
     updateBoard(newBoard);
     addScore(maxCount * 50);

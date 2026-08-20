@@ -28,3 +28,6 @@ dist-ssr
 .env.local
 .env.*.local
 .env.backup
+
+# 융합률 측정 스크립트 산출물
+fusion-report.txt

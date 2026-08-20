@@ -1,6 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
+import { FEATURES } from '../../constants/features';
+import { grantReward } from '../../stores/rewards';
 import { useUserStore } from '../../stores/userStore';
 import { useAudio } from '../../hooks/useAudio';
 import { WHEEL_SEGMENTS } from '../../constants/shopItems';
@@ -64,6 +66,8 @@ export function LuckyWheel({ onClose }: LuckyWheelProps) {
       const reward = selectedSegment.reward;
       if (reward.coins) addCoins(reward.coins);
       if (reward.gems) addGems(reward.gems);
+      // 룰렛 '파워업' 칸(확률 8%)이 그동안 아무것도 주지 않았다 — rewards.ts 참조
+      grantReward(reward, { skipCurrency: true });
 
       // 효과
       if (selectedSegment.probability < 0.1) {
@@ -172,7 +176,7 @@ export function LuckyWheel({ onClose }: LuckyWheelProps) {
             </button>
           )}
 
-          {spinOptions.ad && (
+          {FEATURES.rewardedAds && spinOptions.ad && (
             <button
               className="w-full py-3 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl
                          font-bold text-white hover:from-yellow-400 hover:to-orange-400 disabled:opacity-50"

@@ -20,7 +20,7 @@ export type GravityDirection = 'down' | 'up' | 'left' | 'right';
 export type GameStatus = 'ready' | 'playing' | 'paused' | 'gameover' | 'levelComplete';
 
 // 게임 모드 타입
-export type GameMode = 'classic' | 'timeAttack' | 'puzzle' | 'zen' | 'daily' | 'survival' | 'challenge';
+export type GameMode = 'classic' | 'timeAttack' | 'puzzle' | 'zen' | 'daily' | 'survival' | 'challenge' | 'math';
 
 // 레벨 목표 타입
 export type LevelObjectiveType =
@@ -49,6 +49,13 @@ export interface Block {
   x: number;
   y: number;
   specialType: SpecialBlockType;
+  /**
+   * 융합 판정 키. 없으면 color가 키다(기본 모드).
+   * 수학 모드에서는 동치류 id가 들어가서 "1/2"와 "50%"가 같은 키를 갖는다.
+   */
+  matchKey?: string;
+  /** 블록 위에 표시할 텍스트 (수학 모드의 분수·소수·백분율 표기). */
+  label?: string;
   frozenCount?: number;  // frozen 블록의 남은 히트 수
   isFalling?: boolean;
   isMatched?: boolean;
@@ -64,6 +71,8 @@ export interface FallingBlock {
   targetY: number;
   specialType: SpecialBlockType;
   id?: string;  // 다중 블록용 ID
+  matchKey?: string;
+  label?: string;
 }
 
 // 다중 낙하 블록 배열
@@ -123,6 +132,10 @@ export interface DailyMission {
   target: number;
   current: number;
   completed: boolean;
+  /** 보상 수령 여부. 예전에는 청구 경로 자체가 없어서 필드도 없었다. */
+  claimed?: boolean;
+  /** 사람이 읽는 설명. 템플릿에는 있었는데 생성 시 버려지고 있었다. */
+  desc?: string;
   reward: Reward;
 }
 
@@ -133,6 +146,10 @@ export interface WeeklyMission {
   target: number;
   current: number;
   completed: boolean;
+  /** 보상 수령 여부. 예전에는 청구 경로 자체가 없어서 필드도 없었다. */
+  claimed?: boolean;
+  /** 사람이 읽는 설명. 템플릿에는 있었는데 생성 시 버려지고 있었다. */
+  desc?: string;
   reward: Reward;
 }
 
@@ -152,6 +169,8 @@ export interface GameState {
   currentBlocks: FallingBlock[];  // 다중 낙하 블록
   nextBlocks: BlockColor[];
   nextSpecialTypes: SpecialBlockType[];
+  /** 수학 모드 표기 큐. nextBlocks와 인덱스가 1:1로 맞는다(기본 모드는 전부 null). */
+  nextLabels: (string | null)[];
   holdBlock: BlockColor | null;
   holdSpecialType: SpecialBlockType | null;
   canHold: boolean;
@@ -357,4 +376,9 @@ export interface GameSettings {
   language: 'ko' | 'en' | 'ja';
   performanceMode: 'high' | 'medium' | 'low' | 'auto';
   hasSeenTutorial?: boolean;  // 첫 실행 온보딩 완료 여부
+  /**
+   * 수학 모드 색 힌트. true면 같은 값 = 같은 색이라 색만 보고도 맞출 수 있다(학습 보조).
+   * false면 모든 블록이 같은 색이라 **표기를 읽어야만** 매칭할 수 있다(평가용).
+   */
+  mathColorHint?: boolean;
 }

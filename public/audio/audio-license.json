@@ -1,0 +1,180 @@
+{
+  "entries": [
+    {
+      "file": "bgm/fever.ogg",
+      "source": "Openverse",
+      "license": "CC BY 3.0",
+      "author": "Creeper_Ciller78",
+      "url": "https://freesound.org/people/Creeper_Ciller78/sounds/346895",
+      "fetched": "2026-08-20"
+    },
+    {
+      "file": "bgm/play.ogg",
+      "source": "Openverse",
+      "license": "CC BY 4.0",
+      "author": "frankum",
+      "url": "https://freesound.org/people/frankum/sounds/344494",
+      "fetched": "2026-08-20"
+    },
+    {
+      "file": "bgm/playAlt.ogg",
+      "source": "Openverse",
+      "license": "CC BY 4.0",
+      "author": "frankum",
+      "url": "https://freesound.org/people/frankum/sounds/382930",
+      "fetched": "2026-08-20"
+    },
+    {
+      "file": "bgm/title.ogg",
+      "source": "Openverse",
+      "license": "CC BY 4.0",
+      "author": "suonho",
+      "url": "https://freesound.org/people/suonho/sounds/56364",
+      "fetched": "2026-08-20"
+    },
+    {
+      "file": "sfx/achievement.ogg",
+      "source": "Kenney",
+      "license": "CC0",
+      "author": "Kenney",
+      "url": "https://kenney.nl/assets",
+      "fetched": "2026-08-20"
+    },
+    {
+      "file": "sfx/blockLand.ogg",
+      "source": "Kenney",
+      "license": "CC0",
+      "author": "Kenney",
+      "url": "https://kenney.nl/assets",
+      "fetched": "2026-08-20"
+    },
+    {
+      "file": "sfx/blockMove.ogg",
+      "source": "Kenney",
+      "license": "CC0",
+      "author": "Kenney",
+      "url": "https://kenney.nl/assets",
+      "fetched": "2026-08-20"
+    },
+    {
+      "file": "sfx/blockRotate.ogg",
+      "source": "Kenney",
+      "license": "CC0",
+      "author": "Kenney",
+      "url": "https://kenney.nl/assets",
+      "fetched": "2026-08-20"
+    },
+    {
+      "file": "sfx/buttonClick.ogg",
+      "source": "Kenney",
+      "license": "CC0",
+      "author": "Kenney",
+      "url": "https://kenney.nl/assets",
+      "fetched": "2026-08-20"
+    },
+    {
+      "file": "sfx/chain.ogg",
+      "source": "Kenney",
+      "license": "CC0",
+      "author": "Kenney",
+      "url": "https://kenney.nl/assets",
+      "fetched": "2026-08-20"
+    },
+    {
+      "file": "sfx/combo.ogg",
+      "source": "Kenney",
+      "license": "CC0",
+      "author": "Kenney",
+      "url": "https://kenney.nl/assets",
+      "fetched": "2026-08-20"
+    },
+    {
+      "file": "sfx/fusion.ogg",
+      "source": "Kenney",
+      "license": "CC0",
+      "author": "Kenney",
+      "url": "https://kenney.nl/assets",
+      "fetched": "2026-08-20"
+    },
+    {
+      "file": "sfx/gameOver.ogg",
+      "source": "Kenney",
+      "license": "CC0",
+      "author": "Kenney",
+      "url": "https://kenney.nl/assets",
+      "fetched": "2026-08-20"
+    },
+    {
+      "file": "sfx/hardDrop.ogg",
+      "source": "Kenney",
+      "license": "CC0",
+      "author": "Kenney",
+      "url": "https://kenney.nl/assets",
+      "fetched": "2026-08-20"
+    },
+    {
+      "file": "sfx/highScore.ogg",
+      "source": "Kenney",
+      "license": "CC0",
+      "author": "Kenney",
+      "url": "https://kenney.nl/assets",
+      "fetched": "2026-08-20"
+    },
+    {
+      "file": "sfx/jackpot.ogg",
+      "source": "Kenney",
+      "license": "CC0",
+      "author": "Kenney",
+      "url": "https://kenney.nl/assets",
+      "fetched": "2026-08-20"
+    },
+    {
+      "file": "sfx/levelUp.ogg",
+      "source": "Kenney",
+      "license": "CC0",
+      "author": "Kenney",
+      "url": "https://kenney.nl/assets",
+      "fetched": "2026-08-20"
+    },
+    {
+      "file": "sfx/powerUpGet.ogg",
+      "source": "Kenney",
+      "license": "CC0",
+      "author": "Kenney",
+      "url": "https://kenney.nl/assets",
+      "fetched": "2026-08-20"
+    },
+    {
+      "file": "sfx/powerUpUse.ogg",
+      "source": "Kenney",
+      "license": "CC0",
+      "author": "Kenney",
+      "url": "https://kenney.nl/assets",
+      "fetched": "2026-08-20"
+    },
+    {
+      "file": "sfx/purchaseSuccess.ogg",
+      "source": "Kenney",
+      "license": "CC0",
+      "author": "Kenney",
+      "url": "https://kenney.nl/assets",
+      "fetched": "2026-08-20"
+    },
+    {
+      "file": "sfx/rewardGet.ogg",
+      "source": "Kenney",
+      "license": "CC0",
+      "author": "Kenney",
+      "url": "https://kenney.nl/assets",
+      "fetched": "2026-08-20"
+    },
+    {
+      "file": "sfx/wheelSpin.ogg",
+      "source": "Kenney",
+      "license": "CC0",
+      "author": "Kenney",
+      "url": "https://kenney.nl/assets",
+      "fetched": "2026-08-20"
+    }
+  ]
+}

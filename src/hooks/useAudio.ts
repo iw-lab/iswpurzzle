@@ -21,6 +21,67 @@ type SoundEffect =
   | 'wheelSpin'
   | 'jackpot';
 
+/**
+ * 실제 녹음 SFX (Kenney, CC0 — 크레딧 불필요).
+ *
+ * 왜 파일을 쓰나: 이 게임은 오디오 파일 0개로 시작해 700줄짜리 오실레이터
+ * 합성만으로 소리를 냈다. 코드는 정교했지만 결과는 8비트 삐- 소리였다.
+ * 합성 코드는 **폴백으로 그대로 남긴다** — 파일 로드가 실패해도(오프라인,
+ * 캐시 미스) 게임은 무음이 되지 않는다.
+ */
+const SFX_FILES: Record<SoundEffect, string> = {
+  blockLand: 'blockLand.ogg',
+  blockMove: 'blockMove.ogg',
+  blockRotate: 'blockRotate.ogg',
+  hardDrop: 'hardDrop.ogg',
+  fusion: 'fusion.ogg',
+  chain: 'chain.ogg',
+  combo: 'combo.ogg',
+  levelUp: 'levelUp.ogg',
+  powerUpGet: 'powerUpGet.ogg',
+  powerUpUse: 'powerUpUse.ogg',
+  gameOver: 'gameOver.ogg',
+  highScore: 'highScore.ogg',
+  achievement: 'achievement.ogg',
+  buttonClick: 'buttonClick.ogg',
+  rewardGet: 'rewardGet.ogg',
+  purchaseSuccess: 'purchaseSuccess.ogg',
+  wheelSpin: 'wheelSpin.ogg',
+  jackpot: 'jackpot.ogg',
+};
+
+/**
+ * 같은 소리가 한 프레임에 겹쳐 재생되면 찢어진다.
+ * 낙하·이동처럼 초당 여러 번 나는 소리에만 짧은 쿨다운을 건다.
+ */
+const SFX_COOLDOWN_MS: Partial<Record<SoundEffect, number>> = {
+  blockMove: 35,
+  blockRotate: 45,
+  blockLand: 60,
+  fusion: 40,
+  chain: 40,
+};
+
+const AUDIO_BASE = `${import.meta.env.BASE_URL}audio/`;
+
+/**
+ * 씬별 BGM (Openverse 경유 Freesound, 전부 CC BY — SettingsModal의 크레딧에 표기).
+ * 파일이 없거나 로드에 실패하면 기존 절차 합성 BGM으로 폴백한다.
+ */
+const BGM_TRACKS = {
+  title: 'title.ogg',
+  play: 'play.ogg',
+  playAlt: 'playAlt.ogg',
+  fever: 'fever.ogg',
+} as const;
+
+export type BgmScene = keyof typeof BGM_TRACKS;
+
+/** 레벨에 따라 평시 트랙을 번갈아 준다 — 한 곡만 반복하면 금방 질린다. */
+function sceneForLevel(level: number): BgmScene {
+  return level >= 10 ? 'playAlt' : 'play';
+}
+
 // Web Audio API 기반 사운드 생성 - 향상된 버전
 class AudioEngine {
   private audioContext: AudioContext | null = null;
@@ -31,6 +92,14 @@ class AudioEngine {
   private isFeverMode: boolean = false;
   private bgmInterval: number | null = null;
   private ambientInterval: number | null = null;
+  /** 디코드된 SFX 버퍼. 비어 있으면 절차 합성으로 폴백한다. */
+  private sfxBuffers = new Map<SoundEffect, AudioBuffer>();
+  private lastPlayedAt = new Map<SoundEffect, number>();
+  private samplesRequested = false;
+  private bgmNode: AudioBufferSourceNode | null = null;
+  private bgmTrackGain: GainNode | null = null;
+  private bgmBuffers = new Map<string, AudioBuffer>();
+  private bgmLoadingKey: string | null = null;
 
   constructor() {
     this.init();
@@ -68,6 +137,50 @@ class AudioEngine {
     if (this.audioContext?.state === 'suspended') {
       this.audioContext.resume();
     }
+  }
+
+  /**
+   * SFX를 한 번만 미리 디코드한다. 실패한 항목은 조용히 건너뛰고
+   * 그 효과음만 절차 합성으로 떨어진다(전부 실패해도 게임은 소리가 난다).
+   */
+  async loadSamples(): Promise<void> {
+    if (this.samplesRequested || !this.audioContext) return;
+    this.samplesRequested = true;
+    const ctx = this.audioContext;
+
+    await Promise.all(
+      (Object.keys(SFX_FILES) as SoundEffect[]).map(async (name) => {
+        try {
+          const res = await fetch(`${AUDIO_BASE}sfx/${SFX_FILES[name]}`);
+          if (!res.ok) return;
+          const buf = await ctx.decodeAudioData(await res.arrayBuffer());
+          this.sfxBuffers.set(name, buf);
+        } catch {
+          /* 이 효과음만 합성 폴백 */
+        }
+      }),
+    );
+  }
+
+  /** 디코드된 샘플이 있으면 재생하고 true를 반환한다. */
+  private playSample(effect: SoundEffect, pitch: number): boolean {
+    const buffer = this.sfxBuffers.get(effect);
+    if (!buffer || !this.audioContext || !this.sfxGain) return false;
+
+    const cooldown = SFX_COOLDOWN_MS[effect];
+    if (cooldown !== undefined) {
+      const now = performance.now();
+      if (now - (this.lastPlayedAt.get(effect) ?? -Infinity) < cooldown) return true;
+      this.lastPlayedAt.set(effect, now);
+    }
+
+    const src = this.audioContext.createBufferSource();
+    src.buffer = buffer;
+    // 연쇄가 깊어질수록 음이 올라가는 기존 연출을 재생 속도로 유지한다.
+    src.playbackRate.value = Math.max(0.5, Math.min(2.5, pitch));
+    src.connect(this.sfxGain);
+    src.start();
+    return true;
   }
 
   setMusicVolume(volume: number) {
@@ -158,6 +271,8 @@ class AudioEngine {
   // pitch: 1.0 기준 배음비. 연쇄가 깊어질수록 음이 올라가 "쌓이는 느낌"을 만든다.
   playSoundEffect(effect: SoundEffect, pitch: number = 1) {
     if (!this.audioContext) return;
+    // 실제 녹음이 있으면 그것을 쓰고, 없을 때만 아래 절차 합성으로 간다.
+    if (this.playSample(effect, pitch)) return;
     const p = Math.max(0.5, Math.min(2.5, pitch));
 
     switch (effect) {
@@ -460,10 +575,80 @@ class AudioEngine {
   }
 
   // BGM 재생 - 완전 리메이크
-  startBGM(level: number = 1) {
+  /** 씬 BGM 파일을 루프 재생한다. 성공하면 true. */
+  private async playBgmFile(scene: BgmScene): Promise<boolean> {
+    if (!this.audioContext || !this.musicGain) return false;
+    const ctx = this.audioContext;
+
+    let buffer = this.bgmBuffers.get(scene);
+    if (!buffer) {
+      if (this.bgmLoadingKey === scene) return true; // 이미 로딩 중
+      this.bgmLoadingKey = scene;
+      try {
+        const res = await fetch(`${AUDIO_BASE}bgm/${BGM_TRACKS[scene]}`);
+        if (!res.ok) return false;
+        buffer = await ctx.decodeAudioData(await res.arrayBuffer());
+        this.bgmBuffers.set(scene, buffer);
+      } catch {
+        return false;
+      } finally {
+        this.bgmLoadingKey = null;
+      }
+    }
+
+    this.stopBgmFile();
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(1, ctx.currentTime + 1.2); // 페이드 인
+
+    const node = ctx.createBufferSource();
+    node.buffer = buffer;
+    node.loop = true;
+    node.connect(gain);
+    gain.connect(this.musicGain);
+    node.start();
+
+    this.bgmNode = node;
+    this.bgmTrackGain = gain;
+    return true;
+  }
+
+  private stopBgmFile() {
+    if (this.bgmNode) {
+      try {
+        this.bgmNode.stop();
+      } catch {
+        /* 이미 정지 */
+      }
+      this.bgmNode.disconnect();
+      this.bgmNode = null;
+    }
+    this.bgmTrackGain?.disconnect();
+    this.bgmTrackGain = null;
+  }
+
+  /** 피버 진입/이탈 시 트랙 전환. */
+  setFeverTrack(active: boolean, level: number) {
+    this.isFeverMode = active;
+    if (this.bgmNode || this.bgmBuffers.size > 0) {
+      void this.playBgmFile(active ? 'fever' : sceneForLevel(level));
+    }
+  }
+
+  startBGM(level: number = 1, scene?: BgmScene) {
     if (!this.audioContext || !this.musicGain) return;
 
     this.stopBGM();
+
+    // 실제 곡이 있으면 그것을 루프한다. 실패하면 아래 절차 합성이 이어받는다.
+    void this.playBgmFile(scene ?? sceneForLevel(level)).then((ok) => {
+      if (!ok) this.startProceduralBGM(level);
+    });
+  }
+
+  private startProceduralBGM(level: number = 1) {
+    if (!this.audioContext || !this.musicGain) return;
 
     const bpm = 110 + level * 5;
     const beatDuration = 60 / bpm;
@@ -645,6 +830,7 @@ class AudioEngine {
   }
 
   stopBGM() {
+    this.stopBgmFile();
     if (this.bgmInterval) {
       clearInterval(this.bgmInterval);
       this.bgmInterval = null;
@@ -692,9 +878,16 @@ export function useAudio() {
     engineRef.current.setMusicVolume(settings.musicEnabled ? settings.musicVolume : 0);
     engineRef.current.setSfxVolume(settings.soundEnabled ? settings.soundVolume : 0);
 
+    // SFX 프리로드는 사용자 제스처를 기다리지 않는다.
+    // fetch + decodeAudioData는 suspended 컨텍스트에서도 동작하고(재생만 제스처가 필요),
+    // 클릭을 기다리면 첫 몇 개 효과음이 무음으로 새어 나간다(실측).
+    void engineRef.current.loadSamples();
+
     // 첫 상호작용 시 오디오 컨텍스트 시작
     const handleInteraction = () => {
       engineRef.current?.resume();
+      // AudioContext가 살아난 뒤에야 decodeAudioData가 의미 있다.
+      void engineRef.current?.loadSamples();
       window.removeEventListener('click', handleInteraction);
       window.removeEventListener('touchstart', handleInteraction);
     };
@@ -728,9 +921,19 @@ export function useAudio() {
   );
 
   const startBGM = useCallback(
-    (level: number = 1) => {
+    (level: number = 1, scene?: BgmScene) => {
       if (settings.musicEnabled && engineRef.current) {
-        engineRef.current.startBGM(level);
+        engineRef.current.startBGM(level, scene);
+      }
+    },
+    [settings.musicEnabled]
+  );
+
+  /** 피버 모드 진입/이탈 시 곡을 바꾼다. */
+  const setFeverTrack = useCallback(
+    (active: boolean, level: number) => {
+      if (settings.musicEnabled && engineRef.current) {
+        engineRef.current.setFeverTrack(active, level);
       }
     },
     [settings.musicEnabled]
@@ -740,5 +943,5 @@ export function useAudio() {
     engineRef.current?.stopBGM();
   }, []);
 
-  return { playSound, startBGM, stopBGM };
+  return { playSound, startBGM, stopBGM, setFeverTrack };
 }

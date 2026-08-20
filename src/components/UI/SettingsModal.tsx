@@ -7,6 +7,8 @@ interface SettingsModalProps {
   onClose: () => void;
 }
 
+import { AUDIO_CREDITS } from '../../constants/audioCredits';
+
 export function SettingsModal({ onClose }: SettingsModalProps) {
   const { settings, updateSettings } = useUserStore();
   const { playSound } = useAudio();
@@ -143,6 +145,29 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
             </button>
           </div>
 
+          {/* 수학 모드 색 힌트 */}
+          <div className="flex justify-between items-start gap-3">
+            <div className="flex-1">
+              <span className="text-white">수학 모드 색 힌트</span>
+              <p className="text-[11px] text-gray-400 leading-tight mt-0.5">
+                끄면 같은 값이라도 색이 같지 않아, 표기를 읽어야 맞출 수 있어요
+              </p>
+            </div>
+            <button
+              aria-label="수학 모드 색 힌트"
+              className={`shrink-0 w-14 h-8 rounded-full transition-colors ${
+                (settings.mathColorHint ?? true) ? 'bg-game-accent' : 'bg-gray-600'
+              }`}
+              onClick={() => handleToggle('mathColorHint', !(settings.mathColorHint ?? true))}
+            >
+              <motion.div
+                className="w-6 h-6 bg-white rounded-full shadow-md"
+                animate={{ x: (settings.mathColorHint ?? true) ? 26 : 2 }}
+                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+              />
+            </button>
+          </div>
+
           {/* 고스트 블록 */}
           <div className="flex justify-between items-center">
             <span className="text-white">낙하 위치 미리보기</span>
@@ -229,6 +254,28 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* 오디오 크레딧 — BGM이 CC BY 계열이라 표기가 라이선스 의무다 */}
+        <div className="space-y-2 mt-6 pt-4 border-t border-white/10">
+          <h3 className="text-sm font-bold text-gray-400 uppercase">사운드 출처</h3>
+          <ul className="space-y-1.5">
+            {AUDIO_CREDITS.map((c) => (
+              <li key={c.works} className="text-[11px] leading-tight text-gray-400">
+                <span className="text-gray-300">{c.works}</span>
+                {' — '}
+                <a
+                  href={c.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-cyan-400 hover:underline"
+                >
+                  {c.author}
+                </a>
+                <span className="text-gray-500"> ({c.license})</span>
+              </li>
+            ))}
+          </ul>
         </div>
 
         {/* 닫기 버튼 */}

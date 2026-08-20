@@ -13,9 +13,10 @@ export function NextBlockPreview({
   cellSize = 28,
   maxBlocks = NEXT_PREVIEW_COUNT,
 }: NextBlockPreviewProps) {
-  const { nextBlocks, nextSpecialTypes } = useGameStore();
+  const { nextBlocks, nextSpecialTypes, nextLabels } = useGameStore();
   const displayBlocks = nextBlocks.slice(0, maxBlocks);
   const displaySpecialTypes = nextSpecialTypes?.slice(0, maxBlocks) || [];
+  const displayLabels = nextLabels?.slice(0, maxBlocks) || [];
 
   return (
     <div className="glass-panel rounded-xl p-4 flex flex-col items-center min-w-[80px]">
@@ -41,6 +42,7 @@ export function NextBlockPreview({
                 color={color}
                 size={blockSize}
                 specialType={displaySpecialTypes[index] || 'normal'}
+                label={displayLabels[index] ?? undefined}
               />
               {index === 0 && (
                 <div className="absolute -inset-1 rounded-lg border-2 border-white/30 animate-pulse pointer-events-none" />

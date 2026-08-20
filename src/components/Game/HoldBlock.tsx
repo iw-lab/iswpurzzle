@@ -8,7 +8,7 @@ interface HoldBlockProps {
 }
 
 export function HoldBlock({ cellSize = 24 }: HoldBlockProps) {
-  const { holdBlock, holdSpecialType, canHold } = useGameStore();
+  const { holdBlock, holdSpecialType, canHold, holdPiece } = useGameStore();
 
   return (
     <div
@@ -26,7 +26,12 @@ export function HoldBlock({ cellSize = 24 }: HoldBlockProps) {
             transition={{ type: 'spring' }}
             style={{ filter: canHold ? 'none' : 'grayscale(80%)' }}
           >
-            <Block color={holdBlock} size={cellSize} specialType={holdSpecialType || 'normal'} />
+            <Block
+              color={holdBlock}
+              size={cellSize}
+              specialType={holdSpecialType || 'normal'}
+              label={holdPiece?.labels?.[0] ?? undefined}
+            />
           </motion.div>
         ) : (
           <div

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
+import { grantReward } from '../../stores/rewards';
 import { useUserStore } from '../../stores/userStore';
 import { useAudio } from '../../hooks/useAudio';
 import { DAILY_REWARDS } from '../../constants/shopItems';
@@ -20,6 +21,8 @@ export function DailyRewardPopup({ onClose }: DailyRewardPopupProps) {
     if (!canClaim || claimed) return;
 
     const reward = claimDailyReward();
+    // claimDailyReward는 코인·젬만 지급한다. 파워업 항목은 여기서 지급(rewards.ts 참조).
+    grantReward(reward, { skipCurrency: true });
     if (reward) {
       playSound('rewardGet');
       setClaimed(true);

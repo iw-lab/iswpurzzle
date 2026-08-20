@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { v4 as uuidv4 } from "uuid";
 import type {
+  Reward,
   GameState,
   GameBoard,
   Block,
@@ -41,6 +42,8 @@ import { computeDropDistance, createEmptyBoard } from "../engine/board";
 import {
   getBlocksForLevel,
   getGarbageRows,
+  buildPieceColors,
+  PIECE_COLOR_LIMIT,
   MAX_LEVEL,
 } from "../engine/difficulty";
 import {
@@ -51,6 +54,13 @@ import {
   seededRandom,
   setRandomSource,
 } from "../engine/rng";
+import { NEXT_QUEUE_MIN } from "../constants/gameConfig";
+import {
+  getClassesForLevel,
+  pickForm,
+  CLASS_ID_BY_FORM,
+  MATH_NEUTRAL_COLOR,
+} from "../constants/mathContent";
 import { currentDailyKey, currentWeeklyKey } from "../constants/missions";
 import { useUserStore } from "./userStore";
 
@@ -117,11 +127,6 @@ function clearReliefArea(
   return newBoard;
 }
 
-// 랜덤 블록 색상 생성
-function getRandomBlockColor(level: number): BlockColor {
-  return pick(getColorsForLevel(level));
-}
-
 // 특수 블록 타입 결정 (후반부 특수 블록 빈도 감소)
 function getSpecialType(level: number, blocksPlaced: number): SpecialBlockType {
   // 일정 블록마다 특수 블록 보장 (12 -> 20으로 증가)
@@ -136,20 +141,71 @@ function getSpecialType(level: number, blocksPlaced: number): SpecialBlockType {
   return "normal";
 }
 
-// 다음 블록 배열 생성
-function generateNextBlocks(
-  count: number,
+/** 수학 모드에서 조각 한 개 분량의 (색·표기)를 만든다. */
+function buildMathPiece(
   level: number,
-): { colors: BlockColor[]; specialTypes: SpecialBlockType[] } {
+  count: number,
+): { colors: BlockColor[]; labels: string[] } {
+  const hint = useUserStore.getState().settings.mathColorHint ?? true;
+  const pool = getClassesForLevel(level);
+  // 색 배분과 같은 원리: 한 조각에 서로 다른 '값'은 최대 2종.
+  // 값이 흩어지면 동색(동값) 4개를 만들 수단이 사라진다 — 기본 모드와 동일한 실패 모드다.
+  const bagSize = Math.min(PIECE_COLOR_LIMIT, pool.length, Math.max(1, count));
+  const bag: typeof pool = [];
+  let guard = 0;
+  while (bag.length < bagSize && guard++ < 50) {
+    const c = pool[Math.floor(random() * pool.length)];
+    if (!bag.includes(c)) bag.push(c);
+  }
+  if (bag.length === 0) bag.push(pool[0]);
+
+  const colors: BlockColor[] = [];
+  const labels: string[] = [];
+  for (let i = 0; i < count; i++) {
+    const cls = bag[Math.floor(random() * bag.length)];
+    colors.push(hint ? cls.color : MATH_NEUTRAL_COLOR);
+    labels.push(pickForm(cls, level, random));
+  }
+  return { colors, labels };
+}
+
+/**
+ * 다음 블록 큐 생성 — **조각 단위 청크**로 채운다.
+ *
+ * 칸마다 독립 난수 색을 넣던 예전 방식이 "블록이 안 터진다"의 원인이었다
+ * (engine/difficulty.ts의 PIECE_COLOR_LIMIT 주석에 실측 근거).
+ * 큐를 조각 크기로 끊어 담으므로 NEXT 미리보기도 실제 조각과 일치한다.
+ */
+function generateNextBlocks(
+  minLength: number,
+  level: number,
+  blocksPlaced = 0,
+  mode: GameMode = "classic",
+): {
+  colors: BlockColor[];
+  specialTypes: SpecialBlockType[];
+  labels: (string | null)[];
+} {
   const colors: BlockColor[] = [];
   const specialTypes: SpecialBlockType[] = [];
+  const labels: (string | null)[] = [];
+  const pieceSize = mode === "puzzle" ? 1 : getFallingBlockCount(level);
 
-  for (let i = 0; i < count; i++) {
-    colors.push(getRandomBlockColor(level));
-    specialTypes.push(i === 0 ? getSpecialType(level, 0) : "normal");
+  while (colors.length < minLength) {
+    const isMath = mode === "math";
+    const piece = isMath
+      ? buildMathPiece(level, pieceSize)
+      : { colors: buildPieceColors(level, pieceSize, random), labels: null };
+    const pieceSpecial = getSpecialType(level, blocksPlaced + colors.length);
+    piece.colors.forEach((c, i) => {
+      colors.push(c);
+      // 특수블록은 조각당 1개 — 청크의 첫 칸에만 붙는다.
+      specialTypes.push(i === 0 ? pieceSpecial : "normal");
+      labels.push(piece.labels ? piece.labels[i] : null);
+    });
   }
 
-  return { colors, specialTypes };
+  return { colors, specialTypes, labels };
 }
 
 // 초기 통계
@@ -206,6 +262,7 @@ const initialGameState: GameState = {
   currentBlocks: [],
   nextBlocks: [],
   nextSpecialTypes: [],
+  nextLabels: [],
   holdBlock: null,
   holdSpecialType: null,
   canHold: true,
@@ -248,7 +305,15 @@ const initialGameState: GameState = {
   lastGameHighScore: 0,
 };
 
+/** 홀드 보관함 — 조각 '전체'를 담는다. 자세한 이유는 doHoldBlock 주석 참조. */
+export interface HeldPiece {
+  colors: BlockColor[];
+  labels: (string | null)[];
+  specialTypes: SpecialBlockType[];
+}
+
 interface GameStore extends GameState {
+  holdPiece: HeldPiece | null;
   // 게임 제어
   startGame: (mode?: GameMode) => void;
   pauseGame: () => void;
@@ -307,6 +372,8 @@ interface GameStore extends GameState {
 
   // 미션
   updateMissionProgress: (type: string, value: number) => void;
+  /** 완료된 미션의 보상을 청구한다. 이미 받았거나 미완료면 null. */
+  claimMission: (scope: "daily" | "weekly", id: string) => Reward | null;
 
   // 게임 시간
   incrementGameTime: () => void;
@@ -330,6 +397,7 @@ export const useGameStore = create<GameStore>()(
   persist(
     (set, get) => ({
       ...initialGameState,
+      holdPiece: null,
       blocksPlaced: 0,
 
       startGame: (mode = "classic") => {
@@ -346,9 +414,11 @@ export const useGameStore = create<GameStore>()(
 
         // 퍼즐 모드는 블록 1개씩만 떨어짐
         const blockCount = mode === "puzzle" ? 1 : getFallingBlockCount(level);
-        const { colors, specialTypes } = generateNextBlocks(
+        const { colors, specialTypes, labels } = generateNextBlocks(
           5 + blockCount,
           level,
+          0,
+          mode,
         );
 
         // 모드별 목표 설정
@@ -369,7 +439,9 @@ export const useGameStore = create<GameStore>()(
           currentBlocks: [],
           nextBlocks: colors,
           nextSpecialTypes: specialTypes,
+          nextLabels: labels,
           holdBlock: null,
+          holdPiece: null,
           holdSpecialType: null,
           canHold: true,
           score: 0,
@@ -492,6 +564,7 @@ export const useGameStore = create<GameStore>()(
         setRandomSource(null);
         set({
           ...initialGameState,
+          holdPiece: null,
           statistics: get().statistics,
           powerUps: get().powerUps,
           missionProgress: get().missionProgress,
@@ -503,12 +576,14 @@ export const useGameStore = create<GameStore>()(
         const {
           nextBlocks,
           nextSpecialTypes,
+          nextLabels,
           level,
           gravityDirection,
           board,
           blocksPlaced,
           currentBlocks,
           gameStatus,
+          gameMode,
         } = get();
 
         // 이미 블록이 있거나 게임 중이 아니면 생성하지 않음
@@ -518,14 +593,28 @@ export const useGameStore = create<GameStore>()(
         {
           const blockCount = getFallingBlockCount(level);
 
-          // nextBlocks가 부족하면 추가 생성
+          // nextBlocks가 부족하면 조각 단위 청크로 보충한다.
+          // (칸별 독립 난수 → 조각 내 2색 상한으로 교체. difficulty.ts 참조)
           const currentNextBlocks = [...nextBlocks];
           const currentNextSpecialTypes = [...nextSpecialTypes];
-          while (currentNextBlocks.length < 10) {
-            currentNextBlocks.push(getRandomBlockColor(level));
-            currentNextSpecialTypes.push(
-              getSpecialType(level, blocksPlaced + currentNextBlocks.length),
+          const currentNextLabels = [...nextLabels];
+          while (currentNextBlocks.length < NEXT_QUEUE_MIN) {
+            const isMath = gameMode === "math";
+            const piece = isMath
+              ? buildMathPiece(level, blockCount)
+              : {
+                  colors: buildPieceColors(level, blockCount, random),
+                  labels: null as string[] | null,
+                };
+            const pieceSpecial = getSpecialType(
+              level,
+              blocksPlaced + currentNextBlocks.length,
             );
+            piece.colors.forEach((c, i) => {
+              currentNextBlocks.push(c);
+              currentNextSpecialTypes.push(i === 0 ? pieceSpecial : "normal");
+              currentNextLabels.push(piece.labels ? piece.labels[i] : null);
+            });
           }
 
           // 블록 모양 선택
@@ -581,6 +670,7 @@ export const useGameStore = create<GameStore>()(
             if (board[startY][startX] !== null) continue;
 
             const color = currentNextBlocks[consumed] ?? currentNextBlocks[0];
+            const label = currentNextLabels[consumed] ?? null;
             // 특수블록은 조각당 1개 — 첫 번째로 실제 생성되는 칸에 부여한다.
             const specialType = specialConsumed
               ? "normal"
@@ -594,6 +684,10 @@ export const useGameStore = create<GameStore>()(
               y: startY,
               targetY: startY,
               specialType,
+              // 수학 모드: 표기(label)와 융합 판정 키(동치류 id)를 함께 싣는다.
+              ...(label
+                ? { label, matchKey: CLASS_ID_BY_FORM[label] ?? label }
+                : {}),
             });
             consumed++;
           }
@@ -617,17 +711,21 @@ export const useGameStore = create<GameStore>()(
             }
           }
 
-          // 실제 소비량만큼만 큐를 당긴다 (특수블록 예약 보존)
-          const newNextBlocks = currentNextBlocks.slice(consumed);
-          const newNextSpecialTypes = specialConsumed
-            ? currentNextSpecialTypes.slice(1)
-            : currentNextSpecialTypes;
+          // 큐는 항상 '조각 하나'(= blockCount) 단위로 당긴다.
+          // 색·특수를 각각 다른 양만큼 당기면 청크 경계가 어긋나 조각이
+          // 3색 이상을 갖게 되고, NEXT 미리보기도 실제 조각과 달라진다.
+          // 일부 칸이 막혀 consumed < blockCount 여도 그 조각은 소비된 것으로 본다
+          // (모든 칸이 막히면 위에서 이미 endGame 처리).
+          const newNextBlocks = currentNextBlocks.slice(blockCount);
+          const newNextSpecialTypes = currentNextSpecialTypes.slice(blockCount);
+          const newNextLabels = currentNextLabels.slice(blockCount);
 
           set({
             currentBlock: newBlocks[0] || null,
             currentBlocks: newBlocks,
             nextBlocks: newNextBlocks,
             nextSpecialTypes: newNextSpecialTypes,
+            nextLabels: newNextLabels,
             canHold: true,
             blocksPlaced: blocksPlaced + consumed,
             fallingBlockCount: blockCount,
@@ -862,33 +960,43 @@ export const useGameStore = create<GameStore>()(
       doHoldBlock: () => {
         const {
           currentBlocks,
-          holdBlock: currentHold,
-          holdSpecialType: currentHoldSpecial,
+          holdPiece,
           canHold,
           nextBlocks,
           nextSpecialTypes,
+          nextLabels,
         } = get();
         if (currentBlocks.length === 0 || !canHold) return;
 
-        // 조작·렌더의 원천은 currentBlocks 배열이다.
-        // 여기를 비우지 않으면 홀드해도 원래 조각이 계속 낙하한다(#1).
-        const head = currentBlocks[0];
+        // ⚠️ 조각 '전체'를 보관한다.
+        // 예전에는 첫 칸의 색 하나만 보관하고 나머지는 버렸다(3칸 조각이면 2칸 증발).
+        // 게다가 되돌려줄 때 큐 맨 앞에 1칸만 꽂아서, 조각 단위로 정렬돼 있던
+        // next 큐의 청크 경계가 통째로 밀렸다 — 이후 조각들이 서로 다른 청크의
+        // 색을 섞어 받게 되고, 결국 "조각 내 색 2종" 규칙이 깨진다.
+        const held: HeldPiece = {
+          colors: currentBlocks.map((b) => b.color),
+          labels: currentBlocks.map((b) => b.label ?? null),
+          specialTypes: currentBlocks.map((b) => b.specialType),
+        };
 
-        if (currentHold) {
-          // 보관된 색을 다음 스폰의 맨 앞에 꽂고, 현재 조각을 보관함으로.
+        if (holdPiece) {
+          // 보관돼 있던 조각을 큐 맨 앞에 '통째로' 되돌린다 — 청크 정렬 유지.
           set({
-            holdBlock: head.color,
-            holdSpecialType: head.specialType,
+            holdPiece: held,
+            holdBlock: held.colors[0],
+            holdSpecialType: held.specialTypes[0],
             currentBlock: null,
             currentBlocks: [],
-            nextBlocks: [currentHold, ...nextBlocks],
-            nextSpecialTypes: [currentHoldSpecial ?? "normal", ...nextSpecialTypes],
+            nextBlocks: [...holdPiece.colors, ...nextBlocks],
+            nextSpecialTypes: [...holdPiece.specialTypes, ...nextSpecialTypes],
+            nextLabels: [...holdPiece.labels, ...nextLabels],
             canHold: false,
           });
         } else {
           set({
-            holdBlock: head.color,
-            holdSpecialType: head.specialType,
+            holdPiece: held,
+            holdBlock: held.colors[0],
+            holdSpecialType: held.specialTypes[0],
             currentBlock: null,
             currentBlocks: [],
             canHold: false,
@@ -901,7 +1009,7 @@ export const useGameStore = create<GameStore>()(
       },
 
       placeBlock: () => {
-        const { currentBlocks, board, garbagePending, gameMode } = get();
+        const { currentBlocks, board, gameMode } = get();
         if (currentBlocks.length === 0) return;
 
         const newBoard = board.map((row) => [...row]);
@@ -924,6 +1032,8 @@ export const useGameStore = create<GameStore>()(
             specialType: fallingBlock.specialType,
             frozenCount: fallingBlock.specialType === "frozen" ? 2 : undefined,
             createdAt: Date.now(),
+            matchKey: fallingBlock.matchKey,
+            label: fallingBlock.label,
           };
 
           newBoard[posY][posX] = newBlock;
@@ -947,13 +1057,14 @@ export const useGameStore = create<GameStore>()(
           get().decrementMoves();
         }
 
-        // 대기 중인 쓰레기 블록 추가 (퍼즐 모드에서는 쓰레기 블록 없음)
-        if (garbagePending > 0 && gameMode !== "puzzle") {
-          // 약간의 딜레이 후 쓰레기 블록 추가 (시각적 효과를 위해)
-          scheduleForSession(() => {
-            get().addGarbageRows(get().garbagePending);
-          }, 100);
-        }
+        // ⚠️ 여기서 쓰레기 줄을 넣지 않는다.
+        // 예전에는 placeBlock 직후 100ms 뒤에 addGarbageRows를 예약했는데,
+        // 게임 루프는 50ms마다 돌기 때문에 그 사이에 연쇄 반응이 시작된다.
+        // 연쇄는 자기 workingBoard를 들고 있다가 updateBoard로 되쓰므로,
+        // 중간에 삽입된 쓰레기 줄이 통째로 지워지거나(줄이 증발) 반대로
+        // 연쇄 결과가 밀려 올라간 보드에 덮여 좌표가 어긋났다.
+        // 이제 useGameLogic 게임 루프가 '낙하 블록 없음 + 융합 그룹 없음 +
+        // 처리 중 아님'이 모두 성립하는 정착 시점에만 삽입한다.
       },
 
       setGravityDirection: (direction) => {
@@ -1311,6 +1422,28 @@ export const useGameStore = create<GameStore>()(
         });
       },
 
+      claimMission: (scope, id) => {
+        const { missionProgress } = get();
+        const list =
+          scope === "daily"
+            ? missionProgress.dailyMissions
+            : missionProgress.weeklyMissions;
+        const mission = list.find((m) => m.id === id);
+        if (!mission || !mission.completed || mission.claimed) return null;
+
+        const next = list.map((m) =>
+          m.id === id ? { ...m, claimed: true } : m,
+        );
+        set({
+          missionProgress: {
+            ...missionProgress,
+            [scope === "daily" ? "dailyMissions" : "weeklyMissions"]: next,
+          },
+        });
+        // 실제 지급은 stores/rewards.ts의 grantReward가 담당한다(파워업 포함).
+        return mission.reward;
+      },
+
       incrementGameTime: () => {
         const {
           gameTime,
@@ -1424,7 +1557,7 @@ export const useGameStore = create<GameStore>()(
         const newLevel = puzzleLevel + 1;
         const newMoves = PUZZLE_CONFIG.getMovesForLevel(newLevel);
         const newObjectives = generatePuzzleObjectives(newLevel);
-        const { colors, specialTypes } = generateNextBlocks(6, 1);
+        const { colors, specialTypes, labels } = generateNextBlocks(6, 1, 0, "puzzle");
 
         set({
           board: createEmptyBoard(),
@@ -1432,6 +1565,7 @@ export const useGameStore = create<GameStore>()(
           currentBlocks: [],
           nextBlocks: colors,
           nextSpecialTypes: specialTypes,
+          nextLabels: labels,
           score: 0,
           puzzleLevel: newLevel,
           movesRemaining: newMoves,
@@ -1451,9 +1585,11 @@ export const useGameStore = create<GameStore>()(
         const newLevel = level + 1;
         const newObjectives = generateLevelObjectives(newLevel);
         const blockCount = getFallingBlockCount(newLevel);
-        const { colors, specialTypes } = generateNextBlocks(
+        const { colors, specialTypes, labels } = generateNextBlocks(
           5 + blockCount,
           newLevel,
+          0,
+          "challenge",
         );
 
         set({
@@ -1462,6 +1598,7 @@ export const useGameStore = create<GameStore>()(
           currentBlocks: [],
           nextBlocks: colors,
           nextSpecialTypes: specialTypes,
+          nextLabels: labels,
           level: newLevel,
           levelObjectives: newObjectives,
           gameStatus: "playing",

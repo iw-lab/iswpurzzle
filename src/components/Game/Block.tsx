@@ -20,6 +20,8 @@ interface BlockProps {
   frozenCount?: number;
   x?: number;
   y?: number;
+  /** 수학 모드 표기(1/2 · 0.5 · 50%). 있으면 블록 위에 크게 그린다. */
+  label?: string;
 }
 
 export const Block = memo(function Block({
@@ -30,6 +32,7 @@ export const Block = memo(function Block({
   isMatched = false,
   specialType = "normal",
   frozenCount = 0,
+  label,
 }: BlockProps) {
   const { settings, equippedSkinId } = useUserStore();
 
@@ -367,6 +370,25 @@ export const Block = memo(function Block({
             </div>
           )}
         </>
+      )}
+
+      {/* 수학 모드 표기 — 블록 크기에 비례해 글자 크기를 잡는다.
+          어두운 배경/밝은 배경 어디서든 읽히도록 흰 글자 + 검은 외곽선을 쓴다. */}
+      {label && !isSpecial && (
+        <div
+          className="absolute inset-0 flex items-center justify-center pointer-events-none select-none"
+          style={{
+            fontSize: Math.max(9, Math.round(size * (label.length > 3 ? 0.3 : 0.38))),
+            fontWeight: 900,
+            lineHeight: 1,
+            color: "#ffffff",
+            textShadow:
+              "0 1px 0 rgba(0,0,0,0.85), 0 -1px 0 rgba(0,0,0,0.85), 1px 0 0 rgba(0,0,0,0.85), -1px 0 0 rgba(0,0,0,0.85)",
+            letterSpacing: "-0.02em",
+          }}
+        >
+          {label}
+        </div>
       )}
 
       {/* 특수 블록 아이콘 */}

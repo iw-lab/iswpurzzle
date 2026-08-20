@@ -17,6 +17,7 @@ import { THEMES } from "./constants/shopItems";
 import {
   GameBoard,
   NextBlockPreview,
+  HoldBlock,
   TouchControls,
   PowerUpBar,
 } from "./components/Game";
@@ -30,7 +31,7 @@ import {
   TutorialOverlay,
 } from "./components/UI";
 // Menu Components
-import { MainMenu, DailyRewardPopup, ShopScreen } from "./components/Menu";
+import { MainMenu, DailyRewardPopup, ShopScreen, QuestScreen } from "./components/Menu";
 // Monetization Components
 import { LuckyWheel } from "./components/Monetization";
 
@@ -53,7 +54,7 @@ const DEFAULT_THEME: ThemeColors = {
   success: "#2ed573",
 };
 
-type AppScreen = "menu" | "game" | "shop" | "leaderboard" | "battlepass";
+type AppScreen = "menu" | "game" | "shop" | "leaderboard" | "quests" | "battlepass";
 
 function App() {
   const [screen, setScreen] = useState<AppScreen>("menu");
@@ -125,7 +126,7 @@ function App() {
       currentTheme.backgroundGradient || currentTheme.background;
     document.body.style.backgroundColor = currentTheme.background;
   }, [currentTheme]);
-  const { playSound, stopBGM } = useAudio();
+  const { playSound, startBGM, stopBGM, setFeverTrack } = useAudio();
   // 키보드 입력 단일 계층 (DAS/ARR) — 데드코드였던 useControls를 정식 배선(#15)
   useControls();
   const prevLevelRef = useRef(level);
@@ -164,6 +165,24 @@ function App() {
     }
     prevFeverModeRef.current = isFeverMode;
   }, [isFeverMode, gameStatus, playSound]);
+
+  // BGM 구동. startBGM은 그동안 호출부가 0개여서 게임에 배경음이 아예 없었다.
+  // 상태를 단일 진실로 삼아 여기서만 켜고 끈다(중복 재생 방지).
+  useEffect(() => {
+    if (gameStatus === "playing") {
+      startBGM(level);
+    } else if (gameStatus === "gameover") {
+      stopBGM();
+    }
+    // level 변화로 재시작하면 곡이 매 레벨 끊긴다 — 의도적으로 level을 deps에서 뺀다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameStatus, startBGM, stopBGM]);
+
+  // 피버 진입/이탈 시 곡 교체
+  useEffect(() => {
+    if (gameStatus !== "playing") return;
+    setFeverTrack(isFeverMode, level);
+  }, [isFeverMode, gameStatus, level, setFeverTrack]);
 
   // 게임 시간 타이머
   useEffect(() => {
@@ -253,6 +272,14 @@ function App() {
             setScreen("leaderboard");
           }}
           onOpenBattlePass={undefined}
+          onOpenQuests={() => {
+            playSound("buttonClick");
+            setScreen("quests");
+          }}
+          onOpenLuckyWheel={() => {
+            playSound("buttonClick");
+            setShowLuckyWheel(true);
+          }}
           onOpenDailyReward={() => {
             playSound("buttonClick");
             setShowDailyReward(true);
@@ -277,6 +304,8 @@ function App() {
     return <ShopScreen onClose={() => setScreen("menu")} />;
   if (screen === "leaderboard")
     return <LeaderboardScreen onClose={() => setScreen("menu")} />;
+  if (screen === "quests")
+    return <QuestScreen onClose={() => setScreen("menu")} />;
 
   // 게임 화면 레이아웃 재구성
   return (
@@ -437,8 +466,9 @@ function App() {
 
         {/* [중앙 패널] 게임 보드 */}
         <div className="flex flex-col items-center relative z-20">
-          {/* 모바일: 다음 블록을 보드 위에 배치 */}
-          <div className="flex md:hidden justify-end w-full max-w-[280px] mb-1 px-1">
+          {/* 모바일: 홀드 + 다음 블록을 보드 위에 배치 */}
+          <div className="flex md:hidden justify-between items-end w-full max-w-[280px] mb-1 px-1">
+            <HoldBlock cellSize={18} />
             <NextBlockPreview cellSize={18} maxBlocks={3} />
           </div>
 
@@ -478,6 +508,10 @@ function App() {
 
         {/* [오른쪽 패널] 데스크탑만 */}
         <div className="hidden md:flex flex-col gap-3 w-32 items-center z-10">
+          {/* HOLD 컴포넌트는 만들어져 있었지만 어디에도 렌더되지 않았다.
+              doHoldBlock(Shift/C 키)은 동작하는데 슬롯이 안 보여서
+              홀드한 블록이 사라진 것처럼 보였다(2026-08-20 수정). */}
+          <HoldBlock cellSize={28} />
           <NextBlockPreview cellSize={28} maxBlocks={5} />
         </div>
       </div>

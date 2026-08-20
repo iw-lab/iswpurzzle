@@ -17,6 +17,7 @@ const backgroundBlobs = (() => {
 })();
 import { useUserStore } from '../../stores/userStore';
 import { useAudio } from '../../hooks/useAudio';
+import { useGameStore } from '../../stores/gameStore';
 import { GAME_MODE_CONFIG } from '../../constants';
 import { GameMode } from '../../types';
 
@@ -26,6 +27,8 @@ interface MainMenuProps {
   onOpenSettings: () => void;
   onOpenLeaderboard: () => void;
   onOpenBattlePass?: () => void;  // 미구현 시 버튼 자체를 숨긴다
+  onOpenQuests: () => void;
+  onOpenLuckyWheel: () => void;
   onOpenDailyReward: () => void;
 }
 
@@ -35,11 +38,22 @@ export function MainMenu({
   onOpenSettings,
   onOpenLeaderboard,
   onOpenBattlePass,
+  onOpenQuests,
+  onOpenLuckyWheel,
   onOpenDailyReward,
 }: MainMenuProps) {
   const { currency, playerName, playerLevel, streakInfo, checkDailyRewardAvailable } = useUserStore();
   const { playSound } = useAudio();
   const [showModeSelect, setShowModeSelect] = useState(false);
+  // 받을 수 있는 보상 개수 — 퀘스트 버튼 배지. 리텐션 루프의 진입점이다.
+  const missionProgress = useGameStore((s) => s.missionProgress);
+  const achievements = useUserStore((s) => s.achievements);
+  const claimableQuests =
+    [...missionProgress.dailyMissions, ...missionProgress.weeklyMissions].filter(
+      (m) => m.completed && !m.claimed,
+    ).length + achievements.filter((a) => a.completed && !a.claimed).length;
+  const canSpinWheel = useUserStore((st) => st.canSpinWheel);
+  const wheelReady = canSpinWheel();
   const [dailyRewardAvailable, setDailyRewardAvailable] = useState(false);
 
   useEffect(() => {
@@ -254,6 +268,9 @@ export function MainMenu({
           <div className="grid grid-cols-3 gap-4">
             <MenuButton icon="🛒" label="상점" onClick={() => handleClick(onOpenShop)} color="from-pink-500/20 to-rose-500/20" />
             <MenuButton icon="🏆" label="랭킹" onClick={() => handleClick(onOpenLeaderboard)} color="from-amber-500/20 to-yellow-500/20" />
+            <MenuButton icon="📋" label="퀘스트" onClick={() => handleClick(onOpenQuests)} color="from-cyan-500/20 to-blue-500/20" badge={claimableQuests} />
+            {/* 룰렛은 컴포넌트가 있는데도 여는 경로가 없어 도달 불가였다(2026-08-20 배선). */}
+            <MenuButton icon="🎰" label="룰렛" onClick={() => handleClick(onOpenLuckyWheel)} color="from-fuchsia-500/20 to-purple-500/20" badge={wheelReady ? 1 : 0} />
             {onOpenBattlePass && (
               <MenuButton icon="🎫" label="패스" onClick={() => handleClick(onOpenBattlePass)} color="from-emerald-500/20 to-green-500/20" />
             )}
@@ -321,10 +338,11 @@ export function MainMenu({
   );
 }
 
-function MenuButton({ icon, label, onClick, color }: { icon: string, label: string, onClick: () => void, color: string }) {
+function MenuButton({ icon, label, onClick, color, badge = 0 }: { icon: string, label: string, onClick: () => void, color: string, badge?: number }) {
   return (
     <motion.button
       onClick={onClick}
+      aria-label={label}
       className={`flex flex-col items-center justify-center gap-2 py-5 rounded-2xl border border-white/10 transition-all bg-gradient-to-br ${color} backdrop-blur-sm relative overflow-hidden group`}
       whileHover={{ scale: 1.05, borderColor: 'rgba(255,255,255,0.3)' }}
       whileTap={{ scale: 0.95 }}
@@ -337,6 +355,11 @@ function MenuButton({ icon, label, onClick, color }: { icon: string, label: stri
         {icon}
       </motion.span>
       <span className="text-sm font-bold text-gray-200 tracking-wide">{label}</span>
+      {badge > 0 && (
+        <span className="absolute top-2 right-2 min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-black flex items-center justify-center">
+          {badge > 9 ? '9+' : badge}
+        </span>
+      )}
       {/* Hover glow */}
       <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl" />
     </motion.button>

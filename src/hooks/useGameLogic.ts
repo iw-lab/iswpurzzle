@@ -24,8 +24,10 @@ import {
   computeDropDistance,
   findFusionGroups,
   isBoardEmpty,
+  matchKeyOf,
 } from "../engine/board";
 import { getZenDropSpeed } from "../engine/difficulty";
+import { equivalenceSummary } from "../constants/mathContent";
 import { pick } from "../engine/rng";
 
 // 특수 블록 효과 처리
@@ -108,7 +110,7 @@ function processSpecialBlockEffects(
             const targetBlock = newBoard[y][x];
             if (
               targetBlock &&
-              targetBlock.color === block.color &&
+              matchKeyOf(targetBlock) === matchKeyOf(block) &&
               !clearedBlocks.includes(targetBlock)
             ) {
               if (targetBlock.specialType === "frozen" && isProtected(x, y)) {
@@ -344,6 +346,8 @@ export function useGameLogic() {
     { x: number; y: number; color: string }[]
   >([]);
   const [chainEffects, setChainEffects] = useState<number>(0);
+  /** 수학 모드 융합 피드백: "1/2 = 0.5 = 50%". 학습이 일어나는 지점이다. */
+  const [mathFeedback, setMathFeedback] = useState<string | null>(null);
   const [specialEffects, setSpecialEffects] = useState<SpecialEffect[]>([]);
 
   const dropIntervalRef = useRef<number | null>(null);
@@ -428,6 +432,13 @@ export function useGameLogic() {
       }
 
       setFusionEffects(effects);
+
+      // 수학 모드: 방금 터진 덩어리가 어떤 값이었는지 표기를 모아 보여준다.
+      // "1/2와 50%가 같은 값"이라는 사실을 융합 순간에 확인시키는 게 이 모드의 핵심이다.
+      if (useGameStore.getState().gameMode === "math") {
+        const key = blocksToRemove.find((b) => b.matchKey)?.matchKey;
+        if (key) setMathFeedback(equivalenceSummary(key));
+      }
 
       // 특수 블록 효과 처리
       const specialResult = processSpecialBlockEffects(
@@ -671,6 +682,7 @@ export function useGameLogic() {
     } finally {
       setChainEffects(0);
       setIsProcessingFusion(false);
+      window.setTimeout(() => setMathFeedback(null), 1400);
       processingRef.current = false;
       // 주의: 여기서 spawnBlock 호출하지 않음!
       // 게임 루프가 다음 틱에서 블록 없음을 감지하고 스폰함
@@ -754,7 +766,15 @@ export function useGameLogic() {
         return;
       }
 
-      // 3) 융합 그룹 없음 → 새 블록 스폰
+      // 3) 대기 중인 쓰레기 줄이 있으면 여기서 삽입한다.
+      //    보드가 완전히 정착한 시점(낙하 블록 없음 + 융합 그룹 없음 + 처리 중 아님)
+      //    이라야 연쇄의 workingBoard와 충돌하지 않는다(gameStore.placeBlock 주석 참조).
+      if (state.garbagePending > 0 && state.gameMode !== "puzzle") {
+        state.addGarbageRows(state.garbagePending);
+        return;
+      }
+
+      // 4) 융합 그룹 없음 → 새 블록 스폰
       state.spawnBlock();
     };
 
@@ -801,6 +821,7 @@ export function useGameLogic() {
     fusionEffects,
     chainEffects,
     specialEffects,
+    mathFeedback,
     getGhostPosition,
     dropSpeed,
   };

@@ -24,6 +24,17 @@ export function isBoardEmpty(board: GameBoard): boolean {
   return true;
 }
 
+/**
+ * 융합 판정에 쓰는 키.
+ *
+ * 기본 모드에서는 색이 곧 키다. 수학 모드에서는 동치류 id가 들어와서
+ * 표기가 달라도(1/2 · 0.5 · 50%) 같은 키로 묶인다 — 융합 규칙 자체가 학습 목표다.
+ * 매칭을 판단하는 모든 코드는 block.color가 아니라 이 함수를 거쳐야 한다.
+ */
+export function matchKeyOf(block: Block): string {
+  return block.matchKey ?? block.color;
+}
+
 export function inBounds(x: number, y: number): boolean {
   return (
     x >= 0 && x < BOARD_CONFIG.COLUMNS && y >= 0 && y < BOARD_CONFIG.ROWS
@@ -32,7 +43,14 @@ export function inBounds(x: number, y: number): boolean {
 
 /**
  * 4개 이상 인접(상하좌우) 동색 그룹 탐색.
- * stone은 매칭 대상 아님, rainbow는 어떤 색과도 매칭되나 시작점은 되지 않는다.
+ * stone은 매칭 대상 아님. rainbow는 어떤 색과도 매칭된다.
+ *
+ * rainbow가 탐색 시작점이 될 수 있는 이유(2026-08-20 수정):
+ * 예전에는 시작점에서 제외했는데, 그러면 **무지개끼리만 인접한 덩어리가
+ * 영원히 남는다**(실측: 무지개 4개를 나란히 놓으면 보드에 박제됨).
+ * targetColor가 rainbow일 때 BFS는 rainbow만 수집하므로, 시작점으로 허용해도
+ * 다른 색을 끌어들이지 않는다 — 무지개 4개 이상만 자기들끼리 융합된다.
+ * 일반 색이 먼저 스캔되면 기존대로 rainbow를 와일드카드로 흡수한다.
  */
 export function findFusionGroups(board: GameBoard): Block[][] {
   const MIN_BLOCKS = FUSION_CONFIG.MIN_BLOCKS_TO_FUSE;
@@ -46,9 +64,8 @@ export function findFusionGroups(board: GameBoard): Block[][] {
       const startBlock = board[startY]?.[startX];
       if (!startBlock) continue;
       if (startBlock.specialType === "stone") continue;
-      if (startBlock.color === "rainbow") continue;
 
-      const targetColor = startBlock.color;
+      const targetKey = matchKeyOf(startBlock);
       const connected: Block[] = [];
       const localVisited = new Set<string>();
       const queue: [number, number][] = [[startX, startY]];
@@ -62,7 +79,7 @@ export function findFusionGroups(board: GameBoard): Block[][] {
         const block = board[cy]?.[cx];
         if (!block) continue;
         if (block.specialType === "stone") continue;
-        if (block.color !== targetColor && block.color !== "rainbow") continue;
+        if (matchKeyOf(block) !== targetKey && block.color !== "rainbow") continue;
 
         localVisited.add(cellKey);
         connected.push({ ...block, x: cx, y: cy });

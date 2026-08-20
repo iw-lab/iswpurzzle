@@ -4,6 +4,7 @@ import confetti from "canvas-confetti";
 import { useGameStore } from "../../stores/gameStore";
 import { useUserStore } from "../../stores/userStore";
 import { useAudio } from "../../hooks/useAudio";
+import { FEATURES } from '../../constants/features';
 import {
   submitScore,
   getPlayerId,
@@ -333,7 +334,8 @@ export function GameOverScreen({
                            flex items-center justify-center gap-2 shadow-lg shadow-green-600/20"
                 onClick={onContinue}
               >
-                <span>광고 보고 이어하기</span>
+                {/* 광고 SDK가 없으면 '광고 보고'라는 문구가 거짓말이 된다 — 이어하기는 그대로 동작한다. */}
+                <span>{FEATURES.rewardedAds ? "광고 보고 이어하기" : "이어하기"}</span>
                 <span className="text-xs opacity-60 bg-white/15 px-2 py-0.5 rounded-full">
                   {3 - continues}회 남음
                 </span>
@@ -362,7 +364,9 @@ export function GameOverScreen({
               메인 메뉴
             </button>
 
-            {/* 점수 2배 */}
+            {/* 점수 2배 — 광고 SDK 연동 전까지 감춘다.
+                예전에는 눌러도 효과음만 나고 점수는 그대로였다(순수 껍데기). */}
+            {FEATURES.rewardedAds && (
             <button
               className="w-full py-3 rounded-xl font-bold text-white text-sm
                          bg-gradient-to-r from-amber-500 to-orange-600
@@ -374,6 +378,7 @@ export function GameOverScreen({
               <span className="text-base">x2</span>
               <span>광고 보고 점수 2배</span>
             </button>
+            )}
           </motion.div>
 
           {/* 랭킹 등록 */}
