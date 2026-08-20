@@ -378,13 +378,18 @@ export const Block = memo(function Block({
         <div
           className="absolute inset-0 flex items-center justify-center pointer-events-none select-none"
           style={{
-            fontSize: Math.max(9, Math.round(size * (label.length > 3 ? 0.3 : 0.38))),
+            // 글자 수에 따라 줄인다. NEXT 미리보기처럼 작은 셀에서 "0.75"(4자)가
+            // 셀 밖으로 삐져나가 잘리던 문제 때문에 하한을 두지 않고 비율로만 잡는다.
+            fontSize: Math.round(
+              size * (label.length >= 4 ? 0.26 : label.length === 3 ? 0.32 : 0.42),
+            ),
             fontWeight: 900,
             lineHeight: 1,
             color: "#ffffff",
             textShadow:
               "0 1px 0 rgba(0,0,0,0.85), 0 -1px 0 rgba(0,0,0,0.85), 1px 0 0 rgba(0,0,0,0.85), -1px 0 0 rgba(0,0,0,0.85)",
-            letterSpacing: "-0.02em",
+            letterSpacing: "-0.03em",
+            whiteSpace: "nowrap",
           }}
         >
           {label}

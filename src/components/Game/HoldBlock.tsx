@@ -5,19 +5,24 @@ import { Block } from './Block';
 
 interface HoldBlockProps {
   cellSize?: number;
+  /** 모바일에서 세로 공간을 아끼려면 가로로 눕힌다(NextBlockPreview와 동일한 이유). */
+  orientation?: 'vertical' | 'horizontal';
 }
 
-export function HoldBlock({ cellSize = 24 }: HoldBlockProps) {
+export function HoldBlock({ cellSize = 24, orientation = 'vertical' }: HoldBlockProps) {
+  const horizontal = orientation === 'horizontal';
   const { holdBlock, holdSpecialType, canHold, holdPiece } = useGameStore();
 
   return (
     <div
-      className={`glass-panel rounded-xl p-3 flex flex-col items-center min-w-[60px] transition-colors duration-300 ${
+      className={`glass-panel rounded-xl flex items-center transition-colors duration-300 ${
+        horizontal ? 'flex-row gap-2 px-2 py-1.5' : 'flex-col p-3 min-w-[60px]'
+      } ${
         canHold ? 'border-white/20' : 'border-red-500/30 bg-red-900/10'
       }`}
     >
-      <h3 className="text-[10px] font-bold text-gray-400 mb-2 tracking-widest text-center">HOLD</h3>
-      <div className="flex items-center justify-center min-h-[40px] relative">
+      <h3 className={`text-[10px] font-bold text-gray-400 tracking-widest text-center ${horizontal ? 'mb-0' : 'mb-2'}`}>HOLD</h3>
+      <div className={`flex items-center justify-center relative ${horizontal ? '' : 'min-h-[40px]'}`}>
         {holdBlock ? (
           <motion.div
             key={holdBlock}
@@ -40,9 +45,11 @@ export function HoldBlock({ cellSize = 24 }: HoldBlockProps) {
           />
         )}
       </div>
-      <div className="mt-2 text-[9px] text-gray-500 font-mono text-center bg-black/20 px-1.5 rounded">
-        {canHold ? 'SHIFT' : 'LOCKED'}
-      </div>
+      {!horizontal && (
+        <div className="mt-2 text-[9px] text-gray-500 font-mono text-center bg-black/20 px-1.5 rounded">
+          {canHold ? 'SHIFT' : 'LOCKED'}
+        </div>
+      )}
     </div>
   );
 }

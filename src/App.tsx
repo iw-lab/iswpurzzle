@@ -9,6 +9,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useGameStore } from "./stores/gameStore";
 import { useUserStore } from "./stores/userStore";
 import { useAudio, useControls } from "./hooks";
+import { useBoardMetrics } from "./hooks/useBoardMetrics";
 import { GameMode, ThemeColors } from "./types";
 import { getDropSpeed, getModeConfig, getModeTimeLimit } from "./constants";
 import { THEMES } from "./constants/shopItems";
@@ -129,6 +130,8 @@ function App() {
   const { playSound, startBGM, stopBGM, setFeverTrack } = useAudio();
   // 키보드 입력 단일 계층 (DAS/ARR) — 데드코드였던 useControls를 정식 배선(#15)
   useControls();
+  // 모바일에서 보드 주변 UI 폭을 보드와 일치시키기 위해 같은 계산을 공유한다.
+  const { boardWidth } = useBoardMetrics();
   const prevLevelRef = useRef(level);
 
   // 스트릭 업데이트
@@ -388,7 +391,9 @@ function App() {
             if (gameStatus === "playing") pauseGame();
             else resumeGame();
           }}
-          className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-xl backdrop-blur-md active:scale-95 transition-transform"
+          /* 터치 타겟은 rem이 아니라 px로 고정한다 — 이 앱은 루트 폰트가 14px이라
+             w-11(2.75rem)이 38.5px로 줄어든다. 초등학생 손가락 기준 44px 유지. */
+          className="min-w-[44px] min-h-[44px] rounded-xl bg-white/10 flex items-center justify-center text-xl backdrop-blur-md active:scale-95 transition-transform"
         >
           {gameStatus === "paused" ? "▶" : "⏸"}
         </button>
@@ -451,7 +456,9 @@ function App() {
             playSound("buttonClick");
             setShowSettings(true);
           }}
-          className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-xl backdrop-blur-md active:scale-95 transition-transform"
+          /* 터치 타겟은 rem이 아니라 px로 고정한다 — 이 앱은 루트 폰트가 14px이라
+             w-11(2.75rem)이 38.5px로 줄어든다. 초등학생 손가락 기준 44px 유지. */
+          className="min-w-[44px] min-h-[44px] rounded-xl bg-white/10 flex items-center justify-center text-xl backdrop-blur-md active:scale-95 transition-transform"
         >
           ⚙️
         </button>
@@ -466,16 +473,24 @@ function App() {
 
         {/* [중앙 패널] 게임 보드 */}
         <div className="flex flex-col items-center relative z-20">
-          {/* 모바일: 홀드 + 다음 블록을 보드 위에 배치 */}
-          <div className="flex md:hidden justify-between items-end w-full max-w-[280px] mb-1 px-1">
-            <HoldBlock cellSize={18} />
-            <NextBlockPreview cellSize={18} maxBlocks={3} />
+          {/* 모바일: 홀드 + 다음 블록을 보드 위에 배치.
+              ⚠️ 폭을 보드와 똑같이 잡는다 — 예전에는 max-w-[280px]로 따로 박아 둬서
+              보드 폭이 그보다 좁으면 NEXT 패널이 보드 밖으로 튀어나왔다. */}
+          <div
+            className="flex md:hidden justify-between items-end mb-1"
+            style={{ width: boardWidth }}
+          >
+            <HoldBlock cellSize={22} orientation="horizontal" />
+            <NextBlockPreview cellSize={22} maxBlocks={3} orientation="horizontal" />
           </div>
 
           <GameBoard />
 
           {/* 모바일 스코어 바 (보드 바로 아래) */}
-          <div className="md:hidden flex justify-around w-full max-w-[280px] mt-1 py-1 px-2 bg-black/30 rounded-lg">
+          <div
+            className="md:hidden flex justify-around mt-1 py-1 px-2 bg-black/30 rounded-lg"
+            style={{ width: boardWidth }}
+          >
             <div className="text-center">
               <div className="text-[8px] text-gray-500 font-bold">SCORE</div>
               <div className="text-sm font-mono font-bold text-white leading-none">
@@ -501,7 +516,7 @@ function App() {
           </div>
 
           {/* 파워업 바 */}
-          <div className="mt-1 w-full max-w-[300px]">
+          <div className="mt-1" style={{ width: boardWidth }}>
             <PowerUpBar />
           </div>
         </div>

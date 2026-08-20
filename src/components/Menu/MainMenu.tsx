@@ -101,7 +101,7 @@ export function MainMenu({
       <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-20">
         <button
           onClick={() => handleClick(onOpenSettings)}
-          className="w-10 h-10 rounded-full bg-white/5 backdrop-blur-md flex items-center justify-center border border-white/10 hover:bg-white/10 transition-colors"
+          className="w-11 h-11 rounded-full bg-white/5 backdrop-blur-md flex items-center justify-center border border-white/10 hover:bg-white/10 transition-colors"
         >
           ⚙️
         </button>

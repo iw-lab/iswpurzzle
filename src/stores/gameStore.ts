@@ -141,6 +141,19 @@ function getSpecialType(level: number, blocksPlaced: number): SpecialBlockType {
   return "normal";
 }
 
+/**
+ * 조각 크기의 단일 진실.
+ *
+ * ⚠️ 퍼즐 모드는 조각이 1칸이라는 예외가 startGame·generateNextBlocks 에는
+ * 있었는데 spawnBlock 에만 빠져 있었다. 퍼즐 모드가 level 을 1로 고정해서
+ * (checkLevelUp 이 early-return) 지금까지는 우연히 값이 맞았을 뿐이고,
+ * next 큐를 조각 단위 청크로 바꾼 뒤로는 이 값이 큐 소비량을 결정한다 —
+ * 어긋나면 조각마다 색이 흩어져 "블록이 안 터진다"가 되돌아온다.
+ */
+export function getPieceSize(mode: GameMode, level: number): number {
+  return mode === "puzzle" ? 1 : getFallingBlockCount(level);
+}
+
 /** 수학 모드에서 조각 한 개 분량의 (색·표기)를 만든다. */
 function buildMathPiece(
   level: number,
@@ -189,7 +202,7 @@ function generateNextBlocks(
   const colors: BlockColor[] = [];
   const specialTypes: SpecialBlockType[] = [];
   const labels: (string | null)[] = [];
-  const pieceSize = mode === "puzzle" ? 1 : getFallingBlockCount(level);
+  const pieceSize = getPieceSize(mode, level);
 
   while (colors.length < minLength) {
     const isMath = mode === "math";
@@ -413,7 +426,7 @@ export const useGameStore = create<GameStore>()(
         const missionProgress = refreshMissionsForToday(get().missionProgress);
 
         // 퍼즐 모드는 블록 1개씩만 떨어짐
-        const blockCount = mode === "puzzle" ? 1 : getFallingBlockCount(level);
+        const blockCount = getPieceSize(mode, level);
         const { colors, specialTypes, labels } = generateNextBlocks(
           5 + blockCount,
           level,
@@ -591,7 +604,7 @@ export const useGameStore = create<GameStore>()(
         if (gameStatus !== "playing") return;
 
         {
-          const blockCount = getFallingBlockCount(level);
+          const blockCount = getPieceSize(gameMode, level);
 
           // nextBlocks가 부족하면 조각 단위 청크로 보충한다.
           // (칸별 독립 난수 → 조각 내 2색 상한으로 교체. difficulty.ts 참조)
@@ -1584,7 +1597,7 @@ export const useGameStore = create<GameStore>()(
         const { level } = get();
         const newLevel = level + 1;
         const newObjectives = generateLevelObjectives(newLevel);
-        const blockCount = getFallingBlockCount(newLevel);
+        const blockCount = getPieceSize("challenge", newLevel);
         const { colors, specialTypes, labels } = generateNextBlocks(
           5 + blockCount,
           newLevel,

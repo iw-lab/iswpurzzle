@@ -171,13 +171,17 @@ export function GameOverScreen({
 
   return (
     <motion.div
-      className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
     >
       <motion.div
-        className="relative w-full max-w-md overflow-hidden rounded-3xl"
+        /* ⚠️ max-h + overflow-y-auto 가 필요하다.
+           예전에는 overflow-hidden 만 걸려 있어서, 세로가 짧은 화면(390×844)에서
+           내용이 뷰포트를 넘으면 위아래로 잘려 나가고 버튼들이 서로 겹쳐 보였다
+           (이어하기/다시 하기/메인 메뉴가 한 덩어리로 뭉갬 — 실측). */
+        className="relative w-full max-w-md max-h-[92dvh] overflow-y-auto overflow-x-hidden rounded-3xl"
         initial={{ scale: 0.8, y: 60 }}
         animate={{ scale: 1, y: 0 }}
         transition={{ delay: 0.15, type: "spring", damping: 20 }}

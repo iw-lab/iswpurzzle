@@ -155,7 +155,7 @@ export function QuestScreen({ onClose }: QuestScreenProps) {
         <button
           onClick={onClose}
           aria-label="뒤로"
-          className="w-9 h-9 rounded-lg bg-white/10 text-white text-lg"
+          className="w-11 h-11 rounded-lg bg-white/10 text-white text-lg"
         >
           ←
         </button>

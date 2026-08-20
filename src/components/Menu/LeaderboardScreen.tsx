@@ -16,7 +16,7 @@ interface LeaderboardScreenProps {
 }
 
 /** 랭킹을 매기는 모드. 젠(게임오버 없음)·챌린지는 점수 경쟁 대상이 아니다. */
-const RANKED_MODES = (['classic', 'survival', 'daily', 'puzzle'] as const).filter(
+const RANKED_MODES = (['classic', 'math', 'survival', 'daily', 'puzzle'] as const).filter(
   (m) => m in GAME_MODE_CONFIG,
 );
 
@@ -123,7 +123,7 @@ export function LeaderboardScreen({ onClose }: LeaderboardScreenProps) {
         <div className="flex items-center justify-between mb-4">
           <button
             onClick={onClose}
-            className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white"
+            className="w-11 h-11 rounded-full bg-white/10 flex items-center justify-center text-white"
           >
             ←
           </button>
@@ -132,7 +132,7 @@ export function LeaderboardScreen({ onClose }: LeaderboardScreenProps) {
           </h1>
           <button
             onClick={loadRankings}
-            className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white"
+            className="w-11 h-11 rounded-full bg-white/10 flex items-center justify-center text-white"
           >
             🔄
           </button>

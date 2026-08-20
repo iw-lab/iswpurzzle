@@ -57,7 +57,7 @@ export function HelpModal({ onClose }: HelpModalProps) {
           <h2 className="text-xl font-bold text-white">📖 게임 도움말</h2>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30"
+            className="w-11 h-11 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30"
           >
             ✕
           </button>

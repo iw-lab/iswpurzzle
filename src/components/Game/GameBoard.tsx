@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../stores/gameStore';
 import { useUserStore } from '../../stores/userStore';
 import { useGameLogic, useTouchGestures, useAudio } from '../../hooks';
+import { useBoardMetrics } from '../../hooks/useBoardMetrics';
 import { Block } from './Block';
-import { BOARD_CONFIG, BLOCK_COLOR_MAP } from '../../constants';
+import { BLOCK_COLOR_MAP } from '../../constants';
 
 interface GameBoardProps {
   cellSize?: number;
@@ -29,23 +30,9 @@ export function GameBoard({ cellSize: propCellSize }: GameBoardProps) {
   const { settings } = useUserStore();
   const { fusionEffects, chainEffects, specialEffects, mathFeedback, getGhostPosition } = useGameLogic();
 
-  // 셀 크기 동적 계산 (모바일 대응 강화)
-  const cellSize = useMemo(() => {
-    if (propCellSize) return propCellSize;
-    if (typeof window !== 'undefined') {
-      const isMobile = window.innerWidth < 768;
-      const maxWidth = Math.min(window.innerWidth - 32, 450);
-      const maxHeight = window.innerHeight - 200;
-      const widthBasedSize = Math.floor(maxWidth / BOARD_CONFIG.COLUMNS);
-      const heightBasedSize = Math.floor(maxHeight / BOARD_CONFIG.ROWS);
+  // 셀 크기·보드 폭은 useBoardMetrics가 단일 진실이다(App의 모바일 줄과 공유).
+  const { cellSize, boardWidth, boardHeight } = useBoardMetrics(propCellSize);
 
-      return Math.min(widthBasedSize, heightBasedSize, isMobile ? 38 : 45);
-    }
-    return 40;
-  }, [propCellSize]);
-
-  const boardWidth = cellSize * BOARD_CONFIG.COLUMNS;
-  const boardHeight = cellSize * BOARD_CONFIG.ROWS;
   const ghostPosition = useMemo(() => (settings.showGhostBlock && currentBlock ? getGhostPosition() : null), [currentBlock, settings.showGhostBlock, getGhostPosition]);
 
   // 게임 상태에 따른 오디오 제어

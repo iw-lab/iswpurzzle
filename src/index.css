@@ -308,21 +308,33 @@ body {
    BUTTON STYLES - Premium
    ======================================== */
 
-button {
-  border: none;
-  outline: none;
-  background: transparent;
-  padding: 0;
-  margin: 0;
-  font-family: inherit;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  user-select: none;
-}
+/**
+ * ⚠️ 반드시 @layer base 안에 있어야 한다.
+ *
+ * `@import "tailwindcss"` 는 theme/base/components/utilities 레이어를 만든다.
+ * CSS 캐스케이드 규칙상 **레이어에 속하지 않은 규칙은 모든 레이어를 이긴다** —
+ * 그래서 이 리셋이 레이어 밖에 있던 동안 `py-3.5` · `bg-gradient-*` 같은
+ * 유틸리티가 앱의 **모든 버튼에서 통째로 무시됐다**(2026-08-20 실측:
+ * 5개 화면 45개 버튼 전부 padding 0px, 터치 타겟이 18px까지 줄어듦).
+ * 게임오버 화면에서 버튼들이 서로 겹쳐 보이던 것도 같은 원인이다.
+ */
+@layer base {
+  button {
+    border: none;
+    outline: none;
+    background: transparent;
+    padding: 0;
+    margin: 0;
+    font-family: inherit;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
 
-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
+  button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
 }
 
 .btn-press:active {
