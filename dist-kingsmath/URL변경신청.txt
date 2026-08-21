@@ -1,0 +1,22 @@
+안녕하세요, 발주자 심선생입니다.
+기존에 등재해 주신 게임 두 개의 주소 변경을 요청드립니다.
+
+▶ 변경 사유
+학교 교육청 네트워크에서 github.io 도메인이 차단되어(ERR_TIMED_OUT)
+교실에서 접속이 되지 않는다는 제보를 받았습니다.
+누구나 사이트를 올릴 수 있는 도메인이라 유해차단 필터에 통째로
+걸리는 것으로 보입니다. 이미 등재해 주신 제 다른 게임들과 동일하게
+Cloudflare Pages로 옮겼습니다.
+
+▶ 변경 1 — 크로마폴 (ChromaFall)
+   기존: https://iw-lab.github.io/iswpurzzle/
+   변경: https://chromafall.pages.dev
+
+▶ 변경 2 — 구구성 수호대 (Gugu Guardians)
+   기존: https://iw-lab.github.io/gugu-guardians/
+   변경: https://gugu-guardians.pages.dev
+
+게임 내용·썸네일·태그·학년 정보는 기존과 동일하며 주소만 바뀝니다.
+기존 주소도 당분간 살려 두므로 링크가 깨지지는 않습니다.
+
+번거롭게 해 드려 죄송합니다. 검토 부탁드립니다. 감사합니다.
