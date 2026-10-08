@@ -178,7 +178,7 @@ export function MainMenu({
                   textShadow: '0 0 40px rgba(0,200,255,0.5), 0 0 80px rgba(100,100,255,0.3)',
                 }}
               >
-                CHROMA
+                분수 블록
               </motion.span>
               <br />
               <motion.span
@@ -195,7 +195,7 @@ export function MainMenu({
                 }}
                 transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
               >
-                FALL
+                팡!
               </motion.span>
             </h1>
           </motion.div>
@@ -205,7 +205,7 @@ export function MainMenu({
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6, duration: 0.5 }}
           >
-            ✦ Color Fusion Puzzle ✦
+            ✦ 떨어지는 블록 수학 퍼즐 ✦
           </motion.p>
         </div>
 

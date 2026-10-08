@@ -467,9 +467,9 @@ export function GameOverScreen({
             <button
               className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
               onClick={() => {
-                const text = `ChromaFall에서 ${formatScore(score)}점을 달성했어요! 레벨 ${level}, 최대 ${maxCombo} 콤보!`;
+                const text = `분수 블록 팡에서 ${formatScore(score)}점을 달성했어요! 레벨 ${level}, 최대 ${maxCombo} 콤보!`;
                 if (navigator.share) {
-                  navigator.share({ title: "ChromaFall", text });
+                  navigator.share({ title: "분수 블록 팡", text });
                 } else {
                   navigator.clipboard.writeText(text);
                   alert("점수가 클립보드에 복사되었습니다!");
