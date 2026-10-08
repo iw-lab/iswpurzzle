@@ -1264,3 +1264,20 @@ body {
     box-shadow: 0 0 25px rgba(0, 245, 255, 0.5), 0 0 40px rgba(168, 85, 247, 0.4);
   }
 }
+/* ───────────────────────────────────────────────────────────────────────────
+   폰 가벼운 모드 — <html class="lite"> (src/constants/perf.ts 가 터치 기기·움직임 줄이기에서 켠다)
+   2026-10-08 사용자 «모바일에서 왜 깜빡거리지?». 폰 GPU 는 흐림 레이어 위에서 계속 움직이는 장식을
+   매 프레임 다시 구우며 프레임을 놓친다 → 깜빡임. 장식 무한 반복은 한 번만, 뒤 흐림은 끈다.
+   (로딩 스피너는 멈추면 «멈춘 앱»처럼 보이므로 뺀다.)
+   ─────────────────────────────────────────────────────────────────────────── */
+html.lite *:not([class*="spin"]),
+html.lite *:not([class*="spin"])::before,
+html.lite *:not([class*="spin"])::after {
+  animation-iteration-count: 1 !important;
+}
+html.lite * {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+/* 흐림이 빠진 반투명 판은 뒤가 비쳐 지저분해진다 — 조금 더 불투명하게 */
+html.lite .glass-panel { background: rgba(16, 18, 34, 0.92) !important; }

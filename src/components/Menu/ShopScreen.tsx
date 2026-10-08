@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { LOOP } from '../../constants/perf';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUserStore } from '../../stores/userStore';
 import { useAudio } from '../../hooks/useAudio';
@@ -175,10 +176,10 @@ export function ShopScreen({ onClose }: ShopScreenProps) {
                                 : undefined
                               }
                               transition={
-                                style.animation === 'pulse' ? { duration: 1.2, repeat: Infinity }
-                                : style.animation === 'fire' ? { duration: 0.4, repeat: Infinity }
-                                : style.animation === 'ice' ? { duration: 2.5, repeat: Infinity }
-                                : style.animation === 'electric' ? { duration: 0.15, repeat: Infinity }
+                                style.animation === 'pulse' ? { duration: 1.2, repeat: LOOP }
+                                : style.animation === 'fire' ? { duration: 0.4, repeat: LOOP }
+                                : style.animation === 'ice' ? { duration: 2.5, repeat: LOOP }
+                                : style.animation === 'electric' ? { duration: 0.15, repeat: LOOP }
                                 : undefined
                               }
                             >
@@ -218,7 +219,7 @@ export function ShopScreen({ onClose }: ShopScreenProps) {
                                   className="absolute inset-0"
                                   style={{ background: 'linear-gradient(110deg, transparent 25%, rgba(255,255,255,0.6) 50%, transparent 75%)' }}
                                   animate={{ x: ['-150%', '250%'] }}
-                                  transition={{ duration: 2, repeat: Infinity, ease: 'linear', repeatDelay: 0.5 }}
+                                  transition={{ duration: 2, repeat: LOOP, ease: 'linear', repeatDelay: 0.5 }}
                                 />
                               )}
                             </motion.div>

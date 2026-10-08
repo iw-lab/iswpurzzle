@@ -1,4 +1,5 @@
 import React from 'react';
+import { LOOP } from '../../constants/perf';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../stores/gameStore';
 import { GRAVITY_ICONS, FEVER_CONFIG, BLOCK_COLOR_MAP, getModeConfig, getDropSpeed } from '../../constants';
@@ -51,7 +52,7 @@ export function ScoreBoard() {
         <motion.div
           className={`glass-panel p-4 rounded-xl text-center relative overflow-hidden ${remainingTime <= 30 ? 'border-2 border-red-500 bg-red-900/30' : ''}`}
           animate={remainingTime <= 30 ? { scale: [1, 1.02, 1] } : {}}
-          transition={{ duration: 0.5, repeat: Infinity }}
+          transition={{ duration: 0.5, repeat: LOOP }}
         >
           <p className={`text-xs font-bold tracking-wider mb-1 ${remainingTime <= 30 ? 'text-red-400' : 'text-orange-400'}`}>
             ⏰ TIME REMAINING
@@ -59,7 +60,7 @@ export function ScoreBoard() {
           <motion.p
             className={`text-3xl font-mono font-bold ${remainingTime <= 30 ? 'text-red-400' : remainingTime <= 60 ? 'text-orange-400' : 'text-white'}`}
             animate={remainingTime <= 10 ? { scale: [1, 1.1, 1] } : {}}
-            transition={{ duration: 0.3, repeat: Infinity }}
+            transition={{ duration: 0.3, repeat: LOOP }}
           >
             {formatTime(remainingTime)}
           </motion.p>
@@ -211,7 +212,7 @@ export function ScoreBoard() {
             <motion.p
               className="text-center text-sm text-orange-300 font-bold"
               animate={{ scale: [1, 1.1, 1] }}
-              transition={{ duration: 0.5, repeat: Infinity }}
+              transition={{ duration: 0.5, repeat: LOOP }}
             >
               🔥 x3 SCORE MULTIPLIER! 🔥
             </motion.p>
@@ -224,7 +225,7 @@ export function ScoreBoard() {
           <motion.p
             className="text-center text-[10px] text-orange-400 mt-1"
             animate={{ opacity: [0.5, 1, 0.5] }}
-            transition={{ duration: 1, repeat: Infinity }}
+            transition={{ duration: 1, repeat: LOOP }}
           >
             Almost there! Keep combo going!
           </motion.p>

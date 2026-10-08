@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { LOOP } from '../../constants/perf';
 import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { grantReward } from '../../stores/rewards';
@@ -79,7 +80,7 @@ export function DailyRewardPopup({ onClose }: DailyRewardPopupProps) {
                     : 'bg-gray-800'
                 }`}
                 animate={isToday && canClaim ? { scale: [1, 1.05, 1] } : {}}
-                transition={{ repeat: Infinity, duration: 1.5 }}
+                transition={{ repeat: LOOP, duration: 1.5 }}
               >
                 <p className="text-xs text-gray-400">Day</p>
                 <p className="text-lg font-bold text-white">{day}</p>

@@ -1,4 +1,5 @@
 import React, { memo, useMemo } from "react";
+import { LOOP } from '../../constants/perf';
 import { motion } from "framer-motion";
 import { BlockColor, SpecialBlockType } from "../../types";
 import {
@@ -189,7 +190,7 @@ export const Block = memo(function Block({
   const getAnimationTransition = (): Record<string, unknown> => {
     const base = {
       scale: { duration: isFusing ? 0.3 : 0.2 },
-      rotate: { duration: 3, repeat: Infinity, ease: "linear" as const },
+      rotate: { duration: 3, repeat: LOOP, ease: "linear" as const },
     };
 
     switch (skinStyle.animation) {
@@ -198,26 +199,26 @@ export const Block = memo(function Block({
           ...base,
           boxShadow: {
             duration: 1.5,
-            repeat: Infinity,
+            repeat: LOOP,
             ease: "easeInOut" as const,
           },
         };
       case "fire":
         return {
           ...base,
-          y: { duration: 0.3, repeat: Infinity, ease: "easeInOut" as const },
+          y: { duration: 0.3, repeat: LOOP, ease: "easeInOut" as const },
         };
       case "ice":
         return {
           ...base,
           opacity: {
             duration: 2,
-            repeat: Infinity,
+            repeat: LOOP,
             ease: "easeInOut" as const,
           },
         };
       case "electric":
-        return { ...base, x: { duration: 0.1, repeat: Infinity } };
+        return { ...base, x: { duration: 0.1, repeat: LOOP } };
       default:
         return base;
     }
@@ -297,7 +298,7 @@ export const Block = memo(function Block({
           animate={{ x: ["-100%", "200%"] }}
           transition={{
             duration: 2,
-            repeat: Infinity,
+            repeat: LOOP,
             ease: "linear",
             repeatDelay: 1,
           }}
@@ -313,7 +314,7 @@ export const Block = memo(function Block({
             borderRadius: skinStyle.borderRadius,
           }}
           animate={{ opacity: [0.5, 0.8, 0.5], scale: [1, 1.1, 1] }}
-          transition={{ duration: 0.5, repeat: Infinity }}
+          transition={{ duration: 0.5, repeat: LOOP }}
         />
       )}
 
@@ -339,7 +340,7 @@ export const Block = memo(function Block({
               `inset 0 0 5px ${blockColor}`,
             ],
           }}
-          transition={{ duration: 0.2, repeat: Infinity }}
+          transition={{ duration: 0.2, repeat: LOOP }}
         />
       )}
 
@@ -359,7 +360,7 @@ export const Block = memo(function Block({
             }}
             transition={{
               duration: 2,
-              repeat: Infinity,
+              repeat: LOOP,
               ease: "linear",
             }}
           />
@@ -405,7 +406,7 @@ export const Block = memo(function Block({
           }}
           transition={{
             duration: 1.5,
-            repeat: Infinity,
+            repeat: LOOP,
             ease: "easeInOut",
           }}
         >
@@ -442,7 +443,7 @@ export const Block = memo(function Block({
           }}
           transition={{
             duration: 1.5,
-            repeat: Infinity,
+            repeat: LOOP,
             ease: "easeInOut",
           }}
         />

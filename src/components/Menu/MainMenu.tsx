@@ -1,51 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { LOOP } from '../../constants/perf';
 import { motion, AnimatePresence } from 'framer-motion';
-import { seededRandom } from '../../engine/rng';
 
-// 배경 장식 — 모듈 로드 시 1회 고정 생성.
-// 렌더 중 Math.random을 호출하면 매 렌더마다 값이 바뀌어 애니메이션이 튀고,
-// React의 렌더 순수성 규칙도 위반한다.
-const BLOB_COLORS = ['#ff4757', '#3742fa', '#2ed573', '#ffa502'];
-const backgroundBlobs = (() => {
-  const rand = seededRandom(20260719);
-  return Array.from({ length: 15 }, (_, i) => ({
-    size: rand() * 100 + 50,
-    left: rand() * 100,
-    top: rand() * 100,
-    drift: rand() * 50 - 25,
-    duration: rand() * 10 + 10,
-    color: BLOB_COLORS[i % BLOB_COLORS.length],
-  }));
-})();
-
-// 🔴 폰에서 홈 화면이 반짝거린다는 신고. 재 보니 2초에 DOM 스타일 변경 2,941회 —
-//    그중 1,800회가 이 블롭들이었다(15개 x 60fps).
-//    문제는 개수가 아니라 **blur 필터를 켠 채로 움직였다**는 것이다.
-//    filter: blur(24px) 가 걸린 레이어는 위치·크기가 바뀔 때마다 GPU 가 흐림을
-//    다시 굽는다 — 캐시가 안 된다. 폰 GPU 에서는 그 재굽기가 프레임을 놓쳐 깜빡임이 된다.
-//    그래서 흐림을 **필터에서 그라디언트로** 옮긴다. 보이는 건 같고 비용은 0 이다.
-const blobBackground = (color: string) =>
-  `radial-gradient(circle, ${color}59 0%, ${color}2e 42%, ${color}00 72%)`;
-
-// 폰은 화면도 좁고 GPU 도 약하다. 같은 수를 띄우면 겹쳐서 더 어지럽기만 하다.
-// '움직임 줄이기'를 켠 사람에게는 아예 멈춰 둔다(접근성 설정이 곧 지시다).
-function useCalmBackground() {
-  const [state, setState] = useState({ count: 15, calm: false });
-  useEffect(() => {
-    const narrow = window.matchMedia('(max-width: 640px)');
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const apply = () =>
-      setState({ count: narrow.matches ? 7 : 15, calm: reduce.matches });
-    apply();
-    narrow.addEventListener('change', apply);
-    reduce.addEventListener('change', apply);
-    return () => {
-      narrow.removeEventListener('change', apply);
-      reduce.removeEventListener('change', apply);
-    };
-  }, []);
-  return state;
-}
+// 🔴 2026-10-08 배경 장식(움직이는 블롭)을 없앴다 — 사용자 «모바일에서 왜 깜빡거리지? UI 심플하게».
+//    8월에 흐림 필터를 그라디언트로 바꿨는데도 3초에 DOM 스타일 변경 ~2,900회가 남아(블롭 x·y·opacity 매 프레임)
+//    폰에선 여전히 반짝였다. 장식은 «안 움직이는 그라디언트 두 겹»으로 충분하다 — 움직임 0, 비용 0.
 import { useUserStore } from '../../stores/userStore';
 import { useAudio } from '../../hooks/useAudio';
 import { useGameStore } from '../../stores/gameStore';
@@ -86,8 +45,6 @@ export function MainMenu({
   const canSpinWheel = useUserStore((st) => st.canSpinWheel);
   const wheelReady = canSpinWheel();
   const [dailyRewardAvailable, setDailyRewardAvailable] = useState(false);
-  const { count: blobCount, calm } = useCalmBackground();
-  const blobs = backgroundBlobs.slice(0, blobCount);
 
   useEffect(() => {
     setDailyRewardAvailable(checkDailyRewardAvailable());
@@ -100,40 +57,10 @@ export function MainMenu({
 
   return (
     <div className="min-h-screen relative overflow-hidden flex flex-col items-center justify-center text-white bg-[#050510]">
-      {/* 배경 장식 애니메이션 */}
+      {/* 배경 — 정지 그라디언트(움직임 없음) */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-900/20 via-[#050510] to-[#050510]" />
-        {blobs.map((blob, i) => (
-          <motion.div
-            key={i}
-            className="absolute rounded-full will-change-transform"
-            style={{
-              background: blobBackground(blob.color),
-              width: blob.size,
-              height: blob.size,
-              opacity: 0.55,
-              left: `${blob.left}%`,
-              top: `${blob.top}%`,
-              // 자기만의 합성 레이어로 올린다 — 안 그러면 배경 전체가 같이 다시 그려진다
-              transform: 'translateZ(0)',
-            }}
-            animate={
-              calm
-                ? undefined
-                : {
-                    y: [0, -100],
-                    x: [0, blob.drift],
-                    // 🔴 scale 은 뺐다. 크기가 바뀌면 흐림 그라디언트를 매 프레임 다시 그린다.
-                    opacity: [0.5, 0.75, 0.5],
-                  }
-            }
-            transition={{
-              duration: blob.duration,
-              repeat: Infinity,
-              ease: 'easeInOut',
-            }}
-          />
-        ))}
+        <div className="absolute inset-0 bg-[radial-gradient(60%_40%_at_20%_15%,rgba(55,66,250,0.18),transparent_70%),radial-gradient(55%_35%_at_85%_80%,rgba(255,71,87,0.14),transparent_70%)]" />
       </div>
 
       {/* 상단바 */}
@@ -173,7 +100,7 @@ export function MainMenu({
                 animate={{
                   filter: ['hue-rotate(0deg)', 'hue-rotate(20deg)', 'hue-rotate(0deg)'],
                 }}
-                transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+                transition={{ duration: 4, repeat: LOOP, ease: 'easeInOut' }}
                 style={{
                   textShadow: '0 0 40px rgba(0,200,255,0.5), 0 0 80px rgba(100,100,255,0.3)',
                 }}
@@ -193,7 +120,7 @@ export function MainMenu({
                     '0 4px 8px rgba(0,0,0,0.5), 0 0 30px rgba(255,255,255,0.4)',
                   ]
                 }}
-                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                transition={{ duration: 2, repeat: LOOP, ease: 'easeInOut' }}
               >
                 팡!
               </motion.span>
@@ -235,7 +162,7 @@ export function MainMenu({
                   <motion.span
                     className="text-orange-400 flex items-center gap-1"
                     animate={{ scale: [1, 1.1, 1] }}
-                    transition={{ duration: 1.5, repeat: Infinity }}
+                    transition={{ duration: 1.5, repeat: LOOP }}
                   >
                     🔥 {streakInfo.currentStreak}일
                   </motion.span>
@@ -251,13 +178,13 @@ export function MainMenu({
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               animate={{ y: [0, -3, 0] }}
-              transition={{ y: { duration: 1, repeat: Infinity, ease: 'easeInOut' } }}
+              transition={{ y: { duration: 1, repeat: LOOP, ease: 'easeInOut' } }}
             >
               <span className="relative z-10">🎁 보상 받기</span>
               <motion.div
                 className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
                 animate={{ x: ['-100%', '200%'] }}
-                transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 1 }}
+                transition={{ duration: 1.5, repeat: LOOP, repeatDelay: 1 }}
               />
             </motion.button>
           )}
@@ -290,13 +217,13 @@ export function MainMenu({
             <motion.div
               className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent"
               animate={{ x: ['-100%', '200%'] }}
-              transition={{ duration: 2.5, repeat: Infinity, ease: 'linear' }}
+              transition={{ duration: 2.5, repeat: LOOP, ease: 'linear' }}
             />
             <span className="relative flex items-center justify-center gap-4">
               <motion.span
                 className="text-3xl"
                 animate={{ rotate: [0, -10, 10, 0] }}
-                transition={{ duration: 2, repeat: Infinity }}
+                transition={{ duration: 2, repeat: LOOP }}
               >
                 🎮
               </motion.span>
@@ -304,7 +231,8 @@ export function MainMenu({
             </span>
           </motion.button>
 
-          <div className="grid grid-cols-3 gap-4">
+          {/* 2026-10-08 «UI 심플하게»: 3+1(룰렛 혼자 한 줄) → 한 줄 4칸 */}
+          <div className="grid grid-cols-4 gap-2.5">
             <MenuButton icon="🛒" label="상점" onClick={() => handleClick(onOpenShop)} color="from-pink-500/20 to-rose-500/20" />
             <MenuButton icon="🏆" label="랭킹" onClick={() => handleClick(onOpenLeaderboard)} color="from-amber-500/20 to-yellow-500/20" />
             <MenuButton icon="📋" label="퀘스트" onClick={() => handleClick(onOpenQuests)} color="from-cyan-500/20 to-blue-500/20" badge={claimableQuests} />
@@ -382,24 +310,24 @@ function MenuButton({ icon, label, onClick, color, badge = 0 }: { icon: string, 
     <motion.button
       onClick={onClick}
       aria-label={label}
-      className={`flex flex-col items-center justify-center gap-2 py-5 rounded-2xl border border-white/10 transition-all bg-gradient-to-br ${color} backdrop-blur-sm relative overflow-hidden group`}
+      className={`flex flex-col items-center justify-center gap-1.5 py-3.5 rounded-2xl border border-white/10 transition-all bg-gradient-to-br ${color} backdrop-blur-sm relative overflow-hidden group`}
       whileHover={{ scale: 1.05, borderColor: 'rgba(255,255,255,0.3)' }}
       whileTap={{ scale: 0.95 }}
     >
       {/* 🔴 drop-shadow(필터)를 얹은 채로 움직이면 2px 흔들리자고 매 프레임 그림자를
           다시 굽는다. 필터는 안 움직이는 껍데기에 두고, 안쪽만 움직인다. */}
-      <span className="text-3xl drop-shadow-lg">
+      <span className="text-2xl drop-shadow-lg">
         <motion.span
           className="inline-block"
           animate={{ y: [0, -2, 0] }}
-          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+          transition={{ duration: 2, repeat: LOOP, ease: 'easeInOut' }}
         >
           {icon}
         </motion.span>
       </span>
-      <span className="text-sm font-bold text-gray-200 tracking-wide">{label}</span>
+      <span className="text-xs font-bold text-gray-200 tracking-wide">{label}</span>
       {badge > 0 && (
-        <span className="absolute top-2 right-2 min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-black flex items-center justify-center">
+        <span className="absolute top-1 right-1 min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-black flex items-center justify-center">
           {badge > 9 ? '9+' : badge}
         </span>
       )}

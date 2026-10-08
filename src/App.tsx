@@ -6,6 +6,7 @@ import React, {
   useMemo,
 } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { LOOP } from "./constants/perf";
 import { useGameStore } from "./stores/gameStore";
 import { useUserStore } from "./stores/userStore";
 import { useAudio, useControls } from "./hooks";
@@ -322,7 +323,7 @@ function App() {
         <motion.div
           className="absolute inset-0 pointer-events-none z-0"
           animate={{ opacity: [0.3, 0.5, 0.3] }}
-          transition={{ duration: 0.5, repeat: Infinity }}
+          transition={{ duration: 0.5, repeat: LOOP }}
           style={{
             background:
               "radial-gradient(ellipse at center, rgba(255, 100, 0, 0.2) 0%, transparent 70%)",
@@ -372,7 +373,7 @@ function App() {
               className="text-7xl font-black italic text-transparent bg-clip-text bg-gradient-to-t from-orange-600 via-red-500 to-yellow-400 drop-shadow-[0_0_30px_rgba(255,100,0,0.8)]"
               style={{ fontFamily: "var(--font-display)" }}
               animate={{ scale: [1, 1.1, 1] }}
-              transition={{ duration: 0.3, repeat: Infinity }}
+              transition={{ duration: 0.3, repeat: LOOP }}
             >
               🔥 FEVER! 🔥
             </motion.h2>
