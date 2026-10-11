@@ -284,7 +284,9 @@ function onEvent(ev: SimEvent, now: number): void {
       const left = ev.equation.split(' = ')[0];
       const dec = left.split(' + ').map((p) => sumLabel(parseLabel(p))).join(' + ');
       const over = `1보다 ${sumLabel(ev.total - 100)} 커요`;
-      banner(`넘쳤어요! ${ev.equation}`, dec === left ? over : `${dec} = ${sumLabel(ev.total)} → ${over}`, 'bad', 1600);
+      // 줄바꿈은 «+» 사이에서만(« = 1.4»가 혼자 다음 줄로 떨어지지 않게)
+      const eq = ev.equation.replace(' = ', '\u00a0=\u00a0');
+      banner(`넘쳤어요!\n${eq}`, dec === left ? over : `${dec} = ${sumLabel(ev.total)} → ${over}`, 'bad', 1600);
       if (ev.heartsLeft != null) audio.play('lose', { vol: 0.5 });
       break;
     }
@@ -312,7 +314,7 @@ function onEvent(ev: SimEvent, now: number): void {
 function banner(title: string, sub: string, cls: 'good' | 'bad', ms: number): void {
   const b = $('banner');
   b.className = `banner ${cls} pop`;
-  b.innerHTML = `${esc(title)}${sub ? `<small>${esc(sub)}</small>` : ''}`;
+  b.innerHTML = `${esc(title).replace(/\n/g, '<br>')}${sub ? `<small>${esc(sub)}</small>` : ''}`;
   clearTimeout(bannerTimer);
   bannerTimer = window.setTimeout(() => b.classList.add('hidden'), ms);
 }
