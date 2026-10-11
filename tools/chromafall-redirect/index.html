@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>딱 1 로켓으로 이사했어요</title>
+<meta http-equiv="refresh" content="0; url=https://ttak1-rocket.pages.dev/" />
+<link rel="canonical" href="https://ttak1-rocket.pages.dev/" />
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0b1030;color:#eef3ff;font:600 20px system-ui,"Apple SD Gothic Neo",sans-serif;text-align:center}a{color:#ffcf4a}</style>
+</head>
+<body>
+<p>크로마폴(분수 블록 팡)이 새 게임 <b>딱 1 로켓</b>으로 바뀌었어요.<br /><a href="https://ttak1-rocket.pages.dev/">딱 1 로켓 열기 →</a></p>
+<script>
+  // 옛 서비스 워커가 남아 있으면 지운다(예전 크로마폴이 캐시에서 계속 뜨지 않게)
+  if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistrations().then((rs) => rs.forEach((r) => r.unregister())).catch(() => {});
+  if (window.caches) caches.keys().then((ks) => ks.forEach((k) => caches.delete(k))).catch(() => {});
+  location.replace('https://ttak1-rocket.pages.dev/');
+</script>
+</body>
+</html>

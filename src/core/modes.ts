@@ -30,11 +30,12 @@ export const LEVELS = 40;
 export const PLANETS = ['달', '화성', '목성', '토성', '천왕성', '해왕성', '사탕 별', '정글 별'] as const;
 
 export function levelGoal(level: number): Goal {
+  // 목표 수는 봇 탐침(/tmp/classic-probe → GDD §1-4 표)으로 맞췄다: 85% 봇은 끝 단계도 대부분 깨고,
+  //   60% 봇은 앞 행성 4곳을 무난히 넘는다. 늦은 단계의 어려움은 목표 수보다 «떨어지는 속도»가 만든다.
   const stage = level % 5;
-  const base = 4 + Math.floor(level / 4);
-  if (stage === 2) return { kind: 'mix', n: Math.max(2, Math.floor(base / 2)) };
-  if (stage === 4) return { kind: 'clean', n: Math.max(3, base - 2) };
-  return { kind: 'launch', n: base };
+  if (stage === 2) return { kind: 'mix', n: 2 + Math.floor(level / 10) };
+  if (stage === 4) return { kind: 'clean', n: 3 + Math.floor(level / 10) };
+  return { kind: 'launch', n: 4 + Math.floor(level / 6) };
 }
 
 export function goalText(g: Goal): string {

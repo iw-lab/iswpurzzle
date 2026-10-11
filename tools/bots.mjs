@@ -98,7 +98,7 @@ export function playBot(seed, botSeed, { acc = 0, think = 1.5, kind = 'smart', m
     sim.step(DT);
     sim.drainEvents();
   }
-  return { launches: sim.launches, score: sim.score, overflows: sim.overflows, exposed: sim.exposedMs / Math.max(1, sim.t), regens: sim.regens, fit: sim.fitLog, served, cleared: sim.cleared };
+  return { launches: sim.launches, score: sim.score, overflows: sim.overflows, exposed: sim.exposedMs / Math.max(1, sim.t), regens: sim.regens, cells: sim.cellsShown, fit: sim.fitLog, served, cleared: sim.cleared };
 }
 
 function avg(xs) { return xs.reduce((a, b) => a + b, 0) / xs.length; }
@@ -116,13 +116,14 @@ const BOTS = {
 const res = {};
 const fits = [];
 const served = [];
-let regens = 0, exposed = [];
+let regens = 0, cells = 0, exposed = [];
 for (const [name, cfg] of Object.entries(BOTS)) {
   const L = [];
   for (let i = 0; i < N; i++) {
     const r = playBot(10_000 + i, 90_000 + i, cfg);
     L.push(r.launches);
     regens += r.regens;
+    cells += r.cells;
     if (name === 'p85') { fits.push(...r.fit); exposed.push(r.exposed); }
   }
   res[name] = avg(L);
@@ -133,8 +134,10 @@ out(`딱1 로켓 봇 게이트 · 모드 ${MODE} · ${GRADE}학년 · n=${N}${IN
 for (const [k, v] of Object.entries(res)) out(`  ${k.padEnd(7)} 발사 ${v.toFixed(2)}`);
 
 // D-1 — 공부 안 해도 되는 길이 없다
+// 상한 5대는 60초 판 기준 — 판 길이에 비례해 늘린다(대형 발사장 120초 = 10대)
+const durMin = (makeMode(MODE).durationMs ?? 60_000) / 60_000;
 for (const k of ['auto', 'random', 'center']) {
-  if (res[k] > 5 || res[k] > res.p45 * 0.75) fails.push(`D-1 ${k} 봇 발사 ${res[k].toFixed(2)} (상한 5 · 45% 봇의 0.75배 = ${(res.p45 * 0.75).toFixed(2)})`);
+  if (res[k] > 5 * durMin || res[k] > res.p45 * 0.75) fails.push(`D-1 ${k} 봇 발사 ${res[k].toFixed(2)} (상한 ${(5 * durMin).toFixed(1)} · 45% 봇의 0.75배 = ${(res.p45 * 0.75).toFixed(2)})`);
 }
 // D-2 — 잘할수록 확실히 더 얻는다
 const gain = res.p85 / res.p45;
@@ -146,9 +149,10 @@ const ex = avg(exposed);
 out(`  D-3 노출 ${(ex * 100).toFixed(1)}%`);
 if (ex < 0.95 && MODE !== 'classic') fails.push(`D-3 문항(칸) 노출 ${(ex * 100).toFixed(1)}% < 95%`);
 // 무데드락 — 미리 보여 준 칸을 갈아 끼운 횟수
-const regenRate = regens / (N * Object.keys(BOTS).length);
-out(`  무데드락: 판당 갈아 끼움 ${regenRate.toFixed(3)}회`);
-if (regenRate > 0.05) fails.push(`무데드락 판당 갈아 끼움 ${regenRate.toFixed(3)} > 0.05`);
+// 판 길이가 모드마다 달라 «칸 100개당»으로 센다(60초 판 ≈ 칸 25개 → 판당 0.05회 = 100칸당 0.2회)
+const regenRate = (regens / Math.max(1, cells)) * 100;
+out(`  무데드락: 칸 100개당 갈아 끼움 ${regenRate.toFixed(3)}회`);
+if (regenRate > 0) fails.push(`무데드락 칸 100개당 갈아 끼움 ${regenRate.toFixed(3)} > 0 (상한 계산 worstCaseRoom 이 구조로 0을 보장해야 한다)`);
 
 // D-6 표본 — 판 경계에서 연속이 이어 붙지 않게 «한 판 긴 줄»(끝없는 우주 · 어른 봇)에서 뽑는다
 for (let i = 0; served.length < 600 && i < 20; i++) served.push(...playBot(50_000 + i, 70_000 + i, { ...BOTS.adult, mode: 'survival' }).served);

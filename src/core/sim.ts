@@ -175,7 +175,6 @@ export class Sim {
 
   private spawn(): void {
     const cell = this.queue.shift()!;
-    this.queue.push(this.makeCell());
     // 보관함에서 꺼낸 칸이 나중에 들어갈 데가 없어지는 일이 없게, 새로 나오는 칸도 지금 판에서 다시 확인한다
     if (this.fitsSomewhere(cell.v)) this.cur = cell;
     else {
@@ -183,7 +182,7 @@ export class Sim {
       // 갈아 끼운 칸은 원래 칸의 표기를 이어받는다 — 화면에 보인 표기 순서가 흔들리지 않게(변화 게이트 V1)
       //   갈아 끼우기는 «화면 순서 밖»의 생성이라 연속 기록(lastKinds·lastValues)을 건드리지 않게 되돌린다
       const keepK = [...this.lastKinds], keepV = [...this.lastValues];
-      const fresh = this.makeCell();
+      const fresh = this.makeCell(true);
       this.lastKinds = keepK;
       this.lastValues = keepV;
       if (fresh.kind !== cell.kind && availableNotations(fresh.v, this.grade).includes(cell.kind)) {
@@ -192,6 +191,8 @@ export class Sim {
       }
       this.cur = fresh;
     }
+    // 새 미리 보기 칸은 «지금 칸»이 정해진 뒤에 만든다 — 그래야 상한 계산(worstCaseRoom)이 지금 칸까지 센다
+    this.queue.push(this.makeCell());
     this.curY = 0;
     this.col = pickInt(this.rCol, this.tanks.length);
     this.cellsShown++;
@@ -278,29 +279,38 @@ export class Sim {
   }
 
   /** 칸 하나 만들기 — 막힘 없음(무데드락)과 «딱 1» 공정성을 여기서 보장한다 */
-  private makeCell(): Cell {
+  /** now = 지금 바로 화면에 나올 칸(갈아 끼우기) — 먼저 부어질 칸이 없다 */
+  private makeCell(now = false): Cell {
     const rem = this.tanks.map((k) => ONE - k.fill);
-    // 미리 보기 2칸 = 이 칸이 나오기 전에 2번 더 부을 수 있다 → 세 번째로 큰 남은 양 안에서 고르면
-    //   그 사이 어느 두 통이 줄어도 들어갈 통이 남는다(무데드락)
-    const sorted = [...rem].sort((a, b) => b - a);
-    const maxRem = sorted[Math.min(2, sorted.length - 1)];
+    // 이 칸이 화면에 나오기 전에 먼저 부어질 칸들(지금 칸 · 미리 보기 · 보관함)을 «가장 나쁘게» 부어도
+    //   남는 가장 큰 자리 = 값 상한. 이 안에서만 고르면 미리 보여 준 칸이 막상 안 들어가는 일이 없다(무데드락).
+    const pending = now ? [] : [this.cur?.v, ...this.queue.map((c) => c.v), this.hold?.v].filter((x): x is number => !!x);
+    const maxRem = worstCaseRoom(rem, pending);
     let v = 0;
     const k = this.deck.draw();
     // «딱 1 칸»은 위치 덱이 고른 통이 «이미 연료가 든» 통일 때만 낸다.
     //   빈 통 기준이면 1.00 칸이 나와 아무 데나 눌러도 발사된다(탐침: 무작위 봇 4.7→12대),
     //   «연료 든 통 중에서» 고르면 한 통에만 몰아 붓는 봇이 공짜로 먹는다(11.7대).
-    if (this.r() < this.mode.pFit(this.t, this.launches) * GRADE_FIT[this.grade] && this.tanks[k].fill > 0 && rem[k] <= 90 && rem[k] <= maxRem) {
+    //   방금 나온 값과 같으면 이번엔 내지 않는다(같은 값 연속 — 변화 게이트 V6).
+    if (this.r() < this.mode.pFit(this.t, this.launches) * GRADE_FIT[this.grade] && this.tanks[k].fill > 0
+      && rem[k] <= 90 && rem[k] <= maxRem && !this.lastValues.includes(rem[k])) {
       v = rem[k];
       this.fitLog.push({ answer: k, tanks: this.tanks.length });
     } else {
-      // 같은 값이 연달아 나오지 않게(변화 게이트 V6). 통이 막혀 고를 값이 하나뿐이면 상한을 한 칸씩 넓힌다
-      //   (넓힌 값이 막상 안 들어가면 spawn 이 갈아 끼우고 regens 로 센다 — 봇 게이트가 0에 가까운지 본다)
-      let ok: number[] = [];
-      for (let lim = Math.min(2, sorted.length - 1); lim >= 0 && !ok.length; lim--) {
-        ok = RANDOM_VALUES[this.grade].filter((x) => x <= sorted[lim] && !this.lastValues.includes(x));
+      // 값 상한 = 세 번째로 큰 남은 양(maxRem) — 이 상한을 넘기면 미리 보기 칸이 막상 안 들어가 갈아 끼워진다.
+      let ok = RANDOM_VALUES[this.grade].filter((x) => x <= maxRem && !this.lastValues.includes(x));
+      if (!ok.length) {
+        // 통이 막혀 «새 값»이 없다 — 막힌 통 하나를 딱 1로 만드는 칸(대상 = 위치 덱, 상한 안 · 같은 값 피함)
+        for (let tries = 0; tries < this.tanks.length && !v; tries++) {
+          const j = this.deck.draw();
+          if (this.tanks[j].fill > 0 && rem[j] <= maxRem && !this.lastValues.includes(rem[j])) {
+            v = rem[j];
+            this.fitLog.push({ answer: j, tanks: this.tanks.length });
+          }
+        }
+        ok = RANDOM_VALUES[this.grade].filter((x) => x <= maxRem);
       }
-      if (!ok.length) ok = RANDOM_VALUES[this.grade].filter((x) => x <= maxRem);
-      v = ok.length ? ok[pickInt(this.r, ok.length)] : maxRem;
+      if (!v) v = ok.length ? ok[pickInt(this.r, ok.length)] : maxRem;
     }
     this.lastValues.push(v);
     if (this.lastValues.length > 2) this.lastValues.shift();
@@ -338,6 +348,27 @@ export class Sim {
     this.events = [];
     return e;
   }
+}
+
+/**
+ * 남은 양 rem 인 통들에 pending 칸을 «가장 불리하게» 부었을 때(들어가는 통에 붓거나 · 넘기거나 · 딱 1이면 발사로 비워진다)
+ * 남는 가장 큰 자리의 최솟값. 통 5개 × 칸 3개 = 많아야 125가지라 전부 따진다.
+ */
+export function worstCaseRoom(rem: number[], pending: number[]): number {
+  let best = Infinity;
+  const go = (r: number[], i: number): void => {
+    if (i === pending.length) { best = Math.min(best, Math.max(...r)); return; }
+    // 넘치게 붓거나 보관함에 넣으면 통은 그대로다 — 이 길은 언제나 있다
+    go(r, i + 1);
+    for (let t = 0; t < r.length; t++) {
+      if (pending[i] > r[t]) continue;
+      const n = r.slice();
+      n[t] = n[t] === pending[i] ? ONE : n[t] - pending[i];
+      go(n, i + 1);
+    }
+  };
+  go(rem, 0);
+  return best;
 }
 
 /** 발사 점수(GDD §1-4) — 정수 */
