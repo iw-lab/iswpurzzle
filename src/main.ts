@@ -280,9 +280,11 @@ function onEvent(ev: SimEvent, now: number): void {
       audio.play('overflow');
       $('combo').classList.add('hidden');
       // 넘친 식을 1.6초 보여 준다(오답 각인 D-5) — 표기를 소수로 바꾼 식도 함께
-      const parts = ev.equation.split(' = ')[0].split(' + ');
-      const dec = parts.map((p) => sumLabel(parseLabel(p))).join(' + ');
-      banner(`넘쳤어요! ${ev.equation}`, `${dec} = ${sumLabel(ev.total)} → 1보다 커요`, 'bad', 1600);
+      // 이미 소수뿐인 식이면 같은 식을 두 번 쓰지 않고 넘친 양만 말한다
+      const left = ev.equation.split(' = ')[0];
+      const dec = left.split(' + ').map((p) => sumLabel(parseLabel(p))).join(' + ');
+      const over = `1보다 ${sumLabel(ev.total - 100)} 커요`;
+      banner(`넘쳤어요! ${ev.equation}`, dec === left ? over : `${dec} = ${sumLabel(ev.total)} → ${over}`, 'bad', 1600);
       if (ev.heartsLeft != null) audio.play('lose', { vol: 0.5 });
       break;
     }
