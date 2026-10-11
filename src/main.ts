@@ -388,7 +388,8 @@ function layoutDom(): void {
     root.setProperty('--banner-fs', `${Math.round(Math.min(L.h * 0.046, L.sideW / 8.5))}px`);
   } else {
     root.setProperty('--banner-left', '50%');
-    root.setProperty('--banner-top', `${L.hudH + 2}px`);
+    // 세로 화면은 맨 위가 «다음» 칸 미리보기라(1.6초 가리면 계획을 못 한다) 아래 로켓 줄 위로
+    root.setProperty('--banner-top', `${L.wide ? L.hudH + 2 : Math.min(L.rocketTop + 4, L.h - 120)}px`);
     root.setProperty('--banner-max', '94vw');
     root.removeProperty('--banner-fs');
   }
