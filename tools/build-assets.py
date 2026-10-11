@@ -103,9 +103,12 @@ else:
 
 ka = raw('keyart.png')
 if os.path.exists(ka):
+    # 링크 미리보기 규격 1200×630 꽉 채움(가운데 자르기) · JPEG(PNG 는 1MB)
     im = Image.open(ka).convert('RGB')
-    im.thumbnail((1200, 630))
-    im.save(os.path.join(PUB, 'og.png'), optimize=True)
+    sc = max(1200 / im.width, 630 / im.height)
+    im = im.resize((round(im.width * sc), round(im.height * sc)), Image.LANCZOS)
+    l, t = (im.width - 1200) // 2, (im.height - 630) // 2
+    im.crop((l, t, l + 1200, t + 630)).save(os.path.join(PUB, 'og.jpg'), quality=84, optimize=True, progressive=True)
 else:
     missing.append(ka)
 
