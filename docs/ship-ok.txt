@@ -1,0 +1,1 @@
+ttak1-build-d3d5e40 live 2026-10-12 00:55:04 · gates PASS · baseline B PASS · kit e2e PASS · qa-play live 5화면 PASS
