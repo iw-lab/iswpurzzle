@@ -1,1 +1,0 @@
-export { LuckyWheel } from './LuckyWheel';

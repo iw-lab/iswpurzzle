@@ -12,16 +12,16 @@
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "isolatedModules": true,
+    "erasableSyntaxOnly": true,
     "moduleDetection": "force",
     "noEmit": true,
-    "jsx": "react-jsx",
-
+    
     /* Linting - relaxed for faster development */
     "strict": true,
-    "noUnusedLocals": false,
+    "noUnusedLocals": true,
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true
   },
   "include": ["src"],
-  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"]
+  "exclude": ["src/**/*.test.ts"]
 }

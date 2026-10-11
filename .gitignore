@@ -31,3 +31,6 @@ dist-ssr
 
 # 융합률 측정 스크립트 산출물
 fusion-report.txt
+
+# 학교 허브 비밀(키트)
+.secrets/
