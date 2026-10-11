@@ -13,9 +13,11 @@ import { hashSeed } from './core/rng.ts';
 import { ONE, parseLabel, sumLabel, type Cell, type Grade } from './core/values.ts';
 import { View } from './render/view.ts';
 import { columnAt } from './render/layout.ts';
-import { art } from './render/assets.ts';
+import { art, loadedImageKeys } from './render/assets.ts';
 import { audio } from './audio/audio.ts';
 import { loadSave, writeSave, todayKey, yesterdayKey } from './save.ts';
+// @ts-expect-error — 스킬 공용 측정기(순수 JS). ?perf=1 일 때만 켜진다(실기기 P95)
+import { startPerfProbe } from './perf-p95.js';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const save = loadSave();
@@ -51,7 +53,7 @@ const CARDS: GbMode[] = [
 ];
 
 // ── 기본틀(학교 순위 · 이용권 · 전체화면) ──
-configureHub({ key: 'ttak1-rocket.hub.v1' });
+configureHub({ key: 'ttak1-rocket.hub.v1', offline: document.querySelector('meta[name="gb-hub"]')?.getAttribute('content') === 'off' });
 configureSchool({ playWord: '발사', sfx: { tick: () => audio.play('click'), win: () => audio.play('ticket') } });
 mountSchoolRank($('schoolRank'));
 bindFullscreenButton($('btnFull'));
@@ -295,6 +297,9 @@ function onEvent(ev: SimEvent, now: number): void {
     }
     case 'end':
       setTimeout(() => endGame(), ev.reason === 'goal' ? 900 : 500);
+      break;
+    case 'idle':
+      audio.play('click', { rate: 0.6, vol: 0.35 });
       break;
     case 'hold':
     case 'move':
@@ -645,7 +650,53 @@ async function showroom(): Promise<void> {
   document.body.appendChild(box);
 }
 
-if (new URLSearchParams(location.search).has('showroom')) void showroom();
-else void art.init();
+/** 스모크용 어댑터 — Canvas 게임이라 Phaser 등록부가 없다. 실제로 불러온 그림 수·살아 있는 연출 수를 그대로 보고한다(누수 검사) */
+const smokeGame = {
+  textures: { getTextureKeys: () => loadedImageKeys(), exists: (k: string) => loadedImageKeys().includes(k) },
+  sound: { sounds: [] as unknown[] },
+  scene: { scenes: [{ children: { list: [] as unknown[] }, tweens: { getTweens: () => new Array(view.parts.length + view.flies.length + view.launches.length + view.floaters.length) } }] },
+};
+
+// ── 스모크 계약(game-builder phaser-smoke · 2D 공용) — 관문 없이 코어를 직접 돌려 결정론·누수를 기계가 잰다 ──
+const artReady = (new URLSearchParams(location.search).has('showroom') ? showroom() : art.init()).then(() => {
+  const bg = art.manifest?.backgrounds.bg_earth;
+  if (bg) $("home").style.setProperty("--home-bg", `url("${new URL(bg, location.href).href}")`);
+});
+(window as unknown as { __SMOKE__: unknown }).__SMOKE__ = {
+  ready: artReady,
+  game: smokeGame,
+  get expectedTextures() { return art.manifest ? [...art.manifest.rockets] : []; },
+  usesRng: true,
+  hasScenes: true,
+  sceneCount: 2,
+  seed(n: number) {
+    relay = null;
+    modeId = 'time';
+    sim = new Sim(makeMode('time'), { grade: save.grade, seed: n >>> 0 });
+    view.attach(sim, 'bg_earth');
+    setScreen('game');
+  },
+  step(ms: number) {
+    if (!sim) return;
+    sim.step(ms);
+    for (const ev of sim.drainEvents()) onEvent(ev, performance.now());
+  },
+  hash() {
+    const s = sim;
+    if (!s) return 'none';
+    return [s.t.toFixed(0), s.score, s.launches, s.overflows, s.tanks.map((t) => t.fill).join('.'), s.cur?.label ?? '-', s.queue.map((c) => c.label).join('.')].join('|');
+  },
+  cycleScene(i: number) {
+    if (i % 2) showHome();
+    else (window as unknown as { __SMOKE__: { seed(n: number): void } }).__SMOKE__.seed(1000 + i);
+  },
+};
+startPerfProbe();
 showHome();
+// 스모크 페이지(허브 끔)에서만: ?autostart=time 이면 판을 바로 연다 — 입력 끝단 시험(e2e-input)이 게임 안에서 시작하게.
+//   배포 페이지(index.html)는 허브가 켜져 있어 이 길이 없다(이용권 관문을 건너뛰지 않는다).
+if (document.querySelector('meta[name="gb-hub"]')?.getAttribute('content') === 'off') {
+  const auto = new URLSearchParams(location.search).get('autostart');
+  if (auto) void artReady.then(() => startGame(auto as ModeId));
+}
 requestAnimationFrame((t) => { last = t; frame(t); });

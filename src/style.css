@@ -21,7 +21,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--gb-bg)
 
 /* ── 홈 ── */
 #home { overflow-y: auto; padding: max(14px, env(safe-area-inset-top)) 16px 24px;
-  background: radial-gradient(120% 80% at 50% 0%, rgba(80, 60, 180, 0.55), rgba(11, 16, 48, 0.94) 60%), url(/assets/bg/bg_earth.webp) center/cover; }
+  background: radial-gradient(120% 80% at 50% 0%, rgba(80, 60, 180, 0.55), rgba(11, 16, 48, 0.94) 60%), var(--home-bg, none) center/cover; }
 #home .gb-home { max-width: 520px; }
 .gb-brand img { width: 40px; height: 40px; border-radius: 10px; }
 .gb-brand { font-size: 24px; }

@@ -1,0 +1,7 @@
+{
+ "derived": {
+  "game-assets-src/rig/work/doki/n.glb": "game-assets-src/rig/ff/doki.glb",
+  "game-assets-src/rig/work/doki/rig.glb": "game-assets-src/rig/work/doki/n.glb"
+ },
+ "note": "3D 출처 원장 — gate-3d-source.mjs 가 읽는다. derived = 가공본 → Firefly 원본, exempt = 사용자가 다른 엔진을 지정한 예외(사유 필수)"
+}

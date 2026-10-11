@@ -106,6 +106,10 @@ export class View {
       this.burst(L.colX[ev.col], L.tubeTop + 4, this.lowFx ? 10 : 26, NOTATION_STYLE[ev.cell.kind].fill, 'drop');
       this.shake = Math.max(this.shake, 6);
       this.doki = { anim: 'oops', until: now + 1100 };
+    } else if (ev.type === 'idle') {
+      // 넘침 멈춤 중 탭 — 눌린 건 알았다고 답한다(«조작이 안 먹는 버그»로 읽히지 않게)
+      this.flashAt[ev.col] = now - 300;
+      this.float(L.colX[ev.col], L.tubeTop - 8, '잠깐!', '#ffd0d0', 0.6, now);
     } else if (ev.type === 'spawn') {
       this.hoverX = L.colX[ev.col];
     }

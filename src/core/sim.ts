@@ -22,6 +22,7 @@ export type SimEvent =
   | { type: 'move'; col: number }
   | { type: 'heart'; hearts: number }
   | { type: 'goal'; done: number; need: number }
+  | { type: 'idle'; col: number }
   | { type: 'end'; reason: 'time' | 'hearts' | 'goal' };
 
 export interface FitLog {
@@ -37,11 +38,13 @@ export interface SimOptions {
 
 /** 논리상 칸은 탭 즉시 부어진다(날아가는 모습은 렌더만) · 칸 사이 최소 간격 · 동시 발사 창(ms) */
 export const FLY_MS = 0;
-export const MIN_GAP_MS = 500;
+export const MIN_GAP_MS = 300;
 export const MULTI_MS = 2000;
 /** 4학년(0.1 단위)은 남은 양 종류가 적어 아무 데나 눌러도 딱 맞는 일이 잦다 → 딱 1 칸을 조금 덜 낸다(봇 게이트 D-1) */
 export const GRADE_FIT: Record<Grade, number> = { 4: 0.65, 5: 1, 6: 1 };
-export const OVERFLOW_PAUSE_MS = 1000;
+export const OVERFLOW_PAUSE_MS = 800;
+/** 칸 사이 빈틈에 누른 탭을 이만큼 기억했다가 다음 칸에 쓴다(입력 버퍼 — 빈틈 MIN_GAP_MS 보다 길어야 붓자마자 누른 탭도 산다) */
+export const INPUT_BUFFER_MS = 400;
 /** 60초 이론 상한(§1-4) — 넘는 점수는 화면·서버 모두 믿지 않는다 */
 export const SCORE_CAP_PER_MIN = 50_000;
 
@@ -74,6 +77,12 @@ export class Sim {
   endReason: 'time' | 'hearts' | 'goal' | null = null;
   cleared = false;
   cellsShown = 0;
+  /** 부어진 칸 수(넘침 포함) — 입력이 먹었는지 세는 사건 카운터(e2e-input probe) */
+  placed = 0;
+  /** 칸이 없을 때(넘침 멈춤) 누른 탭 — 버리지만 화면이 «잠깐!»으로 답한다 */
+  idleTaps = 0;
+  private buffered: { col: number; at: number } | null = null;
+  private pauseUntil = 0;
   /** 미리 보여 준 칸이 막상 들어갈 데가 없어 새로 만든 횟수(무데드락 시험 — 0에 가까워야 한다) */
   regens = 0;
   /** 화면에 칸(문항)이 떠 있던 시간(ms) — 노출 게이트 D-3 */
@@ -133,7 +142,13 @@ export class Sim {
 
   /** 로켓을 탭했다 — 지금 칸을 그 통에 붓는다 */
   drop(col: number): boolean {
-    if (this.over || !this.cur || col < 0 || col >= this.tanks.length) return false;
+    if (this.over || col < 0 || col >= this.tanks.length) return false;
+    if (!this.cur) {
+      // 넘침 멈춤 중이면 버린다(아무 데나 누르기의 손해) — 대신 화면이 답한다. 그 밖의 빈틈이면 다음 칸에 쓴다.
+      if (this.t < this.pauseUntil) { this.idleTaps++; this.events.push({ type: 'idle', col }); }
+      else this.buffered = { col, at: this.t };
+      return false;
+    }
     this.col = col;
     this.pour(col, false);
     return true;
@@ -146,7 +161,7 @@ export class Sim {
   }
 
   hardDrop(): void {
-    if (this.cur) this.drop(this.col);
+    this.drop(this.col);
   }
 
   /** 보관함 — 지금 칸과 보관 칸을 바꾼다. 연속 두 번은 안 된다(무한 미루기 막기) */
@@ -198,11 +213,15 @@ export class Sim {
     this.cellsShown++;
     this.lastSpawn = this.t;
     this.events.push({ type: 'spawn', cell: this.cur, col: this.col });
+    const buf = this.buffered;
+    this.buffered = null;
+    if (buf && this.t - buf.at <= INPUT_BUFFER_MS) this.drop(buf.col);
   }
 
   private pour(col: number, auto: boolean): void {
     const cell = this.cur!;
     this.cur = null;
+    this.placed++;
     this.holdLocked = false;
     this.spawnAt = Math.max(this.t + FLY_MS, this.lastSpawn + MIN_GAP_MS);
     const tank = this.tanks[col];
@@ -217,6 +236,7 @@ export class Sim {
       if (this.hearts != null) this.hearts--;
       // 넘치면 다음 칸이 잠깐 늦게 온다(푸슉 연출 시간) — 점수는 안 깎지만 «아무 데나 누르기»가 손해가 된다
       this.spawnAt = Math.max(this.spawnAt, this.t + OVERFLOW_PAUSE_MS);
+      this.pauseUntil = this.spawnAt;
       this.events.push({ type: 'overflow', col, cell, total, equation, heartsLeft: this.hearts });
       if (this.hearts != null && this.hearts <= 0) this.finish('hearts');
       return;

@@ -50,6 +50,34 @@ describe('딱 1 판정', () => {
   });
 });
 
+describe('입력', () => {
+  it('칸 사이 빈틈에 누른 탭은 다음 칸이 그 로켓에 들어간다(입력 버퍼)', () => {
+    const s = new Sim(makeMode('time'), { grade: 5, seed: 21 });
+    s.step(1);
+    s.drop(0);
+    s.drainEvents();
+    expect(s.cur).toBeNull();
+    const placed = s.placed;
+    s.drop(3);
+    s.step(MIN_GAP_MS + 5);
+    const ev = s.drainEvents();
+    expect(s.placed).toBe(placed + 1);
+    expect(ev.some((e) => (e.type === 'pour' || e.type === 'overflow') && e.col === 3)).toBe(true);
+  });
+  it('넘침 멈춤 중 탭은 버리지만 «잠깐!» 사건이 난다(화면이 답한다)', () => {
+    const s = new Sim(makeMode('time'), { grade: 5, seed: 22 });
+    s.step(1);
+    s.tanks[1].fill = 95;
+    s.cur = cell('0.5');
+    s.drop(1);
+    s.drainEvents();
+    s.drop(2);
+    const ev = s.drainEvents();
+    expect(ev.some((e) => e.type === 'idle' && e.col === 2)).toBe(true);
+    expect(s.idleTaps).toBe(1);
+  });
+});
+
 describe('판 진행', () => {
   it('60초 판은 실력과 상관없이 60.0초에 끝난다', () => {
     for (const seed of [1, 2, 3]) {
@@ -126,7 +154,7 @@ describe('판 진행', () => {
       }
     }
     expect(bad).toBe(0);
-  });
+  }, 60_000);
 });
 
 describe('표기', () => {

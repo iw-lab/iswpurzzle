@@ -16,13 +16,16 @@ export interface DokiAtlas {
 }
 
 const cache = new Map<string, Promise<HTMLImageElement | null>>();
+const loaded = new Set<string>();
+/** 실제로 디코드까지 끝난 그림 주소들(스모크 누수 검사) */
+export const loadedImageKeys = (): string[] => [...loaded];
 
 export function loadImage(url: string): Promise<HTMLImageElement | null> {
   if (!cache.has(url)) {
     cache.set(url, new Promise((res) => {
       const img = new Image();
       img.decoding = 'async';
-      img.onload = () => res(img);
+      img.onload = () => { loaded.add(url); res(img); };
       img.onerror = () => res(null);
       img.src = url;
     }));

@@ -4,6 +4,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 npm run build >/dev/null
+rm -f dist/smoke.html   # 스모크 전용 페이지(허브 끔)는 배포하지 않는다
 BUILD=$(grep -o 'ttak1-build-[^"]*' dist/index.html)
 echo "▶ 빌드 $BUILD · dist $(du -sh dist | cut -f1)"
 node ~/.claude/skills/game-builder/tools/gate-baseline.mjs . --static
