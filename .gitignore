@@ -34,3 +34,5 @@ fusion-report.txt
 
 # 학교 허브 비밀(키트)
 .secrets/
+game-assets-src/cut/
+screenshots/qa/

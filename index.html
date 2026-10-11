@@ -2,130 +2,137 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-
-    <!-- 캐시 방지 - 항상 최신 버전 -->
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-    <meta http-equiv="Pragma" content="no-cache" />
-    <meta http-equiv="Expires" content="0" />
-
-    <!-- PWA -->
-    <meta name="theme-color" content="#0a0a1a" />
+    <meta name="build" content="ttak1-build-__BUILD__" />
+    <title>딱 1 로켓 — 합이 딱 1이면 발사!</title>
+    <meta name="description" content="떨어지는 연료 칸(1/4 · 0.3 · 45%)을 로켓에 부어 합을 딱 1로 채우면 발사! 분수·소수·백분율 덧셈 퍼즐." />
+    <meta name="theme-color" content="#0b1030" />
+    <meta property="og:title" content="딱 1 로켓 — 합이 딱 1이면 발사!" />
+    <meta property="og:description" content="분수·소수·백분율을 더해 연료를 딱 1로 채우는 로켓 발사 퍼즐" />
+    <meta property="og:image" content="assets/og.png" />
+    <link rel="icon" href="assets/icon.png" />
+    <link rel="manifest" href="manifest.json" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="분수 블록 팡" />
-    <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
-    <link rel="manifest" href="/manifest.json" />
-
-    <!-- PWA Splash Screens -->
-    <link rel="apple-touch-startup-image" href="/icons/icon-512.svg" />
-
-    <!-- SEO -->
-    <meta name="description" content="분수 블록 팡 - 떨어지는 블록 퍼즐. 1/2·0.5·50%처럼 값이 같은 블록 4개를 붙이면 펑! 터져요." />
-    <meta name="keywords" content="퍼즐, 게임, 블록, 분수, 소수, 백분율, 낙하 블록, 분수 블록 팡" />
-    <meta name="author" content="발주자 심선생" />
-
-    <!-- Open Graph -->
-    <meta property="og:title" content="분수 블록 팡 - 떨어지는 블록 수학 퍼즐" />
-    <meta property="og:description" content="떨어지는 블록을 쌓아 값이 같은 블록 4개를 붙이면 펑! 분수·소수·백분율 퍼즐" />
-    <meta property="og:type" content="website" />
-    <meta property="og:image" content="/og-image.png" />
-
-    <title>분수 블록 팡 - 떨어지는 블록 수학 퍼즐</title>
-
-    <style>
-      /* 초기 로딩 스크린 */
-      #loading-screen {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 100%);
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        z-index: 9999;
-        transition: opacity 0.5s ease;
-      }
-      #loading-screen.hidden {
-        opacity: 0;
-        pointer-events: none;
-      }
-      .loading-logo {
-        font-size: 2.5rem;
-        font-weight: bold;
-        margin-bottom: 1rem;
-      }
-      .loading-logo span:nth-child(1) { color: #ff4757; }
-      .loading-logo span:nth-child(2) { color: #3742fa; }
-      .loading-logo span:nth-child(3) { color: #2ed573; }
-      .loading-logo span:nth-child(4) { color: #ffa502; }
-      .loading-logo span:nth-child(5) { color: #8854d0; }
-      .loading-logo span:nth-child(6) { color: #00d2d3; }
-      .loading-logo span:nth-child(7) { color: #fff; }
-      .loading-spinner {
-        width: 40px;
-        height: 40px;
-        border: 3px solid rgba(255, 255, 255, 0.1);
-        border-top-color: #4a9eff;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-      }
-      @keyframes spin {
-        to { transform: rotate(360deg); }
-      }
-    </style>
+    <meta name="apple-mobile-web-app-title" content="딱1 로켓" />
   </head>
   <body>
-    <!-- 로딩 스크린 -->
-    <div id="loading-screen">
-      <div class="loading-logo">
-        <span>C</span><span>H</span><span>R</span><span>O</span><span>M</span><span>A</span><span>FALL</span>
+    <canvas id="stage"></canvas>
+
+    <section id="home" class="screen">
+      <div class="gb-home">
+        <div class="gb-home-top">
+          <div class="gb-brand"><img src="assets/icon.png" alt="" /><span>딱 <b class="one">1</b> 로켓</span></div>
+          <div class="gb-tools">
+            <button id="btnFull" class="gb-icon" data-gb="fullscreen" aria-label="전체화면"></button>
+            <button id="btnSettings" class="gb-icon" aria-label="설정">⚙</button>
+          </div>
+        </div>
+        <div id="schoolRank" data-gb="school-rank"></div>
+        <button id="btnPlay" class="gb-play" data-gb="play" data-gb-mode="time">▶ 60초 발사 대회</button>
+        <div id="modeGrid"></div>
+        <div class="gb-sub">
+          <button id="btnDaily" data-gb-mode="daily">📅 오늘의 발사</button>
+          <button id="btnRelay">👥 모둠 릴레이</button>
+          <button id="btnGrade">학년 5</button>
+        </div>
+        <p class="how">떨어지는 칸이 뜨면 <b>로켓을 톡!</b> · 합이 <b>딱 1</b>이면 발사 · 넘치면 펑</p>
       </div>
-      <div class="loading-spinner"></div>
-    </div>
+    </section>
 
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <section id="game" class="screen hidden">
+      <div id="hud">
+        <div class="hud-left">
+          <button id="btnQuit" class="hud-btn" aria-label="그만하기">✕</button>
+          <button id="btnPause" class="hud-btn" aria-label="잠깐 멈춤">⏸</button>
+        </div>
+        <div class="hud-mid">
+          <div id="modeBar"></div>
+          <div id="score" class="score">0</div>
+        </div>
+        <div class="hud-right">
+          <div id="turnTag" class="turn-tag hidden"></div>
+          <button id="btnFullGame" class="hud-btn" data-gb="fullscreen" aria-label="전체화면"></button>
+        </div>
+      </div>
+      <div id="tray">
+        <button id="holdBox" class="tray-box" aria-label="보관함 — 지금 칸을 넣고 빼기">
+          <span class="tray-label">보관 <kbd>C</kbd></span><span id="holdCell" class="mini empty">비었음</span>
+        </button>
+        <div class="tray-box next">
+          <span class="tray-label">다음</span>
+          <span id="next1" class="mini"></span><span id="next2" class="mini small"></span>
+        </div>
+      </div>
+      <div id="goal" class="goal hidden"></div>
+      <div id="combo" class="combo hidden"></div>
+      <div id="banner" class="banner hidden"></div>
+      <div id="hint" class="hint hidden">떨어지는 칸을 보고 <b>로켓을 톡!</b><br />통의 합이 <b>딱 1</b>이 되면 발사 🚀</div>
+      <div id="countdown" class="countdown hidden"></div>
+    </section>
 
-    <script>
-      // 로딩 스크린 숨기기
-      window.addEventListener('load', function() {
-        setTimeout(function() {
-          document.getElementById('loading-screen').classList.add('hidden');
-        }, 500);
-      });
+    <section id="pause" class="screen overlay hidden">
+      <div class="panel">
+        <h2>잠깐 멈춤</h2>
+        <button id="btnResume" class="big-btn primary">계속하기</button>
+        <button id="btnQuit2" class="big-btn">그만하고 나가기</button>
+      </div>
+    </section>
 
-      // 기존 Service Worker 제거 (캐시 문제 해결)
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(function(registrations) {
-          for (let registration of registrations) {
-            registration.unregister();
-            console.log('ServiceWorker 제거됨');
-          }
-        });
-        // 캐시도 모두 삭제
-        if ('caches' in window) {
-          caches.keys().then(function(names) {
-            for (let name of names) {
-              caches.delete(name);
-              console.log('캐시 삭제됨:', name);
-            }
-          });
-        }
-      }
+    <section id="result" class="screen overlay hidden">
+      <div class="panel result">
+        <div id="resTitle" class="res-title"></div>
+        <div id="resScore" class="res-score"></div>
+        <div id="resBest" class="res-best"></div>
+        <div id="resStats" class="res-stats"></div>
+        <div id="resReview" class="res-review"></div>
+        <div class="row">
+          <button id="btnAgain" class="big-btn primary">다시 하기</button>
+          <button id="btnHome" class="big-btn">홈</button>
+        </div>
+      </div>
+    </section>
 
-      // PWA 설치 프롬프트 처리
-      let deferredPrompt;
-      window.addEventListener('beforeinstallprompt', function(e) {
-        e.preventDefault();
-        deferredPrompt = e;
-        // 설치 프롬프트는 앱 내에서 처리
-        window.deferredPWAPrompt = deferredPrompt;
-      });
-    </script>
+    <section id="missions" class="screen overlay hidden">
+      <div class="panel wide">
+        <h2>🚀 발사 임무</h2>
+        <div id="planetList" class="planet-list"></div>
+        <button id="btnMissionsClose" class="big-btn">닫기</button>
+      </div>
+    </section>
+
+    <section id="relay" class="screen overlay hidden">
+      <div class="panel">
+        <h2>👥 모둠 릴레이</h2>
+        <p class="sub">한 사람씩 60초 · 모두 같은 칸 순서로 겨뤄요</p>
+        <div id="relayCount" class="seg"></div>
+        <button id="btnRelayGo" class="big-btn primary">시작</button>
+        <button id="btnRelayClose" class="big-btn">닫기</button>
+      </div>
+    </section>
+
+    <section id="turn" class="screen overlay hidden">
+      <div class="panel turn">
+        <div id="turnWho" class="turn-who"></div>
+        <p class="sub">준비되면 아래 단추를 눌러요</p>
+        <button id="btnTurnGo" class="big-btn primary">시작!</button>
+        <button id="btnTurnSkip" class="big-btn">이번 차례 건너뛰기</button>
+        <div id="turnTable" class="relay-table"></div>
+      </div>
+    </section>
+
+    <section id="settings" class="screen overlay hidden">
+      <div class="panel">
+        <h2>설정</h2>
+        <div class="set-row"><span>문제 단계</span><div id="gradeSeg" class="seg"></div></div>
+        <p id="gradeDesc" class="sub"></p>
+        <div class="set-row"><span>소리</span><button id="btnSound" class="chip"></button></div>
+        <div id="weakCard" class="weak"></div>
+        <button id="btnSettingsClose" class="big-btn primary">닫기</button>
+        <p class="foot">딱 1 로켓 · 이름·반 같은 개인정보를 받지 않아요 · 학교 순위는 학교별 합계만 · 기록은 이 기기에만</p>
+      </div>
+    </section>
+
+    <div id="toast" class="toast hidden"></div>
+    <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
