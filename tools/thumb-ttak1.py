@@ -22,8 +22,9 @@ def find_keyart():
     raise SystemExit('❌ keyart.png 없음 — 이미지 생성(raw/ff) 먼저')
 
 
-def font(size, index=8):
-    for idx in (index, 6, 0):
+def font(size, index=16):
+    # AppleSDGothicNeo.ttc 번호: 16 Heavy · 14 ExtraBold · 6 Bold · 8 은 Light(옛 크로마폴 썸네일이 8 을 써서 얇았다)
+    for idx in (index, 14, 6, 0):
         try: return ImageFont.truetype(FONT, size, index=idx)
         except Exception: continue
     return ImageFont.load_default()
@@ -53,8 +54,8 @@ def main():
     d = ImageDraw.Draw(img)
     cx = W // 2
     # 제목: 딱 [1] 로켓 — 가운데 정사각(x 200~1000) 안
-    f_big = font(190, 8)
-    f_one = font(250, 8)
+    f_big = font(170)
+    f_one = font(230)
     parts = [('딱', f_big, (255, 255, 255)), ('1', f_one, (255, 207, 74)), ('로켓', f_big, (255, 255, 255))]
     gap = 26
     widths = [d.textbbox((0, 0), t, font=f, stroke_width=12)[2] for t, f, _ in parts]
@@ -65,11 +66,13 @@ def main():
         outlined(d, (x + w / 2, ty), t, f, c, sw=12)
         x += w + gap
     # 부제: 식 한 줄 — 무엇을 하는 게임인지 3m 밖에서 읽히게
-    f_sub = font(64, 6)
-    sub = '1/4 + 0.5 + 25% = 1 발사!'
-    bw = d.textbbox((0, 0), sub, font=f_sub)[2] + 70
-    d.rounded_rectangle([cx - bw / 2, 352, cx + bw / 2, 446], radius=46, fill=(255, 207, 74, 235), outline=(40, 22, 0), width=5)
-    d.text((cx, 399), sub, font=f_sub, fill=(43, 23, 0), anchor='mm')
+    f_sub = font(54, 14)
+    sub = '1/4 + 0.5 + 25% = 1'
+    bw = d.textbbox((0, 0), sub, font=f_sub)[2] + 64
+    d.rounded_rectangle([cx - bw / 2, 352, cx + bw / 2, 440], radius=46, fill=(255, 207, 74, 235), outline=(40, 22, 0), width=5)
+    d.text((cx, 396), sub, font=f_sub, fill=(43, 23, 0), anchor='mm')
+    # 안전지대 단언 — 제목·부제가 가운데 정사각(x 200~1000) 안에 있어야 1:1 크롭에서 안 잘린다
+    assert total <= 780 and bw <= 760, f'안전지대 밖: 제목 {total:.0f}px · 부제 {bw:.0f}px'
     rgb = img.convert('RGB')
     rgb.save(os.path.join(OUT, 'ttak1-thumb-1200.png'))
     small = rgb.resize((400, 267), Image.LANCZOS)

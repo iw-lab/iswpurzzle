@@ -36,3 +36,8 @@ fusion-report.txt
 .secrets/
 game-assets-src/cut/
 screenshots/qa/
+game-assets-src/audio/bgm/*.wav
+game-assets-src/audio/bgm/old/
+game-assets-src/audio/sfx/*.wav
+game-assets-src/rig/work/
+*.log

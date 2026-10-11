@@ -91,7 +91,8 @@ const VPS = [
   { name: 'phone-port', width: 390, height: 844, hasTouch: true, isMobile: true, deviceScaleFactor: 3 },
 ];
 
-for (const vp of VPS) {
+const ONLY = arg('--only');
+for (const vp of VPS.filter((v) => !ONLY || ONLY.split(',').includes(v.name))) {
   const { ctx, page, errors } = await newPage(vp);
   try {
     await page.screenshot({ path: path.join(OUT, `${vp.name}-1-home.png`) });

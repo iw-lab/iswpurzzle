@@ -1,0 +1,19 @@
+{
+ "source": "firefly-boards-image-to-3d",
+ "input": "/Users/sim-insu/Documents/dev/iwpuzzle/game-assets-src/rig/src/doki.png",
+ "board": "https://firefly.adobe.com/boards/id/urn:aaid:sc:AP:2a7f1cf9-d650-4d65-8bc4-9ae4a8593408",
+ "exportedName": "제목 없음 - 2026년 10월 11일 22.56.03.glb",
+ "bytes": 1991844,
+ "ok": true,
+ "tris": 10000,
+ "tex": 1,
+ "meshes": 1,
+ "skins": 0,
+ "size": [
+  0.808,
+  1.998,
+  1.825
+ ],
+ "generator": "Lagrange",
+ "at": "2026-10-11T13:58:08.480Z"
+}

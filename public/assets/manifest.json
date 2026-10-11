@@ -1,1 +1,24 @@
-{ "rockets": [], "backgrounds": {}, "planets": [] }
+{
+ "rockets": [
+  "assets/rockets/rocket_red.webp",
+  "assets/rockets/rocket_blue.webp",
+  "assets/rockets/rocket_green.webp",
+  "assets/rockets/rocket_purple.webp",
+  "assets/rockets/rocket_orange.webp"
+ ],
+ "backgrounds": {
+  "bg_earth": "assets/bg/bg_earth.webp",
+  "bg_moon": "assets/bg/bg_moon.webp",
+  "bg_mars": "assets/bg/bg_mars.webp"
+ },
+ "planets": [
+  "assets/planets/planet_0.webp",
+  "assets/planets/planet_1.webp",
+  "assets/planets/planet_2.webp",
+  "assets/planets/planet_3.webp",
+  "assets/planets/planet_4.webp",
+  "assets/planets/planet_5.webp",
+  "assets/planets/planet_6.webp",
+  "assets/planets/planet_7.webp"
+ ]
+}

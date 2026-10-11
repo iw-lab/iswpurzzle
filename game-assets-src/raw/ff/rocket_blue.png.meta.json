@@ -1,0 +1,14 @@
+{
+ "prompt": "Generate an image (tall portrait 9:16 image): a chubby blue rocket with yellow stripes, two big side boosters and a round porthole, standing perfectly upright and vertical, nose pointing straight up, front view, single isolated object, centered, full object visible with about 12% margin on every side, stylized 3D toy render for a bright kids mobile game, glossy plastic and painted metal materials,",
+ "out": "/Users/sim-insu/Documents/dev/iwpuzzle/game-assets-src/raw/ff/rocket_blue.png",
+ "t0": 1791725954.719158,
+ "w": 941,
+ "h": 1672,
+ "src": "blob:https://chatgpt.com/ecee5a14-4c46-4f36-9fd1-badae017e79a",
+ "bytes": "data-uri(data:image/png;base64)",
+ "verify": "941x1672 · 2,208,603바이트",
+ "elapsed_s": 73.1,
+ "conversation": "https://chatgpt.com/c/6acb9152-dd94-83ee-bab3-f673985dbb1c",
+ "served_by": "chatgpt-web(모델 미노출 — 서버가 정한다)",
+ "attempts": 1
+}

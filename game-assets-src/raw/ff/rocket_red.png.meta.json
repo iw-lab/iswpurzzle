@@ -1,0 +1,14 @@
+{
+ "prompt": "Generate an image (tall portrait 9:16 image): a classic red and white rocket with three fins and a round porthole window, pointed nose cone, standing perfectly upright and vertical, nose pointing straight up, front view, single isolated object, centered, full object visible with about 12% margin on every side, stylized 3D toy render for a bright kids mobile game, glossy plastic and painted metal m",
+ "out": "/Users/sim-insu/Documents/dev/iwpuzzle/game-assets-src/raw/ff/rocket_red.png",
+ "t0": 1791725886.169856,
+ "w": 941,
+ "h": 1672,
+ "src": "blob:https://chatgpt.com/ac0ac3b9-f28e-4649-b64a-5d4da8a1421c",
+ "bytes": "data-uri(data:image/png;base64)",
+ "verify": "941x1672 · 2,025,597바이트",
+ "elapsed_s": 60.5,
+ "conversation": "https://chatgpt.com/c/6acb9152-dd94-83ee-bab3-f673985dbb1c",
+ "served_by": "chatgpt-web(모델 미노출 — 서버가 정한다)",
+ "attempts": 1
+}

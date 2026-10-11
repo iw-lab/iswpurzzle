@@ -79,14 +79,14 @@ class Audio {
     if (!this.ctx || !this.master) return;
     if (this.music?.track === track) return;
     const ctx = this.ctx;
-    const old = this.music;
-    if (old) {
-      old.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.25);
-      setTimeout(() => { try { old.src.stop(); } catch { /* 이미 멈춤 */ } }, 1500);
-    }
-    this.music = null;
+    // 새 곡을 «다 불러온 뒤에» 옛 곡을 내린다 — 못 불러오면 지금 곡을 그대로 둔다(무음 구간 없음)
     void this.load(`assets/audio/bgm/bgm_${track}.m4a`).then((b) => {
       if (!b || this.wantTrack !== track || !this.master) return;
+      const old = this.music;
+      if (old) {
+        old.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.25);
+        setTimeout(() => { try { old.src.stop(); } catch { /* 이미 멈춤 */ } }, 1500);
+      }
       const src = ctx.createBufferSource();
       src.buffer = b;
       src.loop = true;

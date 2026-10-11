@@ -1,0 +1,30 @@
+{
+  "verdict": "PASS",
+  "fails": [],
+  "warnings": [
+    "엔딩 마무리 -1.8dB — 다만 --fade-out-s 를 받지 못했다. 페이드를 넣은 파일이면 이 수치는 페이드 때문일 수 있다(3초 이상 페이드에서 판정이 뒤집힌다). 페이드 길이를 넘겨 다시 잴 것"
+  ],
+  "duration_s": 36.5,
+  "sample_rate": 192000,
+  "channels": 2,
+  "mean_db": -17.4,
+  "peak_db": -1.0,
+  "lufs": -13.4,
+  "audio": "/Users/sim-insu/Documents/dev/iwpuzzle/game-assets-src/audio/bgm/bgm_play.loop.wav",
+  "unmeasured": [],
+  "end_burst": {
+    "detected": false,
+    "tail_floor_db": -12.0,
+    "peak_db": -5.8,
+    "threshold_db": 12.0,
+    "max_burst_ms": 80
+  },
+  "ending_resolution": {
+    "delta_db": -1.8,
+    "body_db": -17.53,
+    "tail_db": -19.32,
+    "required_drop_db": 1.0,
+    "fade_out_s": 0.0,
+    "exempt": false
+  }
+}

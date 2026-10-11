@@ -1,0 +1,23 @@
+[
+  {
+    "file": "bgm_menu.loop.wav",
+    "caption": "cheerful playful space adventure loop for a kids puzzle game menu, bright synth bells, soft pads, light bouncy drums, warm and friendly, instrumental, seamless loop",
+    "bytes": 28032102,
+    "license": "self-generated",
+    "source": "ACE-Step-1.5 via game-builder/tools/gen-bgm.sh"
+  },
+  {
+    "file": "bgm_play.loop.wav",
+    "caption": "upbeat energetic chiptune and synth pop loop for a fast kids arcade puzzle game, catchy lead melody, punchy drums, sparkling arpeggios, rocket launch excitement, instrumental, seamless loop",
+    "bytes": 28032102,
+    "license": "self-generated",
+    "source": "ACE-Step-1.5 via game-builder/tools/gen-bgm.sh"
+  },
+  {
+    "file": "bgm_hurry.loop.wav",
+    "caption": "intense fast countdown music loop for the last seconds of a kids arcade game, driving drums, rising synth arpeggios, urgent but fun, instrumental, seamless loop, steady energy to the end",
+    "bytes": 20352102,
+    "license": "self-generated",
+    "source": "ACE-Step-1.5 via game-builder/tools/gen-bgm.sh"
+  }
+]

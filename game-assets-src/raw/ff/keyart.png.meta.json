@@ -1,0 +1,14 @@
+{
+ "prompt": "Generate an image (wide landscape 16:9 image): key art for a kids math puzzle game: five colorful cartoon rockets standing in a row on launch pads, the middle rocket blasting off with a big bright flame and sparkles, glowing fuel gauge tubes beside them, a cute chibi kid astronaut cheering in front, night sky with stars and a ringed planet, dynamic upward composition, leave the top third of the im",
+ "out": "/Users/sim-insu/Documents/dev/iwpuzzle/game-assets-src/raw/ff/keyart.png",
+ "t0": 1791726348.3888981,
+ "w": 1672,
+ "h": 941,
+ "src": "blob:https://chatgpt.com/aa9b30f3-cca8-44c6-8c2a-c317826a33f3",
+ "bytes": "data-uri(data:image/png;base64)",
+ "verify": "1672x941 · 3,220,882바이트",
+ "elapsed_s": 77.3,
+ "conversation": "https://chatgpt.com/c/6acb9152-dd94-83ee-bab3-f673985dbb1c",
+ "served_by": "chatgpt-web(모델 미노출 — 서버가 정한다)",
+ "attempts": 1
+}

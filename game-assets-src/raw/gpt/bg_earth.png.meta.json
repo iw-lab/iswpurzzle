@@ -1,0 +1,14 @@
+{
+ "prompt": "Generate an image (wide landscape 16:9 image): wide game background illustration, a cheerful seaside rocket launch base on earth at sunset, launch towers and fuel tanks far in the background on the left and right edges, distant mountains, pink and orange sky with a few stars, the center and bottom half of the image is open flat ground left empty for gameplay, gentle depth, diorama look, stylized 3",
+ "out": "/Users/sim-insu/Documents/dev/iwpuzzle/game-assets-src/raw/gpt/bg_earth.png",
+ "t0": 1791725389.690059,
+ "w": 1672,
+ "h": 941,
+ "src": "blob:https://chatgpt.com/fe8fe4f2-4c18-461f-ba28-c636cb083b51",
+ "bytes": "data-uri(data:image/png;base64)",
+ "verify": "1672x941 · 2,940,798바이트",
+ "elapsed_s": 82.0,
+ "conversation": "https://chatgpt.com/c/6acb8f62-73a0-83ee-8a5c-b1522ce9399a",
+ "served_by": "chatgpt-web(모델 미노출 — 서버가 정한다)",
+ "attempts": 1
+}

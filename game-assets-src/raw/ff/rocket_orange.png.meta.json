@@ -1,0 +1,14 @@
+{
+ "prompt": "Generate an image (tall portrait 9:16 image): an orange and cream retro rocket with polka dots, long fins and a round porthole, standing perfectly upright and vertical, nose pointing straight up, front view, single isolated object, centered, full object visible with about 12% margin on every side, stylized 3D toy render for a bright kids mobile game, glossy plastic and painted metal materials, sof",
+ "out": "/Users/sim-insu/Documents/dev/iwpuzzle/game-assets-src/raw/ff/rocket_orange.png",
+ "t0": 1791726186.8920078,
+ "w": 941,
+ "h": 1672,
+ "src": "blob:https://chatgpt.com/af28546c-dbe4-412c-a117-eb4408310668",
+ "bytes": "data-uri(data:image/png;base64)",
+ "verify": "941x1672 · 2,089,964바이트",
+ "elapsed_s": 68.7,
+ "conversation": "https://chatgpt.com/c/6acb9152-dd94-83ee-bab3-f673985dbb1c",
+ "served_by": "chatgpt-web(모델 미노출 — 서버가 정한다)",
+ "attempts": 1
+}

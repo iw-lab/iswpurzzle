@@ -215,15 +215,25 @@ function quitGame(): void {
 }
 
 // ── 판 진행 ──
+/** 시뮬은 고정 스텝(1/120초)으로 돈다 — 화면이 8fps 로 떨어져도 60초 판은 60초다(입력 계약 §2 프레임률 독립) */
+const STEP = 1000 / 120;
+let acc = 0;
 function frame(now: number): void {
-  const dt = Math.min(50, now - last);
+  const raw = now - last;
   last = now;
+  // 탭 전환 뒤 첫 프레임처럼 큰 공백은 250ms 로 자른다(그동안은 visibilitychange 가 이미 멈춰 둔다)
+  const dt = Math.min(50, raw);
   if (sim && !paused && !sim.over) {
-    sim.step(dt);
+    acc += Math.min(250, raw);
+    while (acc >= STEP && !sim.over) {
+      sim.step(STEP);
+      acc -= STEP;
+    }
     for (const ev of sim.drainEvents()) onEvent(ev, now);
     updateBar();
-  } else if (sim) {
-    for (const ev of sim.drainEvents()) onEvent(ev, now);
+  } else {
+    acc = 0;
+    if (sim) for (const ev of sim.drainEvents()) onEvent(ev, now);
   }
   view.draw(now, paused ? 0 : dt);
   requestAnimationFrame(frame);
@@ -346,8 +356,10 @@ function layoutDom(): void {
   const tray = $('tray');
   if (L.wide) {
     tray.style.flexDirection = 'column';
-    tray.style.left = `${Math.max(10, L.sideW / 2 - 90)}px`;
-    tray.style.top = `${L.spawnTop}px`;
+    // zoom 이 걸린 상자는 left/top 도 확대 배율로 나눠야 제자리다
+    const z = parseFloat(getComputedStyle(tray).zoom || '1') || 1;
+    tray.style.left = `${Math.max(10, L.sideW / 2 - 90 * z) / z}px`;
+    tray.style.top = `${L.spawnTop / z}px`;
     tray.style.transform = '';
   } else {
     tray.style.flexDirection = 'row';
@@ -358,8 +370,19 @@ function layoutDom(): void {
   $('goal').style.top = `${L.wide ? L.hudH + 4 : L.spawnTop + 2}px`;
   $('combo').style.top = `${L.spawnTop + 4}px`;
   $('hint').style.top = `${L.spawnTop + L.spawnH * 0.15}px`;
-  // 배너는 떨어지는 칸 자리(연료통 위)에 — 통과 로켓을 가리지 않게
-  document.documentElement.style.setProperty('--banner-top', `${L.spawnTop + L.spawnH * 0.5}px`);
+  // 배너는 떨어지는 칸·연료통을 가리면 안 된다 — 넓은 화면은 오른쪽 빈 패널, 좁은 화면은 맨 위 «보관·다음» 줄 위
+  const root = document.documentElement.style;
+  if (L.wide && L.sideW >= 300) {
+    root.setProperty('--banner-left', `${L.w - L.sideW / 2}px`);
+    root.setProperty('--banner-top', `${L.spawnTop + L.spawnH}px`);
+    root.setProperty('--banner-max', `${L.sideW - 12}px`);
+    root.setProperty('--banner-fs', `${Math.round(Math.min(L.h * 0.046, L.sideW / 8.5))}px`);
+  } else {
+    root.setProperty('--banner-left', '50%');
+    root.setProperty('--banner-top', `${L.hudH + 2}px`);
+    root.setProperty('--banner-max', '94vw');
+    root.removeProperty('--banner-fs');
+  }
 }
 
 // ── 판 끝 ──
@@ -601,6 +624,28 @@ document.addEventListener('pointerdown', () => audio.unlock(), { capture: true }
   fmtClock,
 };
 
-void art.init();
+// ── 에셋 쇼룸(?showroom=1) — 게임보다 먼저 그림만 따로 본다(에셋 결함과 코드 결함을 가른다) ──
+async function showroom(): Promise<void> {
+  await art.init();
+  const m = art.manifest;
+  const box = document.createElement('div');
+  box.id = 'showroom';
+  box.style.cssText = 'position:fixed;inset:0;overflow:auto;z-index:50;background:#0b1030;padding:16px;display:flex;flex-wrap:wrap;gap:12px;align-content:flex-start';
+  const tile = (src: string, label: string, h = 160) => `<figure style="margin:0;background:rgba(255,255,255,.06);border-radius:12px;padding:8px;text-align:center"><img src="${src}" style="height:${h}px;max-width:300px;object-fit:contain"/><figcaption style="font-size:12px">${label}</figcaption></figure>`;
+  const cells = (['frac', 'dec', 'pct'] as const).map((k) => cellHtml({ v: 25, label: k === 'frac' ? '1/4' : k === 'dec' ? '0.25' : '25%', kind: k, id: 0 })).join(' ');
+  box.innerHTML = [
+    `<h2 style="width:100%;margin:0">딱 1 로켓 쇼룸 — manifest.json</h2>`,
+    ...(m?.rockets ?? []).map((u, i) => tile(u, `로켓 ${i}`)),
+    ...Object.entries(m?.backgrounds ?? {}).map(([k, u]) => tile(u, k, 120)),
+    ...(m?.planets ?? []).map((u, i) => tile(u, `${PLANETS[i]}`, 80)),
+    m?.doki ? tile(m.doki.image, '도키 리그 아틀라스', 200) : '<p>도키 리그 없음</p>',
+    tile('assets/icon.png', '아이콘', 96),
+    `<div style="width:100%;display:flex;gap:10px;align-items:center">표기 칸: ${cells}</div>`,
+  ].join('');
+  document.body.appendChild(box);
+}
+
+if (new URLSearchParams(location.search).has('showroom')) void showroom();
+else void art.init();
 showHome();
 requestAnimationFrame((t) => { last = t; frame(t); });

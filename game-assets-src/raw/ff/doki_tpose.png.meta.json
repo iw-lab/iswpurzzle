@@ -1,0 +1,14 @@
+{
+ "prompt": "Generate an image (square 1:1 image): a cute chibi kid astronaut mascot, big round head about 3 heads tall, white and orange spacesuit with a small star badge, clear helmet bubble with a friendly smiling face visible, short dark hair, standing in a T-pose with both arms stretched straight out horizontally to the sides, palms down, legs slightly apart, front view, full body with both feet visible, ",
+ "out": "/Users/sim-insu/Documents/dev/iwpuzzle/game-assets-src/raw/ff/doki_tpose.png",
+ "t0": 1791726263.5725272,
+ "w": 1254,
+ "h": 1254,
+ "src": "blob:https://chatgpt.com/e020101f-0283-4d8b-8dc5-250948a22339",
+ "bytes": "data-uri(data:image/png;base64)",
+ "verify": "1254x1254 · 2,331,208바이트",
+ "elapsed_s": 76.8,
+ "conversation": "https://chatgpt.com/c/6acb9152-dd94-83ee-bab3-f673985dbb1c",
+ "served_by": "chatgpt-web(모델 미노출 — 서버가 정한다)",
+ "attempts": 1
+}

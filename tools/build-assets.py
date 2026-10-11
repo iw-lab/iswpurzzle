@@ -17,6 +17,15 @@ CUT = os.path.expanduser('~/.claude/skills/game-builder/tools/cutout-flood.py')
 ROCKETS = ['rocket_red', 'rocket_blue', 'rocket_green', 'rocket_purple', 'rocket_orange']
 BGS = ['bg_earth', 'bg_moon', 'bg_mars']
 strict = '--strict' in sys.argv
+
+
+def raw(name):
+    """원본은 엔진 줄별 폴더(raw/ff · raw/gpt)에 있다 — 원장(_engine.json)도 폴더마다"""
+    for d in ('ff', 'gpt', ''):
+        p = os.path.join(RAW, d, name)
+        if os.path.exists(p): return p
+    return os.path.join(RAW, name)
+
 missing = []
 
 
@@ -42,7 +51,7 @@ tmp = os.path.join(ROOT, 'game-assets-src', 'cut')
 os.makedirs(tmp, exist_ok=True)
 
 for r in ROCKETS:
-    src = os.path.join(RAW, f'{r}.png')
+    src = raw(f'{r}.png')
     if not os.path.exists(src):
         missing.append(src); continue
     out = os.path.join(tmp, f'{r}.png')
@@ -52,14 +61,14 @@ for r in ROCKETS:
     man['rockets'].append(f'assets/rockets/{r}.webp')
 
 for b in BGS:
-    src = os.path.join(RAW, f'{b}.png')
+    src = raw(f'{b}.png')
     if not os.path.exists(src):
         missing.append(src); continue
     webp(src, os.path.join(PUB, 'bg', f'{b}.webp'), max_w=1600, q=74)
     man['backgrounds'][b] = f'assets/bg/{b}.webp'
 
 for i in (1, 2):
-    src = os.path.join(RAW, f'planets_{i}.png')
+    src = raw(f'planets_{i}.png')
     if not os.path.exists(src):
         missing.append(src); continue
     out = os.path.join(tmp, f'planets_{i}.png')
@@ -92,7 +101,7 @@ if os.path.exists(rk):
 else:
     missing.append('icon (rocket_red 컷아웃 필요)')
 
-ka = os.path.join(RAW, 'keyart.png')
+ka = raw('keyart.png')
 if os.path.exists(ka):
     im = Image.open(ka).convert('RGB')
     im.thumbnail((1200, 630))
