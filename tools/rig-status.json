@@ -1,6 +1,6 @@
 {
  "doki": {
-  "ok": false,
+  "ok": true,
   "shape": "human",
   "actions": [
    "idle",
@@ -9,8 +9,14 @@
   ],
   "dir": "S",
   "src": "game-assets-src/rig/src/doki.png",
-  "ts": "2026-10-11T22:55:37",
-  "why": "뼈대(creature) 게이트 FAIL",
-  "log": "❌ [gate] 팔 띠(구간 3개)를 못 찾았다 — A/T 포즈가 아니거나 팔이 몸통에 붙어 있다. 팔 벌린 이미지로 다시 생성\n❌ [gate] FAIL 1건 — 리포트 /Users/sim-insu/Documents/dev/iwpuzzle/game-assets-src/rig/work/doki/rig.json\n"
+  "ts": "2026-10-11T23:09:09",
+  "glb": "game-assets-src/rig/ff/doki.glb",
+  "glbSha": "3c56e982b54439e2",
+  "srcSha": "c7c0f36b550709ff",
+  "atlas": "public/assets/rig/doki.png",
+  "atlasSha": "2a5fd89bdc45478b",
+  "frames": 8,
+  "size": 256,
+  "replaces": []
  }
 }

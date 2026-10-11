@@ -45,12 +45,13 @@ export class Art {
     }
     const m = this.manifest;
     this.rockets = await Promise.all(m.rockets.map((u) => loadImage(u)));
-    if (m.doki) {
-      const [img, atlas] = await Promise.all([
-        loadImage(m.doki.image),
-        fetch(m.doki.atlas).then((r) => r.json() as Promise<DokiAtlas>).catch(() => null),
-      ]);
-      if (img && atlas) this.doki = { img, atlas };
+    // 도키 아틀라스(1.2MB)는 첫 화면을 막지 않게 뒤에서 — 넓은 화면(옆 패널)에서만 그린다
+    const dk = m.doki;
+    if (dk) {
+      void Promise.all([
+        loadImage(dk.image),
+        fetch(dk.atlas).then((r) => r.json() as Promise<DokiAtlas>).catch(() => null),
+      ]).then(([img, atlas]) => { if (img && atlas) this.doki = { img, atlas }; });
     }
     void Promise.all(m.planets.map((u) => loadImage(u))).then((p) => (this.planets = p));
   }

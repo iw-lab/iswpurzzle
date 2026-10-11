@@ -20,5 +20,9 @@
   "assets/planets/planet_5.webp",
   "assets/planets/planet_6.webp",
   "assets/planets/planet_7.webp"
- ]
+ ],
+ "doki": {
+  "image": "assets/rig/doki.png",
+  "atlas": "assets/rig/doki.json"
+ }
 }

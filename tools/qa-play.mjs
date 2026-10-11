@@ -62,8 +62,35 @@ const pickCol = () => {
   return { col, x: L.colX[col], y: L.tubeTop + L.tubeH * 0.5, launches: s.launches, t: s.t };
 };
 
+const vis = (page, sel) => page.evaluate((s) => { const e = document.querySelector(s); if (!e) return false; const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; }, sel);
+
+/** 배포본 관문(키트): 학교 정하기 → «목록에 없어요»(순위판에 기록 0) → 문제 풀고 이용권 → 시작 */
+async function passGate(page) {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  for (let step = 0; step < 30; step++) {
+    if (await page.evaluate(() => !!(window.__ttak1.sim && window.__ttak1.sim.t > 0))) return;
+    if (await vis(page, '[data-gb="school-pick"]')) { await page.click('[data-gb-none]'); await wait(1500); continue; }
+    if (await vis(page, '[data-gb="quiz"]')) {
+      if (await vis(page, '.gb-qtext')) {
+        const k = await page.evaluate(() => {
+          const t = document.querySelector('.gb-qtext')?.textContent || '';
+          const m = t.match(/(\d+)\s*([+−\-×÷])\s*(\d+)/); if (!m) return 0;
+          const a = +m[1], c = +m[3], v = { '+': a + c, '−': a - c, '-': a - c, '×': a * c, '÷': a / c }[m[2]];
+          const ch = [...document.querySelectorAll('.gb-choice')].map((e) => e.textContent.trim());
+          const i = ch.findIndex((x) => Number(x) === v); return i < 0 ? 0 : i;
+        });
+        await page.click(`[data-pick="${k}"]`).catch(() => {});
+        await wait(1300);
+      } else { await page.click('[data-qgo]').catch(() => {}); await wait(2500); }
+      continue;
+    }
+    await wait(700);
+  }
+}
+
 async function startTime(page) {
   await page.click('#btnPlay');
+  await passGate(page);
   await page.waitForFunction(() => window.__ttak1.sim && window.__ttak1.sim.t > 0, { timeout: 8000 });
 }
 
@@ -147,6 +174,7 @@ for (const vp of VPS.filter((v) => !ONLY || ONLY.split(',').includes(v.name))) {
       await page.screenshot({ path: path.join(OUT, `${vp.name}-5-result.png`) });
       const t0 = Date.now();
       await page.click('#btnAgain');
+      await passGate(page);
       await page.waitForFunction(() => window.__ttak1.sim && window.__ttak1.sim.t > 0 && !window.__ttak1.sim.over, { timeout: 5000 });
       console.log(`  다시 하기 → 새 판 ${Date.now() - t0}ms`);
     }

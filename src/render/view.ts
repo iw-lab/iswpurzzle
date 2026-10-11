@@ -505,7 +505,9 @@ export class View {
     if (now > this.doki.until) this.doki.anim = 'idle';
     const anims = d.atlas.meta.anims ?? {};
     const want = this.doki.anim === 'cheer' ? 'attack' : this.doki.anim === 'dance' ? 'walk' : 'idle';
-    const frames = anims[want] ?? anims.idle ?? Object.keys(d.atlas.frames);
+    // 리그 아틀라스의 애니 이름은 «캐릭터id_동작»(doki_idle) — 접두어가 없던 옛 이름도 받는다
+    const pick = (n: string) => anims[`doki_${n}`] ?? anims[n];
+    const frames = pick(want) ?? pick('idle') ?? Object.keys(d.atlas.frames);
     if (!frames.length) return;
     const fi = Math.floor(now / 90) % frames.length;
     const fr = d.atlas.frames[frames[fi]]?.frame;
