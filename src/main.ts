@@ -17,6 +17,7 @@ import { columnAt } from './render/layout.ts';
 import { art, loadedImageKeys } from './render/assets.ts';
 import { audio } from './audio/audio.ts';
 import { loadSave, writeSave, todayKey, yesterdayKey } from './save.ts';
+import { canvasToPage, fireHeart, fireLaunch, fireMulti, fireOverflow } from './gb/juice-fx.ts';
 // @ts-expect-error — 스킬 공용 측정기(순수 JS). ?perf=1 일 때만 켜진다(실기기 P95)
 import { startPerfProbe } from './perf-p95.js';
 
@@ -254,10 +255,9 @@ function onEvent(ev: SimEvent, now: number): void {
       updateTray();
       break;
     case 'launch': {
-      audio.play('ignite', { vol: 0.8 });
-      audio.play('launch', { vol: 0.7 });
-      if (ev.combo >= 2) audio.combo(ev.combo);
-      if (ev.kinds >= 2) audio.play('mix', { vol: 0.6 });
+      // 🎮 반응(주스) — audio.play(ignite/launch)·audio.combo 를 직접 부르지 않고 fire 로 옮겼다(중복 소리 방지)
+      const lp = canvasToPage(view.canvas, view.L.colX[ev.col] ?? innerWidth / 2, view.L.rocketTop);
+      fireLaunch(ev.combo, ev.kinds, { x: lp.x, y: lp.y, punch: '#score' });
       const sc = $('score');
       sc.textContent = s.score.toLocaleString();
       sc.classList.remove('bump');
@@ -267,7 +267,7 @@ function onEvent(ev: SimEvent, now: number): void {
       cb.classList.toggle('hidden', ev.combo < 2);
       cb.textContent = `콤보 ${ev.combo}`;
       if (ev.multi >= 2) {
-        audio.play('double');
+        fireMulti({ x: lp.x, y: lp.y, title: ev.multi >= 3 ? '트리플 발사!!' : '더블 발사!' });
         banner(ev.multi >= 3 ? '트리플 발사!! 🚀🚀🚀' : '더블 발사! 🚀🚀', ev.equation, 'good', 1100);
       } else banner('딱 1! 🚀', ev.equation, 'good', 700);
       if (hintShown) {
@@ -278,7 +278,9 @@ function onEvent(ev: SimEvent, now: number): void {
       break;
     }
     case 'overflow': {
-      audio.play('overflow');
+      // 🎮 반응(주스) — audio.play('overflow') 를 fire 로 옮겼다
+      const op = canvasToPage(view.canvas, view.L.colX[ev.col] ?? innerWidth / 2, view.L.tubeTop);
+      fireOverflow({ x: op.x, y: op.y });
       $('combo').classList.add('hidden');
       // 넘친 식을 1.6초 보여 준다(오답 각인 D-5) — 표기를 소수로 바꾼 식도 함께
       // 이미 소수뿐인 식이면 같은 식을 두 번 쓰지 않고 넘친 양만 말한다
@@ -292,7 +294,7 @@ function onEvent(ev: SimEvent, now: number): void {
       break;
     }
     case 'heart':
-      audio.play('heart');
+      fireHeart({ title: '하트 +1' }); // 🎮 반응(주스) — audio.play('heart') 를 fire 로 옮겼다
       toast('❤️ 하트 +1');
       break;
     case 'goal': {
