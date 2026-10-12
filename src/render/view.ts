@@ -305,26 +305,37 @@ export class View {
     ctx.fillStyle = 'rgba(255,255,255,0.35)';
     const bob = Math.sin(now / 260 + p.id) * 1.5;
     ctx.fillRect(x + 4, y + 3 + bob, w - 8, 2);
-    if (h >= 18) this.drawLabel(p, x + w / 2, y + h / 2, Math.min(h * 0.62, w * 0.32), st.ink);
+    // 분수는 두 줄이라 칸이 23px 는 돼야 읽힌다(그보다 얇은 0.05 칸은 «남은» 숫자로 읽는다)
+    if (h >= (p.kind === 'frac' ? 23 : 16)) this.drawLabel(p, x + w / 2, y + h / 2, Math.min(h * 0.62, w * 0.32), st.ink, w - 4, h - 4);
   }
 
-  /** 분수는 위아래로(3 위에 4) 쌓아 쓴다 — 아이들이 교과서에서 보는 모양 */
-  drawLabel(c: Cell, cx: number, cy: number, size: number, ink: string): void {
+  /** 분수는 언제나 위아래로(3 위에 4) 쌓아 쓴다 — 아이들이 교과서에서 보는 모양. 빗금(3/4) 금지.
+   *  maxW·maxH 를 주면 그 안에 들어가게 글자를 줄인다(작은 칸에서도 빗금으로 바꾸지 않는다). */
+  drawLabel(c: Cell, cx: number, cy: number, size: number, ink: string, maxW = Infinity, maxH = Infinity): void {
     const { ctx } = this;
     size = clamp(size, 11, 64);
     ctx.fillStyle = ink;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    if (c.kind === 'frac' && size >= 15) {
+    if (c.kind === 'frac') {
       const [n, d] = c.label.split('/');
-      const fs = size * 0.62;
+      let fs = Math.min(size * 0.62, maxH / 2.5);
+      ctx.font = `900 ${Math.round(fs)}px ${FONT}`;
+      const tw = Math.max(ctx.measureText(n).width, ctx.measureText(d).width);
+      if (tw + 6 > maxW) fs *= (maxW - 6) / tw;
+      fs = Math.max(9, fs);
       ctx.font = `900 ${Math.round(fs)}px ${FONT}`;
       const bw = Math.max(ctx.measureText(n).width, ctx.measureText(d).width) + 6;
-      ctx.fillText(n, cx, cy - fs * 0.58);
-      ctx.fillText(d, cx, cy + fs * 0.62);
-      ctx.fillRect(cx - bw / 2, cy - 1.5, bw, 3);
+      const bar = Math.max(2, Math.round(fs * 0.13));
+      ctx.fillText(n, cx, cy - fs * 0.6);
+      ctx.fillText(d, cx, cy + fs * 0.64);
+      ctx.fillRect(cx - bw / 2, cy - bar / 2, bw, bar);
     } else {
-      ctx.font = `900 ${Math.round(size * 0.78)}px ${FONT}`;
+      let fs = Math.min(size * 0.78, maxH * 0.9);
+      ctx.font = `900 ${Math.round(fs)}px ${FONT}`;
+      const tw = ctx.measureText(c.label).width;
+      if (tw + 6 > maxW) fs = Math.max(9, fs * (maxW - 6) / tw);
+      ctx.font = `900 ${Math.round(fs)}px ${FONT}`;
       ctx.fillText(c.label, cx, cy + 1);
     }
   }
@@ -381,14 +392,12 @@ export class View {
     if (h > 40) ctx.fillText(st.tag, cx - w / 2 + 6, y + 4);
     const size = Math.min(Math.max(h, 34) * 0.7, w * 0.36);
     if (h < 34) {
-      // 아주 얇은 칸(0.05)은 글자를 칸 위에 띄운다
-      ctx.fillStyle = '#fff';
-      ctx.font = `900 ${Math.round(clamp(w * 0.2, 14, 34))}px ${FONT}`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'bottom';
-      ctx.fillText(c.label, cx, y - 4);
+      // 아주 얇은 칸(0.05)은 글자를 칸 위에 띄운다 — 분수도 쌓은 모양 그대로
+      const fs = clamp(w * 0.2, 14, 34);
+      const lh = c.kind === 'frac' ? fs * 2.5 : fs;
+      this.drawLabel(c, cx, y - 4 - lh / 2, fs / (c.kind === 'frac' ? 0.62 : 0.78), '#fff', w * 1.2, lh);
     } else {
-      this.drawLabel(c, cx, y + h / 2, size, st.ink);
+      this.drawLabel(c, cx, y + h / 2, size, st.ink, w - 8, h - 6);
     }
     void now;
   }

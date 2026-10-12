@@ -314,7 +314,7 @@ function onEvent(ev: SimEvent, now: number): void {
 function banner(title: string, sub: string, cls: 'good' | 'bad', ms: number): void {
   const b = $('banner');
   b.className = `banner ${cls} pop`;
-  b.innerHTML = `${esc(title).replace(/\n/g, '<br>')}${sub ? `<small>${esc(sub)}</small>` : ''}`;
+  b.innerHTML = `${mathHtml(title).replace(/\n/g, '<br>')}${sub ? `<small>${mathHtml(sub)}</small>` : ''}`;
   clearTimeout(bannerTimer);
   bannerTimer = window.setTimeout(() => b.classList.add('hidden'), ms);
 }
@@ -448,7 +448,7 @@ function endGame(): void {
     ? `<div class="rv-head">넘쳤던 식 다시 보기</div>${rv.map((e) => {
       const [l, r] = e.split(' = ');
       const dec = l.split(' + ').map((p) => sumLabel(parseLabel(p))).join(' + ');
-      return `<div class="rv">${esc(l)} = ${esc(r)}<small>${esc(dec)} = ${esc(r)} → 1보다 ${esc(String(Number(r) - 1 > 0 ? (Math.round((Number(r) - 1) * 100) / 100) : 0))} 많아요</small></div>`;
+      return `<div class="rv">${mathHtml(l)} = ${esc(r)}<small>${esc(dec)} = ${esc(r)} → 1보다 ${esc(String(Number(r) - 1 > 0 ? (Math.round((Number(r) - 1) * 100) / 100) : 0))} 많아요</small></div>`;
     }).join('')}`
     : '<div class="rv-head">한 번도 안 넘쳤어요! 👏</div>';
   const again = $('btnAgain');
@@ -622,6 +622,11 @@ function toast(msg: string): void {
   clearTimeout(toastTimer);
   toastTimer = window.setTimeout(() => t.classList.add('hidden'), 2200);
 }
+/** 식 속 분수(3/20)를 위아래로 쌓은 모양으로 — 빗금 분수를 화면에 내지 않는다 */
+function mathHtml(s: string): string {
+  return esc(s).replace(/(\d+)\/(\d+)/g, '<span class="fr fi"><span>$1</span><span>$2</span></span>');
+}
+
 function esc(s: string): string {
   return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 }

@@ -137,3 +137,6 @@ button.tray-box:active { transform: scale(0.96); }
 @media (prefers-reduced-motion: reduce) { .hint, .score.bump, .banner.pop { animation: none; } }
 /* 키보드로 다니는 사람(교실 PC)에게 지금 고른 단추가 보이게 */
 button:focus-visible { outline: 3px solid var(--gb-accent); outline-offset: 2px; }
+/* 식 속 분수 — 글줄 가운데에 맞춰 쌓는다 */
+.fr.fi { vertical-align: middle; font-size: 0.78em; margin: 0 1px; }
+.fr.fi > span:first-child { border-bottom-width: 2px; }

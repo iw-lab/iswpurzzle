@@ -45,6 +45,15 @@ async function newPage(vp) {
   const page = await ctx.newPage();
   await page.setViewport(vp);
   const errors = [];
+  // 빗금 분수(3/20) 감시 — 캔버스에 그린 글자를 전부 엿본다(분수는 위아래로 쌓아야 한다)
+  await page.evaluateOnNewDocument(() => {
+    window.__slashFrac = [];
+    const orig = CanvasRenderingContext2D.prototype.fillText;
+    CanvasRenderingContext2D.prototype.fillText = function (t, ...a) {
+      if (/\d+\s*\/\s*\d+/.test(String(t)) && window.__slashFrac.length < 20) window.__slashFrac.push(String(t));
+      return orig.call(this, t, ...a);
+    };
+  });
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
   page.on('console', (m) => { if (m.type() === 'error' && !/api\/hub|503|Failed to load resource/.test(m.text())) errors.push(`console: ${m.text()}`); });
   await page.goto(base, { waitUntil: 'networkidle2' });
@@ -178,6 +187,8 @@ for (const vp of VPS.filter((v) => !ONLY || ONLY.split(',').includes(v.name))) {
       await page.waitForFunction(() => window.__ttak1.sim && window.__ttak1.sim.t > 0 && !window.__ttak1.sim.over, { timeout: 5000 });
       console.log(`  다시 하기 → 새 판 ${Date.now() - t0}ms`);
     }
+    const slash = await page.evaluate(() => [...window.__slashFrac, ...(document.body.innerText.match(/\d+\s*\/\s*\d+/g) || []).map((x) => `DOM ${x}`)]);
+    if (slash.length) fails.push(`${vp.name}: 빗금 분수가 화면에 나왔다 — ${[...new Set(slash)].slice(0, 5).join(', ')}`);
     if (errors.length) fails.push(`${vp.name}: 콘솔 에러 ${errors.length} — ${errors.slice(0, 3).join(' | ')}`);
     console.log(`✔ ${vp.name}: 발사 ${after} · 에러 ${errors.length}`);
   } catch (e) {
