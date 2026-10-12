@@ -306,7 +306,7 @@ export class View {
     const bob = Math.sin(now / 260 + p.id) * 1.5;
     ctx.fillRect(x + 4, y + 3 + bob, w - 8, 2);
     // 분수는 두 줄이라 칸이 23px 는 돼야 읽힌다(그보다 얇은 0.05 칸은 «남은» 숫자로 읽는다)
-    if (h >= (p.kind === 'frac' ? 23 : 16)) this.drawLabel(p, x + w / 2, y + h / 2, Math.min(h * 0.62, w * 0.32), st.ink, w - 4, h - 4);
+    if (h >= (p.kind === 'frac' ? 23 : 16)) this.drawLabel(p, x + w / 2, y + h / 2, Math.min(h * 0.62, w * (p.kind === 'frac' ? 0.9 : 0.6)), st.ink, w - 4, h - 4);
   }
 
   /** 분수는 언제나 위아래로(3 위에 4) 쌓아 쓴다 — 아이들이 교과서에서 보는 모양. 빗금(3/4) 금지.
@@ -390,7 +390,7 @@ export class View {
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     if (h > 40) ctx.fillText(st.tag, cx - w / 2 + 6, y + 4);
-    const size = Math.min(Math.max(h, 34) * 0.7, w * 0.36);
+    const size = Math.min(Math.max(h, 34) * 0.7, w * (c.kind === 'frac' ? 0.9 : 0.6));
     if (h < 34) {
       // 아주 얇은 칸(0.05)은 글자를 칸 위에 띄운다 — 분수도 쌓은 모양 그대로
       const fs = clamp(w * 0.2, 14, 34);
