@@ -34,6 +34,14 @@ def outlined(d, xy, text, f, fill, stroke=(20, 12, 40), sw=10, anchor='mm'):
     d.text(xy, text, font=f, fill=fill, stroke_width=sw, stroke_fill=stroke, anchor=anchor)
 
 
+def no_slash(parts):
+    # 🔒 썸네일 글자에 «숫자/숫자» 빗금 분수가 들어가면 만들지 않는다(게임 화면 qa-play 게이트와 같은 규칙)
+    import re
+    for p in parts:
+        if isinstance(p, str) and re.search(r'\d+\s*/\s*\d+', p):
+            raise SystemExit(f'❌ 빗금 분수 금지: «{p}» — ("frac", 분자, 분모) 로 쌓아 그린다')
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     art = Image.open(find_keyart()).convert('RGB')
@@ -65,12 +73,31 @@ def main():
     for (t, f, c), w in zip(parts, widths):
         outlined(d, (x + w / 2, ty), t, f, c, sw=12)
         x += w + gap
-    # 부제: 식 한 줄 — 무엇을 하는 게임인지 3m 밖에서 읽히게
+    # 부제: 식 한 줄 — 무엇을 하는 게임인지 3m 밖에서 읽히게. 분수는 위아래로 쌓는다(빗금 «1/4» 금지 — 사용자 지시 2026-10-12)
     f_sub = font(54, 14)
-    sub = '1/4 + 0.5 + 25% = 1'
-    bw = d.textbbox((0, 0), sub, font=f_sub)[2] + 64
-    d.rounded_rectangle([cx - bw / 2, 352, cx + bw / 2, 440], radius=46, fill=(255, 207, 74, 235), outline=(40, 22, 0), width=5)
-    d.text((cx, 396), sub, font=f_sub, fill=(43, 23, 0), anchor='mm')
+    f_fr = font(42, 14)
+    SUB = [('frac', '1', '4'), ' + 0.5 + 25% = 1']
+    no_slash(SUB)
+    def piece_w(p):
+        if isinstance(p, tuple): return max(d.textlength(p[1], font=f_fr), d.textlength(p[2], font=f_fr)) + 16
+        return d.textlength(p, font=f_sub)
+    tw = sum(piece_w(p) for p in SUB)
+    bw = tw + 72
+    top, bot = 336, 456
+    my = (top + bot) / 2
+    d.rounded_rectangle([cx - bw / 2, top, cx + bw / 2, bot], radius=50, fill=(255, 207, 74, 235), outline=(40, 22, 0), width=5)
+    ink = (43, 23, 0)
+    x = cx - tw / 2
+    for p in SUB:
+        w = piece_w(p)
+        if isinstance(p, tuple):
+            fx = x + w / 2
+            d.text((fx, my - 25), p[1], font=f_fr, fill=ink, anchor='mm')
+            d.text((fx, my + 27), p[2], font=f_fr, fill=ink, anchor='mm')
+            d.rounded_rectangle([x + 4, my - 3, x + w - 4, my + 3], radius=2, fill=ink)
+        else:
+            d.text((x, my), p, font=f_sub, fill=ink, anchor='lm')
+        x += w
     # 안전지대 단언 — 제목·부제가 가운데 정사각(x 200~1000) 안에 있어야 1:1 크롭에서 안 잘린다
     assert total <= 780 and bw <= 760, f'안전지대 밖: 제목 {total:.0f}px · 부제 {bw:.0f}px'
     rgb = img.convert('RGB')
