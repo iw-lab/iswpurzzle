@@ -49,7 +49,7 @@ export function fractionForms(v: number, grade: Grade): string[] {
     if (Number.isInteger(n) && n > 0 && n < d) out.push(`${n}/${d}`);
   }
   // 4학년에서 0.5는 1/2로도 낸다(교과서에 1/2이 먼저 나온다)
-  if (grade === 4 && v === 50) out.push('1/2');
+  if (grade === 4 && v === 50) out.push('1/2'); // gb-frac-ok — 값일 뿐, 화면 표시는 view.ts drawLabel 이 쌓아 그린다
   return out;
 }
 

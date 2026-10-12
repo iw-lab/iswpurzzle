@@ -11,6 +11,7 @@ import { Sim, type SimEvent } from './core/sim.ts';
 import { makeMode, goalText, LEVELS, PLANETS, type ModeId } from './core/modes.ts';
 import { hashSeed } from './core/rng.ts';
 import { ONE, parseLabel, sumLabel, type Cell, type Grade } from './core/values.ts';
+import { fracHTML } from './frac.js';
 import { View } from './render/view.ts';
 import { columnAt } from './render/layout.ts';
 import { art, loadedImageKeys } from './render/assets.ts';
@@ -584,7 +585,8 @@ $('btnAgain').addEventListener('click', (e) => {
 // ── 설정 ──
 function renderSettings(): void {
   $('gradeSeg').innerHTML = ([4, 5, 6] as Grade[]).map((g) => `<button data-g="${g}" class="${g === save.grade ? 'on' : ''}">${g}학년</button>`).join('');
-  $('gradeDesc').textContent = GRADE_DESC[save.grade];
+  // 🔴 학년 설명에 «1/2 · 1/4» 가 빗금 그대로 찍혔다(실측 — check-fraction-display 게이트) — 쌓아 그린다.
+  $('gradeDesc').innerHTML = fracHTML(GRADE_DESC[save.grade]);
   $('btnSound').textContent = save.sound ? '🔊 켜짐' : '🔇 꺼짐';
   const w = save.weak;
   const tot = w.frac + w.dec + w.pct;
@@ -647,7 +649,7 @@ async function showroom(): Promise<void> {
   box.id = 'showroom';
   box.style.cssText = 'position:fixed;inset:0;overflow:auto;z-index:50;background:#0b1030;padding:16px;display:flex;flex-wrap:wrap;gap:12px;align-content:flex-start';
   const tile = (src: string, label: string, h = 160) => `<figure style="margin:0;background:rgba(255,255,255,.06);border-radius:12px;padding:8px;text-align:center"><img src="${src}" style="height:${h}px;max-width:300px;object-fit:contain"/><figcaption style="font-size:12px">${label}</figcaption></figure>`;
-  const cells = (['frac', 'dec', 'pct'] as const).map((k) => cellHtml({ v: 25, label: k === 'frac' ? '1/4' : k === 'dec' ? '0.25' : '25%', kind: k, id: 0 })).join(' ');
+  const cells = (['frac', 'dec', 'pct'] as const).map((k) => cellHtml({ v: 25, label: k === 'frac' ? '1/4' : k === 'dec' ? '0.25' : '25%', kind: k, id: 0 })).join(' '); // gb-frac-ok — cellHtml 이 이미 쌓아 그린다(쇼룸 전용 디버그 화면)
   box.innerHTML = [
     `<h2 style="width:100%;margin:0">딱 1 로켓 쇼룸 — manifest.json</h2>`,
     ...(m?.rockets ?? []).map((u, i) => tile(u, `로켓 ${i}`)),
