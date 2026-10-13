@@ -262,15 +262,15 @@ export class View {
       // 4·5학년: 남은 양(소수) — 6학년·숫자로만에선 감춘다
       if (s.grade !== 6 && tank.fill > 0) {
         const left = ONE - tank.fill;
-        ctx.font = `700 ${Math.round(clamp(L.tubeW * 0.2, 12, 26))}px ${FONT}`;
-        ctx.fillStyle = 'rgba(255,255,255,0.8)';
+        ctx.font = `800 ${Math.round(clamp(L.tubeW * 0.22, 14, 26))}px ${FONT}`;
+        ctx.fillStyle = 'rgba(255,255,255,0.92)';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
         ctx.fillText(`남은 ${trimDec(left)}`, x, ty - 4);
       }
     }
     // 1 표시(통 꼭대기)
-    ctx.font = `800 ${Math.round(clamp(tw * 0.22, 12, 28))}px ${FONT}`;
+    ctx.font = `800 ${Math.round(clamp(tw * 0.24, 14, 28))}px ${FONT}`;
     ctx.fillStyle = '#ffe58a';
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
@@ -393,9 +393,16 @@ export class View {
     const size = Math.min(Math.max(h, 34) * 0.7, w * (c.kind === 'frac' ? 0.9 : 0.6));
     if (h < 34) {
       // 아주 얇은 칸(0.05)은 글자를 칸 위에 띄운다 — 분수도 쌓은 모양 그대로
-      const fs = clamp(w * 0.2, 14, 34);
+      // 폰 세로에선 칸이 좁아 글자가 깨알 같았다 — 최소 20px + 어두운 받침(배경 노을 위에서도 읽히게)
+      const fs = clamp(w * 0.3, 20, 34);
       const lh = c.kind === 'frac' ? fs * 2.5 : fs;
-      this.drawLabel(c, cx, y - 4 - lh / 2, fs / (c.kind === 'frac' ? 0.62 : 0.78), '#fff', w * 1.2, lh);
+      const ly = y - 6 - lh / 2;
+      ctx.font = `900 ${Math.round(fs)}px ${FONT}`;
+      const pw = Math.max(w * 0.9, (c.kind === 'frac' ? Math.max(...c.label.split('/').map((t) => ctx.measureText(t).width)) : ctx.measureText(c.label).width) + 16);
+      ctx.fillStyle = 'rgba(20,12,30,0.78)';
+      roundRect(ctx, cx - pw / 2, ly - lh / 2 - 4, pw, lh + 8, 10);
+      ctx.fill();
+      this.drawLabel(c, cx, ly, fs / (c.kind === 'frac' ? 0.62 : 0.78), '#fff', pw, lh);
     } else {
       this.drawLabel(c, cx, y + h / 2, size, st.ink, w - 8, h - 6);
     }

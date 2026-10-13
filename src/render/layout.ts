@@ -45,7 +45,8 @@ export function computeLayout(w: number, h: number, tanks: number): Layout {
   const spawnTop = top;
   const tubeTop = spawnTop + spawnH;
   const rocketTop = tubeTop + tubeH + Math.round(avail * 0.02);
-  const tubeW = Math.round(Math.min(colW * 0.66, Math.max(150, h * 0.2)));
+  // 세로 폰은 칸이 좁다(390px ÷ 5 = 78px) — 통을 칸의 80% 까지 넓혀 글자가 들어가게 한다
+  const tubeW = Math.round(Math.min(colW * (wide ? 0.66 : 0.8), Math.max(150, h * 0.2)));
   const cellScale = Math.min(1, (spawnH * 0.92) / (tubeH * 0.9));
   return {
     w, h, tanks, wide, sideW, playX, playW, colW, colX, hudH,

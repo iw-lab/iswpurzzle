@@ -29,15 +29,15 @@
           <div class="gb-brand"><img src="assets/icon.png" alt="" /><span>딱 <b class="one">1</b> 로켓</span></div>
           <div class="gb-tools">
             <button id="btnFull" class="gb-icon" data-gb="fullscreen" aria-label="전체화면"></button>
-            <button id="btnSettings" class="gb-icon" aria-label="설정">⚙</button>
+            <button id="btnSettings" class="gb-icon" aria-label="설정" data-ic="gear"></button>
           </div>
         </div>
         <div id="schoolRank" data-gb="school-rank"></div>
-        <button id="btnPlay" class="gb-play" data-gb="play" data-gb-mode="time">▶ 60초 발사 대회</button>
+        <button id="btnPlay" class="gb-play" data-gb="play" data-gb-mode="time">60초 발사 대회</button>
         <div id="modeGrid"></div>
         <div class="gb-sub">
-          <button id="btnDaily" data-gb-mode="daily">📅 오늘의 발사</button>
-          <button id="btnRelay">👥 모둠 릴레이</button>
+          <button id="btnDaily" data-gb-mode="daily">오늘의 발사</button>
+          <button id="btnRelay"><span data-ic="users"></span> 모둠 릴레이</button>
           <button id="btnGrade">학년 5</button>
         </div>
         <p class="how">떨어지는 칸이 뜨면 <b>로켓을 톡!</b> · 합이 <b>딱 1</b>이면 발사 · 넘치면 펑</p>
@@ -48,7 +48,7 @@
       <div id="hud">
         <div class="hud-left">
           <button id="btnQuit" class="hud-btn" aria-label="그만하기">✕</button>
-          <button id="btnPause" class="hud-btn" aria-label="잠깐 멈춤">⏸</button>
+          <button id="btnPause" class="hud-btn" aria-label="잠깐 멈춤" data-ic="pause"></button>
         </div>
         <div class="hud-mid">
           <div id="modeBar"></div>
@@ -71,7 +71,7 @@
       <div id="goal" class="goal hidden"></div>
       <div id="combo" class="combo hidden"></div>
       <div id="banner" class="banner hidden"></div>
-      <div id="hint" class="hint hidden">떨어지는 칸을 보고 <b>로켓을 톡!</b><br />통의 합이 <b>딱 1</b>이 되면 발사 🚀</div>
+      <div id="hint" class="hint hidden">떨어지는 칸을 보고 <b>로켓을 톡!</b><br />통의 합이 <b>딱 1</b>이 되면 발사!</div>
       <div id="countdown" class="countdown hidden"></div>
     </section>
 
@@ -99,7 +99,7 @@
 
     <section id="missions" class="screen overlay hidden">
       <div class="panel wide">
-        <h2>🚀 발사 임무</h2>
+        <h2><span data-ic="rocket"></span> 발사 임무</h2>
         <div id="planetList" class="planet-list"></div>
         <button id="btnMissionsClose" class="big-btn">닫기</button>
       </div>
@@ -107,7 +107,7 @@
 
     <section id="relay" class="screen overlay hidden">
       <div class="panel">
-        <h2>👥 모둠 릴레이</h2>
+        <h2><span data-ic="users"></span> 모둠 릴레이</h2>
         <p class="sub">한 사람씩 60초 · 모두 같은 칸 순서로 겨뤄요</p>
         <div id="relayCount" class="seg"></div>
         <button id="btnRelayGo" class="big-btn primary">시작</button>

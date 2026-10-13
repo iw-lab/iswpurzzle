@@ -132,7 +132,7 @@ export function verdictOf(s, opt = {}) {
   const minFrames = opt.minFrames ?? MIN_FRAMES;
   if (s.frames < minFrames || s.elapsedSec < minSec) {
     return { ok: false, incomplete: true,
-      label: `⛔ 판정불가 (표본 ${s.frames}프레임/${s.elapsedSec.toFixed(0)}초 — 최소 ${minFrames}프레임·${minSec}초)` };
+      label: `판정불가 (표본 ${s.frames}프레임/${s.elapsedSec.toFixed(0)}초 — 최소 ${minFrames}프레임·${minSec}초)` };
   }
   // 🔴 vsync 지터 허용 1ms — 60Hz 한 칸은 16.67±0.1ms 로 재진다(실측 2026-10-12: 120Hz 폰 P95 «16.7»(=16.7x)이
   //   ❌ 30fps 로 찍혔다). 한 등급 아래는 33.3 이라 1ms 여유로 강등을 놓치지 않는다.
@@ -140,7 +140,7 @@ export function verdictOf(s, opt = {}) {
   const grade = s.p95 <= 16.7 + J ? '60fps' : s.p95 <= 33.3 + J ? '30fps' : '미달';
   const ok = s.p95 <= targetMs + J;
   return { ok, incomplete: false,
-    label: `${ok ? '✅' : '❌'} ${grade} (P95 ${s.p95.toFixed(1)}ms / 목표 ${targetMs}ms)` };
+    label: `${ok ? '통과' : '미달'} ${grade} (P95 ${s.p95.toFixed(1)}ms / 목표 ${targetMs}ms)` };
 }
 
 function render(el, s) {

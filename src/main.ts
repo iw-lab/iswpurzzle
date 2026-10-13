@@ -20,6 +20,10 @@ import { loadSave, writeSave, todayKey, yesterdayKey } from './save.ts';
 import { canvasToPage, fireHeart, fireLaunch, fireMulti, fireOverflow } from './gb/juice-fx.ts';
 // @ts-expect-error — 스킬 공용 측정기(순수 JS). ?perf=1 일 때만 켜진다(실기기 P95)
 import { startPerfProbe } from './perf-p95.js';
+import { icon } from './icons.ts';
+
+// 정적 화면의 아이콘 자리(data-ic) — 이모지 대신 SVG
+for (const el of document.querySelectorAll<HTMLElement>('[data-ic]')) el.innerHTML = icon(el.dataset.ic ?? '');
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const save = loadSave();
@@ -48,10 +52,10 @@ const GRADE_DESC: Record<Grade, string> = {
 };
 
 const CARDS: GbMode[] = [
-  { id: 'classic', kind: 'classic', icon: '🚀', label: '발사 임무', desc: '행성 8곳 · 40단계 임무' },
-  { id: 'survival', kind: 'survival', icon: '❤️', label: '끝없는 우주', desc: '하트 3개 · 점점 빨라져요' },
-  { id: 'rule', kind: 'rule', icon: '🔢', label: '숫자로만', desc: '칸 크기·눈금 없이 90초' },
-  { id: 'big', kind: 'big', icon: '🛸', label: '대형 발사장', desc: '로켓 8대 · 120초' },
+  { id: 'classic', kind: 'classic', icon: icon('rocket'), label: '발사 임무', desc: '행성 8곳 · 40단계 임무' },
+  { id: 'survival', kind: 'survival', icon: icon('heart'), label: '끝없는 우주', desc: '하트 3개 · 점점 빨라져요' },
+  { id: 'rule', kind: 'rule', icon: icon('hash'), label: '숫자로만', desc: '칸 크기·눈금 없이 90초' },
+  { id: 'big', kind: 'big', icon: icon('ufo'), label: '대형 발사장', desc: '로켓 8대 · 120초' },
 ];
 
 // ── 기본틀(학교 순위 · 이용권 · 전체화면) ──
@@ -88,7 +92,7 @@ function leaveTicket(): void {
 }
 
 function schoolToast(r: GbResult | null): void {
-  if (r && r.added > 0 && r.school) toast(`🏫 ${r.school} +${r.added}점`);
+  if (r && r.added > 0 && r.school) toast(`${r.school} +${r.added}점`);
 }
 
 // ── 화면 전환 ──
@@ -106,14 +110,14 @@ function showHome(): void {
   audio.setTrack('menu');
   $('btnGrade').textContent = `학년 ${save.grade}`;
   const d = save.daily;
-  $('btnDaily').textContent = d.last === todayKey() ? `📅 오늘 ✓ · ${d.streak}일째` : d.streak > 0 && d.last === yesterdayKey() ? `📅 오늘의 발사 · ${d.streak}일째` : '📅 오늘의 발사';
+  $('btnDaily').innerHTML = icon('calendar') + ' ' + (d.last === todayKey() ? `오늘 완료 · ${d.streak}일째` : d.streak > 0 && d.last === yesterdayKey() ? `오늘의 발사 · ${d.streak}일째` : '오늘의 발사');
   const grid = $('modeGrid');
   const b = save.best;
   setModeBest(grid, 'classic', save.cleared >= 0 ? `${Math.min(LEVELS, save.cleared + 1)}/${LEVELS} 단계` : '');
   setModeBest(grid, 'survival', b.survival ? `최고 ${b.survival}대` : '');
   setModeBest(grid, 'rule', b.rule ? `최고 ${b.rule.toLocaleString()}점` : '');
   setModeBest(grid, 'big', b.big ? `최고 ${b.big.toLocaleString()}점` : '');
-  $('btnPlay').textContent = b.time ? `▶ 60초 발사 대회 · 최고 ${b.time.toLocaleString()}` : '▶ 60초 발사 대회';
+  $('btnPlay').innerHTML = icon('play') + ' ' + (b.time ? `60초 발사 대회 · 최고 ${b.time.toLocaleString()}` : '60초 발사 대회');
   void refreshSchoolRank();
 }
 
@@ -146,13 +150,13 @@ function startGame(id: ModeId, lv = 0): void {
   $('countdown').classList.add('hidden');
   const g = $('goal');
   g.classList.toggle('hidden', !mode.goal);
-  if (mode.goal) g.textContent = `🎯 ${PLANETS[Math.floor(lv / 5)]} ${(lv % 5) + 1}단계 · ${goalText(mode.goal)} 0/${mode.goal.n}`;
+  if (mode.goal) g.textContent = `${PLANETS[Math.floor(lv / 5)]} ${(lv % 5) + 1}단계 · ${goalText(mode.goal)} 0/${mode.goal.n}`;
   $('turnTag').classList.toggle('hidden', !relay);
   if (relay) $('turnTag').textContent = `${relay.i + 1}번`;
   hintShown = !save.hintSeen || id === 'rule';
   $('hint').innerHTML = id === 'rule'
     ? '칸 크기와 눈금이 없어요 — <b>숫자를 읽고</b> 더해서<br />합이 <b>딱 1</b>이 되는 로켓을 톡!'
-    : '떨어지는 칸을 보고 <b>로켓을 톡!</b><br />통의 합이 <b>딱 1</b>이 되면 발사 🚀';
+    : '떨어지는 칸을 보고 <b>로켓을 톡!</b><br />통의 합이 <b>딱 1</b>이 되면 발사!';
   $('hint').classList.toggle('hidden', !hintShown);
   audio.setTrack('play');
   audio.play('start');
@@ -268,8 +272,8 @@ function onEvent(ev: SimEvent, now: number): void {
       cb.textContent = `콤보 ${ev.combo}`;
       if (ev.multi >= 2) {
         fireMulti({ x: lp.x, y: lp.y, title: ev.multi >= 3 ? '트리플 발사!!' : '더블 발사!' });
-        banner(ev.multi >= 3 ? '트리플 발사!! 🚀🚀🚀' : '더블 발사! 🚀🚀', ev.equation, 'good', 1100);
-      } else banner('딱 1! 🚀', ev.equation, 'good', 700);
+        banner(ev.multi >= 3 ? '트리플 발사!!' : '더블 발사!', ev.equation, 'good', 1100);
+      } else banner('딱 1!', ev.equation, 'good', 700);
       if (hintShown) {
         hintShown = false;
         $('hint').classList.add('hidden');
@@ -295,11 +299,11 @@ function onEvent(ev: SimEvent, now: number): void {
     }
     case 'heart':
       fireHeart({ title: '하트 +1' }); // 🎮 반응(주스) — audio.play('heart') 를 fire 로 옮겼다
-      toast('❤️ 하트 +1');
+      toast('하트 +1');
       break;
     case 'goal': {
       const g = s.mode.goal!;
-      $('goal').textContent = `🎯 ${PLANETS[Math.floor(level / 5)]} ${(level % 5) + 1}단계 · ${goalText(g)} ${ev.done}/${ev.need}`;
+      $('goal').textContent = `${PLANETS[Math.floor(level / 5)]} ${(level % 5) + 1}단계 · ${goalText(g)} ${ev.done}/${ev.need}`;
       break;
     }
     case 'end':
@@ -342,7 +346,7 @@ function updateBar(): void {
     }
   }
   if (s.hearts != null) parts.push({ type: 'hearts', left: s.hearts, max: s.mode.hearts ?? 3 });
-  parts.push({ type: 'text', text: `🚀 ${s.launches}` });
+  parts.push({ type: 'text', text: `발사 ${s.launches}` });
   renderModeBar($('modeBar'), parts);
 }
 
@@ -381,7 +385,8 @@ function layoutDom(): void {
   }
   $('goal').style.top = `${L.wide ? L.hudH + 4 : L.spawnTop + 2}px`;
   $('combo').style.top = `${L.spawnTop + 4}px`;
-  $('hint').style.top = `${L.spawnTop + L.spawnH * 0.15}px`;
+  // 🔴 안내는 로켓 자리에 — 낙하 영역에 두면 첫 칸을 통째로 가렸다(2026-10-13 폰 세로 제보 «안보여용»)
+  $('hint').style.top = `${L.rocketTop + L.rocketH * 0.12}px`;
   // 배너는 떨어지는 칸·연료통을 가리면 안 된다 — 넓은 화면은 오른쪽 빈 패널, 좁은 화면은 맨 위 «보관·다음» 줄 위
   const root = document.documentElement.style;
   if (L.wide && L.sideW >= 300) {
@@ -413,7 +418,7 @@ function endGame(): void {
   if (isBest && id !== 'classic' && id !== 'relay') save.best[id] = score;
   let title = '판 끝!';
   if (id === 'classic') {
-    title = s.cleared ? '🎉 임무 성공!' : '시간이 다 됐어요';
+    title = s.cleared ? '임무 성공!' : '시간이 다 됐어요';
     if (s.cleared) save.cleared = Math.max(save.cleared, level);
   } else if (id === 'daily') {
     const t = todayKey();
@@ -422,7 +427,7 @@ function endGame(): void {
       save.daily.last = t;
     }
     save.daily.best = Math.max(save.daily.best, score);
-    title = `📅 오늘의 발사 · ${save.daily.streak}일째`;
+    title = `오늘의 발사 · ${save.daily.streak}일째`;
   } else if (id === 'survival') title = '하트를 다 썼어요';
   writeSave(save);
 
@@ -442,7 +447,7 @@ function endGame(): void {
 
   $('resTitle').textContent = title;
   $('resScore').textContent = id === 'survival' ? `${s.launches}대 발사` : `${s.score.toLocaleString()}점`;
-  $('resBest').textContent = id === 'classic' ? '' : isBest && prev > 0 ? `🏅 새 최고 기록! (전 ${prev.toLocaleString()})` : prev > 0 ? `내 최고 ${prev.toLocaleString()} · ${Math.max(0, prev - score + 1).toLocaleString()} 더 하면 신기록` : '첫 기록!';
+  $('resBest').textContent = id === 'classic' ? '' : isBest && prev > 0 ? `새 최고 기록! (전 ${prev.toLocaleString()})` : prev > 0 ? `내 최고 ${prev.toLocaleString()} · ${Math.max(0, prev - score + 1).toLocaleString()} 더 하면 신기록` : '첫 기록!';
   $('resStats').innerHTML = [
     ['발사', s.launches], ['섞어 채우기', s.mixLaunches], ['최고 콤보', s.bestCombo], ['넘침', s.overflows],
   ].map(([k, v]) => `<div><b>${v}</b>${k}</div>`).join('');
@@ -453,9 +458,9 @@ function endGame(): void {
       const dec = l.split(' + ').map((p) => sumLabel(parseLabel(p))).join(' + ');
       return `<div class="rv">${mathHtml(l)} = ${esc(r)}<small>${esc(dec)} = ${esc(r)} → 1보다 ${esc(String(Number(r) - 1 > 0 ? (Math.round((Number(r) - 1) * 100) / 100) : 0))} 많아요</small></div>`;
     }).join('')}`
-    : '<div class="rv-head">한 번도 안 넘쳤어요! 👏</div>';
+    : '<div class="rv-head">한 번도 안 넘쳤어요!</div>';
   const again = $('btnAgain');
-  again.textContent = id === 'classic' ? (s.cleared && level < LEVELS - 1 ? '다음 단계 ▶' : '다시 도전') : '다시 하기';
+  again.textContent = id === 'classic' ? (s.cleared && level < LEVELS - 1 ? '다음 단계' : '다시 도전') : '다시 하기';
   $('result').classList.remove('hidden');
 }
 
@@ -563,9 +568,9 @@ function nextTurn(): void {
   finishTicket(true);
   setScreen('home');
   $('home').classList.add('hidden');
-  $('resTitle').textContent = '👥 모둠 릴레이 끝!';
+  $('resTitle').textContent = '모둠 릴레이 끝!';
   $('resScore').textContent = `모둠 합계 ${total.toLocaleString()}점`;
-  $('resBest').textContent = save.relayBest === total ? '🏅 우리 모둠 최고 기록!' : `모둠 최고 ${save.relayBest.toLocaleString()}`;
+  $('resBest').textContent = save.relayBest === total ? '우리 모둠 최고 기록!' : `모둠 최고 ${save.relayBest.toLocaleString()}`;
   $('resStats').innerHTML = '';
   $('resReview').innerHTML = `<div class="relay-table">${relay.scores.map((sc, i) => `<div>${i + 1}번<b>${sc == null ? '쉼' : sc.toLocaleString()}</b></div>`).join('')}</div>`;
   $('btnAgain').textContent = '한 바퀴 더';
@@ -589,14 +594,14 @@ function renderSettings(): void {
   $('gradeSeg').innerHTML = ([4, 5, 6] as Grade[]).map((g) => `<button data-g="${g}" class="${g === save.grade ? 'on' : ''}">${g}학년</button>`).join('');
   // 🔴 학년 설명에 «1/2 · 1/4» 가 빗금 그대로 찍혔다(실측 — check-fraction-display 게이트) — 쌓아 그린다.
   $('gradeDesc').innerHTML = fracHTML(GRADE_DESC[save.grade]);
-  $('btnSound').textContent = save.sound ? '🔊 켜짐' : '🔇 꺼짐';
+  $('btnSound').innerHTML = save.sound ? `${icon('sound')} 켜짐` : `${icon('mute')} 꺼짐`;
   const w = save.weak;
   const tot = w.frac + w.dec + w.pct;
   const worst = (['frac', 'dec', 'pct'] as const).reduce((a, b) => (w[a] >= w[b] ? a : b));
   const name = { frac: '분수', dec: '소수', pct: '백분율' }[worst];
   $('weakCard').innerHTML = tot
-    ? `🧭 <b>내 약점</b> · 지금까지 넘친 칸 ${tot}번 중 <b>${name}</b>가 ${w[worst]}번이에요. 게임이 ${name} 칸을 조금 더 자주 내 줄 거예요.`
-    : '🧭 아직 넘친 적이 없어요. 넘친 칸의 표기를 모아 «내 약점»을 보여 줘요.';
+    ? `<b>내 약점</b> · 지금까지 넘친 칸 ${tot}번 중 <b>${name}</b>가 ${w[worst]}번이에요. 게임이 ${name} 칸을 조금 더 자주 내 줄 거예요.`
+    : '아직 넘친 적이 없어요. 넘친 칸의 표기를 모아 «내 약점»을 보여 줘요.';
 }
 $('btnSettings').addEventListener('click', () => { audio.unlock(); audio.play('click'); renderSettings(); $('settings').classList.remove('hidden'); });
 $('btnGrade').addEventListener('click', () => { audio.unlock(); audio.play('click'); renderSettings(); $('settings').classList.remove('hidden'); });

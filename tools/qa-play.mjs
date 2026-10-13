@@ -125,6 +125,7 @@ const VPS = [
   { name: 'tablet-1024', width: 1024, height: 768, hasTouch: true, isMobile: true },
   { name: 'phone-land', width: 915, height: 412, hasTouch: true, isMobile: true, deviceScaleFactor: 2 },
   { name: 'phone-port', width: 390, height: 844, hasTouch: true, isMobile: true, deviceScaleFactor: 3 },
+  { name: 'phone-small', width: 360, height: 740, hasTouch: true, isMobile: true, deviceScaleFactor: 3 },
 ];
 
 const ONLY = arg('--only');
@@ -134,6 +135,21 @@ for (const vp of VPS.filter((v) => !ONLY || ONLY.split(',').includes(v.name))) {
     await page.screenshot({ path: path.join(OUT, `${vp.name}-1-home.png`) });
     await startTime(page);
     await page.screenshot({ path: path.join(OUT, `${vp.name}-2-start.png`) });
+    // 🔴 보이는 단추·글자판은 화면 «안»에 있어야 한다 — 360px 세로 폰에서 전체화면 단추가 오른쪽 밖으로 잘렸다(2026-10-13 제보 «안보여용»)
+    const offscreen = await page.evaluate(() => [...document.querySelectorAll('#game button, #hud > *, #tray, #hint')].filter((el) => {
+      const r = el.getBoundingClientRect(); const cs = getComputedStyle(el);
+      if (!r.width || cs.display === 'none' || cs.visibility === 'hidden' || el.closest('.hidden')) return false;
+      return r.left < -1 || r.right > innerWidth + 1 || r.top < -1;
+    }).map((el) => `${el.id || el.className}(${Math.round(el.getBoundingClientRect().left)}~${Math.round(el.getBoundingClientRect().right)} / ${innerWidth})`));
+    if (offscreen.length) fails.push(`${vp.name}: 화면 밖으로 잘린 요소 ${offscreen.join(', ')}`);
+    // 🔴 시작 안내가 떨어지는 칸을 가리면 안 된다(낙하 영역과 겹침 0)
+    const hintHit = await page.evaluate(() => {
+      const h = document.getElementById('hint'); const L = window.__ttak1 && window.__ttak1.view && window.__ttak1.view.L;
+      if (!h || h.classList.contains('hidden') || !L) return null;
+      const r = h.getBoundingClientRect();
+      return r.top < L.spawnTop + L.spawnH && r.bottom > L.spawnTop ? `안내 ${Math.round(r.top)}~${Math.round(r.bottom)} · 낙하 ${L.spawnTop}~${L.spawnTop + L.spawnH}` : null;
+    });
+    if (hintHit) fails.push(`${vp.name}: 시작 안내가 떨어지는 칸 자리를 가린다 (${hintHit})`);
     const touch = !!vp.hasTouch;
     const before = await page.evaluate(() => window.__ttak1.sim.launches);
     await playFor(page, 9000, { touch });
