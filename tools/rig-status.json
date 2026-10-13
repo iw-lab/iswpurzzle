@@ -8,15 +8,16 @@
    "attack"
   ],
   "dir": "S",
-  "src": "game-assets-src/rig/src/doki.png",
-  "ts": "2026-10-11T23:09:09",
+  "src": "game-assets-src/rig/src/doki-v2.png",
+  "ts": "2026-10-13T17:35:09",
+  "srcSha": "283a86298709241f",
   "glb": "game-assets-src/rig/ff/doki.glb",
-  "glbSha": "3c56e982b54439e2",
-  "srcSha": "c7c0f36b550709ff",
+  "glbSha": "b7c1f8bb448946ae",
   "atlas": "public/assets/rig/doki.png",
-  "atlasSha": "2a5fd89bdc45478b",
+  "atlasSha": "8179170706e90f65",
   "frames": 8,
   "size": 256,
-  "replaces": []
+  "replaces": [],
+  "colors": 256
  }
 }

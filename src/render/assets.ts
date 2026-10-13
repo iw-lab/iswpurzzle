@@ -49,10 +49,9 @@ export class Art {
     const m = this.manifest;
     this.rockets = await Promise.all(m.rockets.map((u) => loadImage(u)));
     // 도키 아틀라스(1.2MB)는 첫 화면을 막지 않게 뒤에서 — 넓은 화면(옆 패널)에서만 그린다
-    // 🔴 지금 도키 리그는 Firefly 3D 가 유리 헬멧을 납작한 두건으로 만들고 얼굴을 뭉갰다(2026-10-13 «왼쪽 사람 얼굴 왜 저래»)
-    //    — 헬멧 없는 원화로 다시 리그할 때까지 그리지 않는다. 다시 켜기 = DOKI_READY 를 true 로
-    const DOKI_READY = false;
-    const dk = DOKI_READY ? m.doki : undefined;
+    // 🔴 옛 도키는 Firefly 3D 가 유리 헬멧을 납작한 두건으로 만들고 얼굴을 뭉갰다(2026-10-13 «왼쪽 사람 얼굴 왜 저래»)
+    //    → 헬멧 없는 원화(doki-v2)로 다시 리그했다. 투명 돔·유리 같은 재질은 3D 복원이 망가뜨린다
+    const dk = m.doki;
     if (dk) {
       void Promise.all([
         loadImage(dk.image),

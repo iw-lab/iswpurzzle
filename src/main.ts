@@ -389,12 +389,20 @@ function layoutDom(): void {
   $('hint').style.top = `${L.rocketTop + L.rocketH * 0.12}px`;
   // 배너는 떨어지는 칸·연료통을 가리면 안 된다 — 넓은 화면은 오른쪽 빈 패널, 좁은 화면은 맨 위 «보관·다음» 줄 위
   const root = document.documentElement.style;
-  if (L.wide && L.sideW >= 300) {
+  // 🔴 폰 가로(옆 패널 183px)도 오른쪽 빈 패널로 — 300px 미만이라 가운데로 떨어져 통을 가렸다(2026-10-13 «알림도 한가운데 나오고»)
+  if (L.wide && L.sideW >= 150) {
     root.setProperty('--banner-left', `${L.w - L.sideW / 2}px`);
-    root.setProperty('--banner-top', `${L.spawnTop + L.spawnH}px`);
+    root.setProperty('--banner-top', `${L.spawnTop + (L.sideW >= 300 ? L.spawnH : 0)}px`);
     root.setProperty('--banner-max', `${L.sideW - 12}px`);
-    root.setProperty('--banner-fs', `${Math.round(Math.min(L.h * 0.046, L.sideW / 8.5))}px`);
+    root.setProperty("--banner-fs", `${Math.round(Math.max(14, Math.min(L.h * 0.046, L.sideW / 11)))}px`);
+    // 행동 반응 큰 글자(더블 발사! 등)도 같은 패널에
+    root.setProperty('--gbj-banner-left', `${L.w - L.sideW / 2}px`);
+    root.setProperty('--gbj-banner-top', `${Math.round(L.tubeTop + L.tubeH * 0.55)}px`);
+    root.setProperty('--gbj-banner-max', `${L.sideW - 8}px`);
   } else {
+    root.removeProperty('--gbj-banner-left');
+    root.removeProperty('--gbj-banner-top');
+    root.removeProperty('--gbj-banner-max');
     root.setProperty('--banner-left', '50%');
     // 세로 화면은 맨 위가 «다음» 칸 미리보기라(1.6초 가리면 계획을 못 한다) 아래 로켓 줄 위로
     root.setProperty('--banner-top', `${L.wide ? L.hudH + 2 : Math.min(L.rocketTop + 4, L.h - 120)}px`);

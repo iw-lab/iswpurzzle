@@ -1,0 +1,8 @@
+{
+ "doki-v2.png": {
+  "engine": "firefly",
+  "model": "gpt-image-2",
+  "reason": "gptweb 실패(rc=8)",
+  "ts": 1791879958
+ }
+}

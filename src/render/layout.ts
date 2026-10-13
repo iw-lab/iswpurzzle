@@ -29,7 +29,9 @@ export interface Layout {
 export function computeLayout(w: number, h: number, tanks: number): Layout {
   const wide = w / h > 1.3;
   // 세로 폰은 윗줄이 단추 한 줄(단추 = CSS --tap 과 같은 식)
-  const hudH = wide ? Math.round(Math.max(58, Math.min(h * 0.12, 132))) : Math.round(Math.max(44, Math.min(h * 0.082, w * 0.125, 96)) + 12);
+  // 넓은 화면은 단추 줄 + 그 아래 큰 점수까지(점수가 낙하 영역을 덮던 것 — 2026-10-13 게이트), 낮은 가로 폰(≤520)은 CSS 처럼 한 줄
+  const oneLine = !wide || h <= 520;
+  const hudH = oneLine ? Math.round(Math.max(44, Math.min(h * 0.082, w * 0.125, 96)) + 12) : Math.round(Math.max(58, Math.min(h * 0.165, 180)));
   const sideW = wide ? Math.round(Math.min(w * 0.2, 380)) : 0;
   const maxPlay = tanks > 5 ? h * 1.75 : h * 1.2;
   const playW = Math.round(Math.min(w - sideW * 2 - 16, maxPlay));

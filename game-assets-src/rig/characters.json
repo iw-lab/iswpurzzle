@@ -2,9 +2,13 @@
   "characters": [
     {
       "id": "doki",
-      "src": "game-assets-src/rig/src/doki.png",
+      "src": "game-assets-src/rig/src/doki-v2.png",
       "shape": "human",
-      "actions": ["idle", "walk", "attack"],
+      "actions": [
+        "idle",
+        "walk",
+        "attack"
+      ],
       "dir": "S",
       "size": 256,
       "frames": 8,
@@ -12,5 +16,6 @@
       "replaces": []
     }
   ],
-  "exempt": {}
+  "exempt": {},
+  "colors": 256
 }

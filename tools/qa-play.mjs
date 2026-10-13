@@ -153,6 +153,13 @@ for (const vp of VPS.filter((v) => !ONLY || ONLY.split(',').includes(v.name))) {
       }
       return out;
     });
+    const hudIntrude = await page.evaluate(() => {
+      const L = window.__ttak1.view.L; const sc = document.getElementById('score').getBoundingClientRect();
+      const r = document.getElementById('hud').getBoundingClientRect();
+      const bottom = Math.max(sc.bottom, r.bottom);
+      return bottom > L.spawnTop + 4 && sc.left < L.playX + L.playW && sc.right > L.playX ? `윗줄 아래끝 ${Math.round(bottom)} > 낙하 시작 ${L.spawnTop}` : null;
+    });
+    if (hudIntrude) fails.push(`${vp.name}: 점수·윗줄이 떨어지는 칸 자리를 가린다 (${hudIntrude})`);
     if (hudOverlap.length) fails.push(`${vp.name}: 윗줄 겹침(점수 88,888) ${hudOverlap.join(', ')}`);
     // 🔴 시작 안내가 떨어지는 칸을 가리면 안 된다(낙하 영역과 겹침 0)
     const hintHit = await page.evaluate(() => {
@@ -178,6 +185,14 @@ for (const vp of VPS.filter((v) => !ONLY || ONLY.split(',').includes(v.name))) {
       await new Promise((r) => setTimeout(r, 120));
       const shown = await page.evaluate(() => !document.getElementById('banner').classList.contains('hidden') && document.getElementById('banner').textContent);
       if (!shown || !String(shown).includes('넘쳤어요')) fails.push(`${vp.name}: 넘쳤는데 식 배너가 안 보인다`);
+      // 🔴 넓은 화면(옆 패널 있음)에선 배너가 통·떨어지는 칸 위에 뜨면 안 된다(폰 가로에서 가운데 떠 통을 가렸다 — 2026-10-13)
+      const bHit = await page.evaluate(() => {
+        const L = window.__ttak1.view.L; if (!L.wide || L.sideW < 150) return null;
+        const r = document.getElementById('banner').getBoundingClientRect();
+        const px0 = L.playX, px1 = L.playX + L.playW;
+        return r.left < px1 - 2 && r.right > px0 + 2 && r.top < L.padY && r.bottom > L.spawnTop ? `배너 ${Math.round(r.left)}~${Math.round(r.right)} · 판 ${px0}~${px1}` : null;
+      });
+      if (bHit) fails.push(`${vp.name}: 알림 배너가 판(통·낙하)을 가린다 (${bHit})`);
       await page.screenshot({ path: path.join(OUT, `${vp.name}-4-overflow.png`) });
     }
     await page.screenshot({ path: path.join(OUT, `${vp.name}-3-play.png`) });
