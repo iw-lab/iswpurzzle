@@ -28,8 +28,14 @@ export function setMath(el, text) {
 }
 export const FRAC_CSS = `.frac{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1.05;margin:0 .12em;font-size:.9em;font-variant-numeric:tabular-nums}
 .frac-n{padding:0 .18em .06em;border-bottom:.09em solid currentColor}.frac-d{padding:.06em .18em 0}.frac-mixed{white-space:nowrap}.frac-mixed>.frac{margin-left:.06em}`;
+// CSP(style-src 'self')면 인라인 <style> 이 막힌다 → 그런 게임은 frac.css 를 자기 스타일시트에 넣는다.
+// 이미 .frac 규칙이 먹고 있으면(=스타일시트에 있음) 주입하지 않는다(증명왕국 2026-10-12 — CSP 콘솔 에러).
 export function injectFracCSS(doc = document) {
-  if (!doc || doc.getElementById('gb-frac-css')) return;
+  if (!doc || !doc.head || doc.getElementById('gb-frac-css')) return;
+  // 탐침 = 숨긴 .frac-n 의 밑줄 — display 로 보면 flex 부모 안에서 inline-flex→flex 로 바뀌어 오판한다(증명왕국 실측)
+  const probe = doc.createElement('span'); probe.className = 'frac-n'; probe.hidden = true;
+  (doc.body || doc.head).appendChild(probe); const styled = doc.defaultView?.getComputedStyle(probe).borderBottomStyle === 'solid'; probe.remove();
+  if (styled) return;
   const s = doc.createElement('style'); s.id = 'gb-frac-css'; s.textContent = FRAC_CSS; doc.head.appendChild(s);
 }
 
