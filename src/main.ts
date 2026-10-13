@@ -48,10 +48,10 @@ const GRADE_DESC: Record<Grade, string> = {
 };
 
 const CARDS: GbMode[] = [
-  { id: 'classic', kind: 'classic', emoji: '🚀', label: '발사 임무', desc: '행성 8곳 · 40단계 임무' },
-  { id: 'survival', kind: 'survival', emoji: '❤️', label: '끝없는 우주', desc: '하트 3개 · 점점 빨라져요' },
-  { id: 'rule', kind: 'rule', emoji: '🔢', label: '숫자로만', desc: '칸 크기·눈금 없이 90초' },
-  { id: 'big', kind: 'big', emoji: '🛸', label: '대형 발사장', desc: '로켓 8대 · 120초' },
+  { id: 'classic', kind: 'classic', icon: '🚀', label: '발사 임무', desc: '행성 8곳 · 40단계 임무' },
+  { id: 'survival', kind: 'survival', icon: '❤️', label: '끝없는 우주', desc: '하트 3개 · 점점 빨라져요' },
+  { id: 'rule', kind: 'rule', icon: '🔢', label: '숫자로만', desc: '칸 크기·눈금 없이 90초' },
+  { id: 'big', kind: 'big', icon: '🛸', label: '대형 발사장', desc: '로켓 8대 · 120초' },
 ];
 
 // ── 기본틀(학교 순위 · 이용권 · 전체화면) ──
