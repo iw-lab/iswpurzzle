@@ -142,6 +142,18 @@ for (const vp of VPS.filter((v) => !ONLY || ONLY.split(',').includes(v.name))) {
       return r.left < -1 || r.right > innerWidth + 1 || r.top < -1;
     }).map((el) => `${el.id || el.className}(${Math.round(el.getBoundingClientRect().left)}~${Math.round(el.getBoundingClientRect().right)} / ${innerWidth})`));
     if (offscreen.length) fails.push(`${vp.name}: 화면 밖으로 잘린 요소 ${offscreen.join(', ')}`);
+    // 윗줄 칸끼리 겹치면 안 된다(점수가 4자리가 되면 전체화면 단추를 덮었다 — 360px 폭)
+    await page.evaluate(() => { const sc = document.getElementById('score'); if (sc) sc.textContent = '88,888'; });
+    const hudOverlap = await page.evaluate(() => {
+      const els = [...document.querySelectorAll('#hud button, #modeBar .gb-chip, #score')].filter((e) => e.getBoundingClientRect().width);
+      const out = [];
+      for (let i = 0; i < els.length; i++) for (let j = i + 1; j < els.length; j++) {
+        const a = els[i].getBoundingClientRect(), b = els[j].getBoundingClientRect();
+        if (a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1) out.push(`${els[i].id || els[i].className}(${Math.round(a.left)}~${Math.round(a.right)})↔${els[j].id || els[j].className}(${Math.round(b.left)}~${Math.round(b.right)})`);
+      }
+      return out;
+    });
+    if (hudOverlap.length) fails.push(`${vp.name}: 윗줄 겹침(점수 88,888) ${hudOverlap.join(', ')}`);
     // 🔴 시작 안내가 떨어지는 칸을 가리면 안 된다(낙하 영역과 겹침 0)
     const hintHit = await page.evaluate(() => {
       const h = document.getElementById('hint'); const L = window.__ttak1 && window.__ttak1.view && window.__ttak1.view.L;

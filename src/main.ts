@@ -346,7 +346,7 @@ function updateBar(): void {
     }
   }
   if (s.hearts != null) parts.push({ type: 'hearts', left: s.hearts, max: s.mode.hearts ?? 3 });
-  parts.push({ type: 'text', text: `발사 ${s.launches}` });
+  parts.push({ type: 'text', text: `발사 ${s.launches}`, html: `${icon('rocket')}<span class="sr">발사</span> ${s.launches}` });
   renderModeBar($('modeBar'), parts);
 }
 
