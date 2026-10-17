@@ -9,7 +9,7 @@ import { cleanQuery, isCode, isSido, isDid, searchUrl, codeUrl, parseNeis, ymdKs
 
 const J = (body, status = 200, cacheSec = 0) => new Response(JSON.stringify(body), { status, headers: {
   'content-type': 'application/json; charset=utf-8', 'cache-control': cacheSec ? `public, max-age=${cacheSec}` : 'no-store' } });
-const hubOf = (env) => new Hub({ db: env.DB, secret: env.QUIZ_KEY, free: env.FREE_PLAY === '1' });
+const hubOf = (env) => new Hub({ db: env.DB, secret: env.QUIZ_KEY, free: env.FREE_PLAY === '1', nocap: env.NO_CAP === '1' });
 // 저장소: D1(env.DB) 이 있으면 그대로, 없고 HUB_DO 가 있으면 Durable Object 하나에 맡긴다(같은 Hub 코드 · 같은 스키마·트리거)
 const handle = (env, path, body) => (env.DB || !env.HUB_DO ? hubOf(env).handle(path, body) : env.HUB_DO.get(env.HUB_DO.idFromName('hub')).handle(path, body));
 const POSTS = new Set(['/me', '/select', '/pack', '/grade', '/spend', '/refund', '/result']);

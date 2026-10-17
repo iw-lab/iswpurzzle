@@ -38,9 +38,39 @@ export const SCHEMA = [
   `CREATE TRIGGER IF NOT EXISTS grade_give AFTER INSERT ON used
      BEGIN UPDATE dev SET correct = correct + NEW.c, tix = tix + NEW.t, packs = packs + 1 WHERE dh = NEW.dh; END`,
   `CREATE INDEX IF NOT EXISTS board_rank ON board (period, k, s DESC)`,
-  // 첫 화면 통계(1.4.0) — 오늘 이용 기기·판 수를 «오늘 시각 이후»로 세는 범위 읽기
-  `CREATE INDEX IF NOT EXISTS spent_at ON spent (at)`,
-  `CREATE INDEX IF NOT EXISTS used_at ON used (at)`,
+  // 첫 화면 통계(1.4.0) — 🔴 세는 쿼리가 표를 통째로 훑으면 D1/DO 무료 한도(하루 읽은 행 500만)를 갉아먹는다(check-db-reads 게이트).
+  //   그래서 «쓸 때 트리거가 센다»: cnt(합계 3칸) · pact(한 번이라도 논 기기) · sch(학교) · dact(그날 논 기기) · dplay(그날 판 수).
+  //   첫 화면은 cnt 3행 + 오늘 dact 범위 + dplay 1행만 읽는다. KST 날짜 = date(at/1000 + 9시간).
+  `CREATE TABLE IF NOT EXISTS cnt (k TEXT PRIMARY KEY, n INTEGER NOT NULL DEFAULT 0)`,
+  `CREATE TABLE IF NOT EXISTS pact (dh TEXT PRIMARY KEY)`,
+  `CREATE TABLE IF NOT EXISTS sch (code TEXT PRIMARY KEY)`,
+  `CREATE TABLE IF NOT EXISTS dact (day TEXT NOT NULL, dh TEXT NOT NULL, PRIMARY KEY (day, dh))`,
+  `CREATE TABLE IF NOT EXISTS dplay (day TEXT PRIMARY KEY, n INTEGER NOT NULL DEFAULT 0)`,
+  `CREATE TRIGGER IF NOT EXISTS st_pact AFTER INSERT ON pact BEGIN INSERT OR IGNORE INTO cnt (k, n) VALUES ('players', 0); UPDATE cnt SET n = n + 1 WHERE k = 'players'; END`,
+  `CREATE TRIGGER IF NOT EXISTS st_sch AFTER INSERT ON sch BEGIN INSERT OR IGNORE INTO cnt (k, n) VALUES ('schools', 0); UPDATE cnt SET n = n + 1 WHERE k = 'schools'; END`,
+  `CREATE TRIGGER IF NOT EXISTS st_dev_sch AFTER UPDATE OF school ON dev WHEN NEW.school IS NOT NULL AND NEW.school != '' BEGIN INSERT OR IGNORE INTO sch (code) VALUES (NEW.school); END`,
+  `CREATE TRIGGER IF NOT EXISTS st_spent AFTER INSERT ON spent BEGIN
+     INSERT OR IGNORE INTO pact (dh) VALUES (NEW.dh); INSERT OR IGNORE INTO dact (day, dh) VALUES (date(NEW.at / 1000 + 32400, 'unixepoch'), NEW.dh);
+     INSERT OR IGNORE INTO dplay (day, n) VALUES (date(NEW.at / 1000 + 32400, 'unixepoch'), 0); UPDATE dplay SET n = n + 1 WHERE day = date(NEW.at / 1000 + 32400, 'unixepoch');
+     INSERT OR IGNORE INTO cnt (k, n) VALUES ('plays', 0); UPDATE cnt SET n = n + 1 WHERE k = 'plays'; END`,
+  `CREATE TRIGGER IF NOT EXISTS st_refund AFTER UPDATE OF state ON spent WHEN OLD.state = 'spent' AND NEW.state = 'refunded' BEGIN
+     UPDATE dplay SET n = n - 1 WHERE day = date(OLD.at / 1000 + 32400, 'unixepoch'); UPDATE cnt SET n = n - 1 WHERE k = 'plays'; END`,
+  `CREATE TRIGGER IF NOT EXISTS st_used AFTER INSERT ON used BEGIN
+     INSERT OR IGNORE INTO pact (dh) VALUES (NEW.dh); INSERT OR IGNORE INTO dact (day, dh) VALUES (date(NEW.at / 1000 + 32400, 'unixepoch'), NEW.dh); END`,
+];
+/** 1.4.0 이전부터 쌓인 기록을 통계 표로 한 번 옮긴다(허브마다 딱 한 번 — cnt 'v' 표지). 그 한 번만 표를 훑는다. */
+const BACKFILL = [
+  // gb-scan-ok: 1.4.0 으로 올릴 때 허브마다 한 번(cnt 'v' 가 있으면 안 돈다)
+  `INSERT OR IGNORE INTO pact (dh) SELECT dh FROM spent UNION SELECT dh FROM used`,
+  // gb-scan-ok: 한 번만
+  `INSERT OR IGNORE INTO sch (code) SELECT DISTINCT school FROM dev WHERE school IS NOT NULL AND school != ''`,
+  // gb-scan-ok: 한 번만
+  `INSERT OR IGNORE INTO dact (day, dh) SELECT date(at / 1000 + 32400, 'unixepoch'), dh FROM spent UNION SELECT date(at / 1000 + 32400, 'unixepoch'), dh FROM used`,
+  // gb-scan-ok: 한 번만
+  `INSERT OR REPLACE INTO dplay (day, n) SELECT date(at / 1000 + 32400, 'unixepoch'), COUNT(*) FROM spent WHERE state != 'refunded' GROUP BY 1`,
+  // gb-scan-ok: 한 번만(트리거가 위에서 올린 수를 정확한 값으로 덮는다)
+  `INSERT OR REPLACE INTO cnt (k, n) SELECT 'players', COUNT(*) FROM pact UNION ALL SELECT 'schools', COUNT(*) FROM sch UNION ALL SELECT 'plays', COUNT(*) FROM spent WHERE state != 'refunded'`,
+  `INSERT OR REPLACE INTO cnt (k, n) VALUES ('v', 1)`,
 ];
 /** 첫 화면 순위 «더보기» 전체 목록 상한 — 학교 수가 이보다 많으면 위에서부터 이만큼(응답 크기 ≈ 60B × N) */
 export const RANK_ALL = 500;
@@ -57,12 +87,19 @@ export class Hub {
   // db: D1Database 모양({ prepare, batch }) · secret: 봉인 키 원문(wrangler secret QUIZ_KEY) · now: 시계(시험용)
   // free = FREE_PLAY 게임(판 자체가 문제 풀이 — 구구성 수호대 2026-10-12): 판 영수증(ref)은 그대로 내되 이용권은 안 깎는다.
   //   차감 트리거를 건드리지 않으려고 «같은 batch 안에서 1장 넣고 바로 1장 쓴다» — 학교 점수 정산·하루 상한·환불 창은 그대로 걸린다.
-  constructor({ db, secret, now = () => Date.now(), free = false }) {
-    this.free = !!free;
+  // nocap = NO_CAP 게임(1.5.0 · 타자왕국 2026-10-16 사용자 «다 풀어 상한»): 기기·IP 하루 학교 점수 상한을 걷는다 — 트리거도 지운다(이미 깔린 DB 포함).
+  constructor({ db, secret, now = () => Date.now(), free = false, nocap = false }) {
+    this.free = !!free; this.nocap = !!nocap;
     if (!secret) throw new Error('QUIZ_KEY 없음 — 봉인 키 없이 묶음을 내면 워커가 바뀔 때마다 채점이 410 이 된다');
     Object.assign(this, { db, now }); this.keyP = packKey(secret); this.ready = null;
   }
-  init() { return (this.ready ||= this.db.batch(SCHEMA.map((s) => this.db.prepare(s))).catch((e) => { this.ready = null; throw e; })); }
+  init() {
+    const CAP_TRG = /TRIGGER IF NOT EXISTS (dev_cap|ip_cap_u|ip_cap_i) /;
+    const sql = this.nocap ? [...SCHEMA.filter((s) => !CAP_TRG.test(s)), 'DROP TRIGGER IF EXISTS dev_cap', 'DROP TRIGGER IF EXISTS ip_cap_u', 'DROP TRIGGER IF EXISTS ip_cap_i'] : SCHEMA;
+    return (this.ready ||= this.db.batch(sql.map((s) => this.db.prepare(s)))
+      .then(async () => { if (!(await this.db.prepare("SELECT n FROM cnt WHERE k = 'v'").first())) await this.db.batch(BACKFILL.map((s) => this.db.prepare(s))); })
+      .catch((e) => { this.ready = null; throw e; }));
+  }
   /** 새 기기 = 첫 경기권 FIRST_TIX 장(처음 온 아이가 한 판 맛보고 문제로). 이미 있으면 아무것도 안 한다 */
   ensure(dh) { return this.db.prepare('INSERT INTO dev (dh, tix) VALUES (?, ?) ON CONFLICT (dh) DO NOTHING').bind(dh, T.FIRST_TIX); }
   async dev(dh) { return (await this.db.prepare('SELECT * FROM dev WHERE dh = ?').bind(dh).first()) || null; }
@@ -78,7 +115,7 @@ export class Hub {
     if (path === '/me') {
       await this.ensure(dh).run();
       const d = await this.dev(dh), used = d.pts_day === day ? d.pts | 0 : 0;
-      return json({ school: this.schoolOfRow(d), free: this.free, tix: d.tix | 0, correct: d.correct | 0, pass: T.TICKET_PASS_Q, q: T.PACK_Q, per: T.TIX_PER_PACK, todayPts: used, cap: T.SCHOOL_DAY_CAP });
+      return json({ school: this.schoolOfRow(d), free: this.free, tix: d.tix | 0, correct: d.correct | 0, pass: T.TICKET_PASS_Q, q: T.PACK_Q, per: T.TIX_PER_PACK, todayPts: used, cap: this.nocap ? 0 : T.SCHOOL_DAY_CAP, nocap: this.nocap });
     }
     if (path === '/spend') {
       const ref = String(body.ref || ''); if (!isRef(ref)) return json({ error: 'ref' }, 400);
@@ -152,7 +189,7 @@ export class Hub {
       const used = d.pts_day === day ? d.pts | 0 : 0;
       const ipUsed = (await this.db.prepare('SELECT s FROM ipcap WHERE day = ? AND iph = ?').bind(day, iph).first())?.s | 0;
       const want = resultPoints({ won: !!body.won });
-      const n = sc ? Math.max(0, Math.min(want, T.SCHOOL_DAY_CAP - used, T.IP_DAY_CAP - ipUsed)) : 0;
+      const n = !sc ? 0 : this.nocap ? want : Math.max(0, Math.min(want, T.SCHOOL_DAY_CAP - used, T.IP_DAY_CAP - ipUsed));
       const stmts = [this.db.prepare('INSERT INTO scored (ref, dh, n, at) VALUES (?, ?, ?, ?)').bind(ref, dh, n, t)];
       if (n) {
         // 누적(덮어쓰기 아님) — 날이 바뀌었으면 새로 시작
@@ -197,14 +234,13 @@ export class Hub {
   async stats() {
     const t = this.now();
     if (this._st && t - this._st.at < STATS_TTL_MS) return this._st.v;
-    const t0 = kstDayStart(t), one = async (q, ...a) => ((await this.db.prepare(q).bind(...a).first())?.n) | 0;
+    const day = kstDay(t), one = async (q, ...a) => ((await this.db.prepare(q).bind(...a).first())?.n) | 0;
     try {
+      const c = Object.fromEntries((await this.db.prepare("SELECT k, n FROM cnt WHERE k IN ('schools', 'players', 'plays')").all()).results.map((r) => [r.k, r.n | 0]));
       const v = {
-        schools: await one("SELECT COUNT(DISTINCT school) AS n FROM dev WHERE school IS NOT NULL AND school != ''"),
-        players: await one('SELECT COUNT(*) AS n FROM (SELECT dh FROM spent UNION SELECT dh FROM used)'),
-        today: await one('SELECT COUNT(*) AS n FROM (SELECT dh FROM spent WHERE at >= ? UNION SELECT dh FROM used WHERE at >= ?)', t0, t0),
-        playsToday: await one("SELECT COUNT(*) AS n FROM spent WHERE at >= ? AND state != 'refunded'", t0),
-        plays: await one("SELECT COUNT(*) AS n FROM spent WHERE state != 'refunded'"),
+        schools: c.schools | 0, players: c.players | 0, plays: c.plays | 0,
+        today: await one('SELECT COUNT(*) AS n FROM dact WHERE day = ?', day),
+        playsToday: await one('SELECT n FROM dplay WHERE day = ?', day),
       };
       this._st = { at: t, v }; return v;
     } catch { return this._st?.v ?? null; }   // 통계가 깨져도 순위는 나간다
