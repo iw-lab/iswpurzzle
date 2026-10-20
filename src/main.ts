@@ -59,7 +59,7 @@ const CARDS: GbMode[] = [
 ];
 
 // ── 기본틀(학교 순위 · 이용권 · 전체화면) ──
-configureHub({ key: 'ttak1-rocket.hub.v1', offline: document.querySelector('meta[name="gb-hub"]')?.getAttribute('content') === 'off' });
+configureHub({ key: 'ttak1-rocket.hub.v1', offline: document.querySelector('meta[name="gb-hub"]')?.getAttribute('content') === 'off', direct: 'https://ttak1-rocket-hub.starlight-heroes.workers.dev' });
 configureSchool({ playWord: '발사', sfx: { tick: () => audio.play('click'), win: () => audio.play('ticket') } });
 mountSchoolRank($('schoolRank'));
 bindFullscreenButton($('btnFull'));
