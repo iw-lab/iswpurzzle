@@ -11,4 +11,4 @@ database_name = "ttak1-rocket-hub"
 database_id = "053c58db-400c-4051-a196-7c55c942a072"
 
 [vars]
-DIRECT_ORIGINS = "https://ttak1-rocket.pages.dev,https://*.ttak1-rocket.pages.dev"   # 직결(키트 direct.sh) — 무료 계정 Pages 함수 공용 한도와 무관하게 순위
+DIRECT_ORIGINS = "https://ttak1.pages.dev,https://*.ttak1.pages.dev,https://ttak1-rocket.pages.dev,https://*.ttak1-rocket.pages.dev"   # 직결(키트 direct.sh) — 무료 계정 Pages 함수 공용 한도와 무관하게 순위

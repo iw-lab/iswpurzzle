@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "homepage": "https://ttak1-rocket.pages.dev",
+  "homepage": "https://ttak1.pages.dev",
   "scripts": {
     "dev": "vite",
     "build": "tsc -p tsconfig.app.json && vite build",
