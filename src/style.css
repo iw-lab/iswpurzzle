@@ -22,7 +22,9 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--gb-bg)
 
 /* ── 홈 ── */
 #home { overflow-y: auto; padding: max(14px, env(safe-area-inset-top)) 16px 24px;
-  background: radial-gradient(120% 80% at 50% 0%, rgba(80, 60, 180, 0.55), rgba(11, 16, 48, 0.94) 60%), var(--home-bg, none) center/cover; }
+  background: radial-gradient(120% 80% at 50% 0%, rgba(80, 60, 180, 0.55), rgba(11, 16, 48, 0.94) 60%), var(--home-bg, url(/art/bg-wide.webp)) center/cover; }
+/* 첫 화면 뒷그림(2026-11-04 사용자 «뒷 화면이 그냥 단색») — 세로 폰은 세로 그림 */
+@media (max-aspect-ratio: 4/5) { #home { background-image: radial-gradient(120% 80% at 50% 0%, rgba(80, 60, 180, 0.55), rgba(11, 16, 48, 0.94) 60%), var(--home-bg, url(/art/bg-tall.webp)); background-position: center bottom; } }
 #home .gb-home { max-width: 520px; }
 .gb-brand img { width: 40px; height: 40px; border-radius: 10px; }
 .gb-brand { font-size: 24px; }

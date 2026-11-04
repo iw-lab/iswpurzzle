@@ -685,10 +685,8 @@ const smokeGame = {
 };
 
 // ── 스모크 계약(game-builder phaser-smoke · 2D 공용) — 관문 없이 코어를 직접 돌려 결정론·누수를 기계가 잰다 ──
-const artReady = (new URLSearchParams(location.search).has('showroom') ? showroom() : art.init()).then(() => {
-  const bg = art.manifest?.backgrounds.bg_earth;
-  if (bg) $("home").style.setProperty("--home-bg", `url("${new URL(bg, location.href).href}")`);
-});
+// 첫 화면 뒷그림은 이제 고정 그림(game-assets-src/bg → art/bg-wide·bg-tall)이라 --home-bg 를 더는 여기서 덮지 않는다.
+const artReady = (new URLSearchParams(location.search).has('showroom') ? showroom() : art.init());
 (window as unknown as { __SMOKE__: unknown }).__SMOKE__ = {
   ready: artReady,
   game: smokeGame,
