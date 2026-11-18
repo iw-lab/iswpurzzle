@@ -12,6 +12,7 @@ import { makeMode, goalText, LEVELS, PLANETS, type ModeId } from './core/modes.t
 import { hashSeed } from './core/rng.ts';
 import { ONE, parseLabel, sumLabel, type Cell, type Grade } from './core/values.ts';
 import { fracHTML } from './frac.js';
+import { createImeGuard } from './ime-guard.js';
 import { View } from './render/view.ts';
 import { columnAt } from './render/layout.ts';
 import { art, loadedImageKeys } from './render/assets.ts';
@@ -38,6 +39,8 @@ let modeId: ModeId = 'time';
 let level = 0;
 let ticket: string | null = null;
 let paused = false;
+/* 맥 크롬 한글 상태에선 A·S·D·W keydown 이 안 온다 — 판 동안만 화면 밖 칸으로 입력기를 비켜 간다(kit/ime-guard · A·S·D·W 를 써서 lazy:false · 관문 S23 K1·K5) */
+const IME = createImeGuard({ host: document.body, active: () => !!sim && !sim.over && !paused, lazy: false });
 let last = performance.now();
 let lastSecond = -1;
 let bannerTimer = 0;
@@ -100,6 +103,7 @@ function setScreen(s: Screen): void {
   $('home').classList.toggle('hidden', s !== 'home');
   $('game').classList.toggle('hidden', s !== 'game');
   for (const id of ['pause', 'result', 'missions', 'relay', 'turn', 'settings']) $(id).classList.add('hidden');
+  IME.sync();   // 판 화면이면 칸으로, 첫 화면이면 포커스를 돌려준다
 }
 
 function showHome(): void {
@@ -214,12 +218,14 @@ function togglePause(): void {
   if (!sim || sim.over) return;
   paused = !paused;
   $('pause').classList.toggle('hidden', !paused);
+  IME.sync();
   last = performance.now();
 }
 function quitGame(): void {
   if (sim && !sim.over) leaveTicket();
   audio.play('click');
   showHome();
+  IME.sync();
 }
 
 // ── 판 진행 ──
@@ -416,6 +422,7 @@ function endGame(): void {
   const s = sim;
   if (!s || !s.over) return;
   if ($('result').classList.contains('hidden') === false) return;
+  IME.sync();
   save.played++;
   save.totalLaunches += s.launches;
   for (const k of ['frac', 'dec', 'pct'] as const) save.weak[k] += s.weak[k];
